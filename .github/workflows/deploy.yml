@@ -8,36 +8,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy App Files to pastpapers_app
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Deploy App to pastpapers_app
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
           local-dir: ./
-          server-dir: /domains/revisionhubkenya.com/pastpapers_app/
+          server-dir: ./domains/revisionhubkenya.com/pastpapers_app/
           exclude: |
             **/.git*
-            **/.git*/**
+            **/.github/**
             **/node_modules/**
             **/public/**
-            .github/
-            vendor/
-            
+            .env
+
       - name: Deploy Public to public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
           local-dir: ./public/
-          server-dir: /domains/revisionhubkenya.com/public_html/
-          
-      - name: Deploy Public to public_html/api
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./public/
-          server-dir: /domains/revisionhubkenya.com/public_html/api/
+          server-dir: ./public_html/
