@@ -1,0 +1,22 @@
+@extends('frontend.layouts.master')
+        @section('meta_title', $page->translation->seo_title ?? $page->translation->name)
+        @section('meta_description', $page->translation->seo_description ?? $page->translation->name)
+        @section('body_class', $page?->fixed_header ? 'wsus_fixed_header' : '')
+        @section('contents')
+        <div id="it4g" data-background="{{ url('/') }}/resources/assets/images/others/breadcrumb.webp" class="breadcrumb__area breadcrumb__bg"><div class="container"><div class="row"><div class="col-12"><div class="breadcrumb__content"><h3 class="title">Terms &amp; Conditions</h3><nav class="breadcrumb"><span property="itemListElement" typeof="ListItem"><a href="/">Home</a></span><span class="breadcrumb-separator"><i class="fas fa-angle-right"></i></span><span property="itemListElement" typeof="ListItem"><a>Terms &amp; Conditions</a></span></nav></div></div></div></div><div class="breadcrumb__shape-wrap"><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape01.svg" alt="img" class="alltuchtopdown"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape02.svg" alt="img" data-aos="fade-right" data-aos-delay="300"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape03.svg" alt="img" data-aos="fade-up" data-aos-delay="400"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape04.svg" alt="img" data-aos="fade-down-left" data-aos-delay="400"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape05.svg" alt="img" data-aos="fade-left" data-aos-delay="400"/></div></div><section class="section-py-120"><div class=" container"><div id="ied3"><p>Please read these Terms and Conditions</p>
+<p>Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who access or use the Service.</p>
+<p>By accessing or using the Service you agree to be bound by these Terms. If you disagree with any part of the terms then you may not access the Service.</p>
+<p><strong>Accounts</strong></p>
+<p>When you create an account with us, you must provide us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.</p>
+<p>You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password, whether your password is with our Service or a third-party service.</p>
+<p>You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.</p>
+<p><strong>Links To Other Web Sites</strong></p>
+<p>Our Service may contain links to third-party web sites or services that are not owned or controlled by SkillGro.</p>
+<p>SkillGro has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third-party web sites or services. You further acknowledge and agree that SkillGro shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with use of or reliance on any such content, goods, or services available on or through any such web sites or services.</p>
+<p>We strongly advise you to read the terms and conditions and privacy policies of any third-party web sites or services that you visit.</p>
+<p><strong>Termination</strong></p>
+<p>We may terminate or suspend access to our Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.</p>
+<p>All provisions of the Terms which by their nature should survive termination shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity and limitations of liability.</p>
+<p>We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.</p>
+<p>Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may simply discontinue using the Service.</p></div></div></section>
+        @endsection

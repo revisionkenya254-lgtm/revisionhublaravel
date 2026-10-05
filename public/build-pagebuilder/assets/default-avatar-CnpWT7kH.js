@@ -1,0 +1,1 @@
+var e=``+new URL(`default-avatar-CdBd_ajY.png`,import.meta.url).href;export{e as t};

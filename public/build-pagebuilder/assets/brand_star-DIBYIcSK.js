@@ -1,0 +1,1 @@
+var e=``+new URL(`brand_star-IlM56W9V.svg`,import.meta.url).href;export{e as t};

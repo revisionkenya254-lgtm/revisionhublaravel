@@ -1,0 +1,1 @@
+var e=``+new URL(`theme_university_features_icon_1-DTN1ix-t.svg`,import.meta.url).href,t=``+new URL(`theme_university_features_icon_2-DtVCjkgh.svg`,import.meta.url).href,n=``+new URL(`theme_university_features_icon_3-IHtcW3Dz.svg`,import.meta.url).href;export{t as n,e as r,n as t};

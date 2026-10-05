@@ -1,0 +1,3 @@
+import{t as e}from"./registerComponent-vPl6l5lM.js";var t=(t,{folderName:n,fileName:r})=>{e({editor:t,name:r,category:n,media:`<svg viewBox="0 0 24 24">
+        <path fill="currentColor" d="M2 20h20V4H2v16Zm-1 0V4a1 1 0 0 1 1-1h20a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1Z"></path>
+      </svg>`,model:{defaults:{name:`Column 1`,tagName:`div`,classes:[`editor-preview-helper`,`row`],droppable:!0,draggable:!0,copyable:!0,stylable:!0,components:[{tagName:`div`,droppable:!0,draggable:!0,copyable:!0,stylable:!0,classes:[`editor-preview-helper`,`col-lg-12`],droppable:!0}]}}})};export{t as default};

@@ -1,0 +1,3 @@
+import{t as e}from"./registerComponent-vPl6l5lM.js";var t=(t,{folderName:n,fileName:r})=>{e({editor:t,name:r,category:n,media:`<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3 4h18v2H3zm0 6h18v2H3zm0 6h18v2H3z"/>
+        </svg>`,model:{defaults:{name:`Row`,tagName:`div`,classes:[`editor-preview-helper`,`row`],droppable:!0,draggable:!0,copyable:!0,stylable:!0,components:[]}}})};export{t as default};

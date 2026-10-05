@@ -1,0 +1,16 @@
+[Unit]
+Description=RevisionHub AI Document Queue Worker
+After=network.target mysql.service redis.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/revisionhub
+ExecStart=/usr/bin/php artisan queue:work --queue=ai-processing,default --sleep=1 --tries=3 --timeout=180
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/revisionhub-ai-document-processing.log
+StandardError=append:/var/log/revisionhub-ai-document-processing.log
+
+[Install]
+WantedBy=multi-user.target

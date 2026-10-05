@@ -1,0 +1,22 @@
+@extends('frontend.layouts.master')
+        @section('meta_title', $page->translation->seo_title ?? $page->translation->name)
+        @section('meta_description', $page->translation->seo_description ?? $page->translation->name)
+        @section('body_class', $page?->fixed_header ? 'wsus_fixed_header' : '')
+        @section('contents')
+        <div id="i10r" data-background="{{ url('/') }}/resources/assets/images/others/breadcrumb.webp" class="breadcrumb__area breadcrumb__bg"><div class="container"><div class="row"><div class="col-12"><div class="breadcrumb__content"><h3 class="title">नियम और शर्तें</h3><nav class="breadcrumb"><span property="itemListElement" typeof="ListItem"><a href="/">Home</a></span><span class="breadcrumb-separator"><i class="fas fa-angle-right"></i></span><span property="itemListElement" typeof="ListItem"><a>नियम और शर्तें</a></span></nav></div></div></div></div><div class="breadcrumb__shape-wrap"><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape01.svg" alt="img" class="alltuchtopdown"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape02.svg" alt="img" data-aos="fade-right" data-aos-delay="300"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape03.svg" alt="img" data-aos="fade-up" data-aos-delay="400"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape04.svg" alt="img" data-aos="fade-down-left" data-aos-delay="400"/><img src="{{ url('/') }}/frontend/img/others/breadcrumb_shape05.svg" alt="img" data-aos="fade-left" data-aos-delay="400"/></div></div><section class="section-py-120"><div class=" container"><div id="i19n"><p>कृपया इन नियमों और शर्तों को पढ़ें</p>
+<p>सेवा तक आपकी पहुँच और उसका उपयोग इन शर्तों को स्वीकार करने और उनका अनुपालन करने पर निर्भर करता है। ये शर्तें सभी आगंतुकों, उपयोगकर्ताओं और अन्य लोगों पर लागू होती हैं जो सेवा तक पहुँचते हैं या उसका उपयोग करते हैं।</p>
+<p>सेवा तक पहुँचने या उसका उपयोग करके आप इन शर्तों से बंधे होने के लिए सहमत होते हैं। यदि आप शर्तों के किसी भी भाग से असहमत हैं तो आप सेवा तक नहीं पहुँच सकते।</p>
+<p>खाते</p>
+<p>जब आप हमारे साथ खाता बनाते हैं, तो आपको हमें हर समय सटीक, पूर्ण और वर्तमान जानकारी प्रदान करनी चाहिए। ऐसा न करना शर्तों का उल्लंघन माना जाता है, जिसके परिणामस्वरूप हमारी सेवा पर आपके खाते को तुरंत समाप्त किया जा सकता है।</p>
+<p>आप सेवा तक पहुँचने के लिए उपयोग किए जाने वाले पासवर्ड की सुरक्षा और अपने पासवर्ड के तहत किसी भी गतिविधि या कार्रवाई के लिए जिम्मेदार हैं, चाहे आपका पासवर्ड हमारी सेवा या किसी तीसरे पक्ष की सेवा के साथ हो।</p>
+<p>आप किसी तीसरे पक्ष को अपना पासवर्ड न बताने के लिए सहमत हैं। सुरक्षा के किसी भी उल्लंघन या आपके खाते के अनधिकृत उपयोग के बारे में पता चलने पर आपको हमें तुरंत सूचित करना चाहिए।</p>
+<p>अन्य वेब साइट्स के लिंक</p>
+<p>हमारी सेवा में थर्ड-पार्टी वेब साइट्स या सेवाओं के लिंक हो सकते हैं, जो SkillGro के स्वामित्व या नियंत्रण में नहीं हैं।</p>
+<p>SkillGro का किसी भी थर्ड-पार्टी वेब साइट्स या सेवाओं की सामग्री, गोपनीयता नीतियों या प्रथाओं पर कोई नियंत्रण नहीं है और न ही वह इसके लिए कोई जिम्मेदारी लेता है। आप आगे स्वीकार करते हैं और सहमत हैं कि SkillGro किसी भी ऐसी वेब साइट्स या सेवाओं पर या उनके माध्यम से उपलब्ध किसी भी ऐसी सामग्री, सामान या सेवाओं के उपयोग या उन पर निर्भरता के कारण या उनके संबंध में होने वाली किसी भी क्षति या हानि के लिए प्रत्यक्ष या अप्रत्यक्ष रूप से जिम्मेदार या उत्तरदायी नहीं होगा।</p>
+<p>हम आपको दृढ़ता से सलाह देते हैं कि आप अपने द्वारा देखी जाने वाली किसी भी थर्ड-पार्टी वेब साइट्स या सेवाओं की नियम और शर्तें और गोपनीयता नीतियां पढ़ें।</p>
+<p>समाप्ति</p>
+<p>हम बिना किसी पूर्व सूचना या देयता के, किसी भी कारण से, बिना किसी सीमा के, अपनी सेवा तक पहुंच को तुरंत समाप्त या निलंबित कर सकते हैं, जिसमें बिना किसी सीमा के यदि आप शर्तों का उल्लंघन करते हैं।</p>
+<p>शर्तों के सभी प्रावधान जो अपनी प्रकृति के अनुसार समाप्ति के बाद भी बने रहने चाहिए, समाप्ति के बाद भी बने रहेंगे, जिसमें बिना किसी सीमा के, स्वामित्व प्रावधान, वारंटी अस्वीकरण, क्षतिपूर्ति और देयता की सीमाएं शामिल हैं।</p>
+<p>हम बिना किसी पूर्व सूचना या दायित्व के, किसी भी कारण से, बिना किसी सीमा के, आपके खाते को तुरंत समाप्त या निलंबित कर सकते हैं, जिसमें बिना किसी सीमा के यदि आप शर्तों का उल्लंघन करते हैं।</p>
+<p>समाप्ति पर, सेवा का उपयोग करने का आपका अधिकार तुरंत समाप्त हो जाएगा। यदि आप अपना खाता समाप्त करना चाहते हैं, तो आप बस सेवा का उपयोग करना बंद कर सकते हैं।</p></div></div></section>
+        @endsection

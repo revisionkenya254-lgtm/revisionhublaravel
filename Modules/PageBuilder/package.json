@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "laravel-vite-plugin": "^3.0.1",
+    "postcss": "^8.3.7",
+    "sass": "^1.69.5",
+    "vite": "^8.0.3"
+  },
+  "dependencies": {
+    "grapesjs": "^0.21.12",
+    "grapesjs-blocks-basic": "^1.0.2",
+    "grapesjs-component-code-editor": "^1.0.20",
+    "grapesjs-preset-webpage": "^1.0.3"
+  }
+}

@@ -1,0 +1,1 @@
+var e=``+new URL(`testimonial-1-NgtMYtgu.webp`,import.meta.url).href;export{e as t};

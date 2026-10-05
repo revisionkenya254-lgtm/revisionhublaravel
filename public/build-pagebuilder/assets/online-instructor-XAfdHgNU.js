@@ -1,0 +1,1 @@
+var e=``+new URL(`online-instructor-Kfj1qOqi.webp`,import.meta.url).href;export{e as t};

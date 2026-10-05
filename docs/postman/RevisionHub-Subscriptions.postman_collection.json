@@ -1,0 +1,91 @@
+{
+  "info": {
+    "_postman_id": "e576b2ca-3149-4e1e-b40c-9c490e16a7ad",
+    "name": "RevisionHub - Subscriptions",
+    "description": "Subscription API smoke tests. Complete the M-Pesa prompt before running the final status/current-subscription checks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://revisionhub.test/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "planId", "value": "month-1" },
+    { "key": "mpesaPhone", "value": "2547XXXXXXXX" },
+    { "key": "subscriptionOrderId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List plans",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "{{baseUrl}}/subscriptions/plans"
+      }
+    },
+    {
+      "name": "My subscription",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/subscriptions/me"
+      }
+    },
+    {
+      "name": "Create checkout",
+      "event": [{
+        "listen": "test",
+        "script": { "exec": [
+          "pm.test('Created', () => pm.response.to.have.status(201));",
+          "pm.collectionVariables.set('subscriptionOrderId', pm.response.json().data.order_id);"
+        ] }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"plan_id\": \"{{planId}}\"\n}" },
+        "url": "{{baseUrl}}/subscriptions/checkout"
+      }
+    },
+    {
+      "name": "Start M-Pesa payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"phone_number\": \"{{mpesaPhone}}\"\n}" },
+        "url": "{{baseUrl}}/subscriptions/orders/{{subscriptionOrderId}}/payment"
+      }
+    },
+    {
+      "name": "Poll payment status",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/subscriptions/orders/{{subscriptionOrderId}}/payment"
+      }
+    },
+    {
+      "name": "Subscription order details",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Accept", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/subscriptions/orders/{{subscriptionOrderId}}"
+      }
+    }
+  ]
+}

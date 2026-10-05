@@ -1,0 +1,1 @@
+var e=``+new URL(`h2_banner_icon-CcuIqL0C.svg`,import.meta.url).href;export{e as t};

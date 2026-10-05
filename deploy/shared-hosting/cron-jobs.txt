@@ -1,0 +1,5 @@
+# Cron job 1: Laravel scheduler
+* * * * * cd /home/your-user/public_html/revisionhub && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+
+# Cron job 2: AI document queue worker
+* * * * * cd /home/your-user/public_html/revisionhub && /usr/bin/php artisan queue:work --queue=ai-processing,default --sleep=1 --tries=3 --stop-when-empty >> storage/logs/ai-document-processing.log 2>&1

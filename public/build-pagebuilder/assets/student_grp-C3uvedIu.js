@@ -1,0 +1,1 @@
+var e=``+new URL(`student_grp-NtTWbELK.png`,import.meta.url).href;export{e as t};
