@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Hostinger via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -21,9 +21,6 @@ jobs:
             CORE_PATH="/home/u518207442/domains/revisionhubkenya.com/pastpapers_app"
             PUBLIC_PATH="/home/u518207442/domains/revisionhubkenya.com/public_html"
 
-            echo "Deploying to $CORE_PATH"
-
-            # Clone first time if empty
             if [! -d "$CORE_PATH/.git" ]; then
               rm -rf $CORE_PATH
               cd /home/u518207442/domains/revisionhubkenya.com/
@@ -32,27 +29,17 @@ jobs:
 
             cd $CORE_PATH
             git pull origin main
-
             composer install --no-dev --optimize-autoloader --no-interaction
-
-            # Build frontend if you use Vite
-            # npm install && npm run build || true
 
             php artisan migrate --force || true
             php artisan storage:link || true
-
-            php artisan config:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-
             chmod -R 775 storage bootstrap/cache
 
-            # Copy public files to public_html (shared by both domains)
-            rsync -av --delete public/ $PUBLIC_PATH/
-
-            # Fix index.php paths to point to pastpapers_app
+            rsync -av public/ $PUBLIC_PATH/ --delete
             sed -i "s|__DIR__.'/../vendor|__DIR__.'/../pastpapers_app/vendor|g" $PUBLIC_PATH/index.php
             sed -i "s|__DIR__.'/../bootstrap|__DIR__.'/../pastpapers_app/bootstrap|g" $PUBLIC_PATH/index.php
 
-            echo "SUCCESS: Both revisionhubkenya.com and api.revisionhubkenya.com are live"
+            echo "DONE - Both domains live"
