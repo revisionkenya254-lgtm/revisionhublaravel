@@ -2,7 +2,7 @@
 <link rel="stylesheet" href="{{ asset('frontend/css/animate.min.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/magnific-popup.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/fontawesome-all.min.css') }}">
-<link rel="stylesheet" href="{{ asset('frontend/css/flaticon-skillgro.css') }}">
+<link rel="stylesheet" href="{{ asset('frontend/css/flaticon-revisionhubkenya.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/swiper-bundle.min.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/default-icons.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/select2.min.css') }}">

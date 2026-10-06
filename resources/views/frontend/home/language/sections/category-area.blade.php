@@ -22,7 +22,7 @@
                                     {{ __('Courses') }}</span>
                             </div>
                             <div class="icon">
-                                <i class="skillgro-next-2"></i>
+                                <i class="revisionhubkenya-next-2"></i>
                             </div>
                         </a>
                     </div>

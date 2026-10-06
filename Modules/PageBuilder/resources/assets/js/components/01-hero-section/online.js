@@ -32,7 +32,7 @@ export default (editor, { folderName, fileName }, baseUrl) => {
                     { name: 'count_two_title', label: 'Count Two Title', type: 'text', changeProp: true },
                     { name: 'count_two_img', label: 'Count Two Image', type: 'image-upload', changeProp: true },
                 ],
-                title: 'Learning is <span class="highlight">What You</span> Make of it. Make it Yours at SkillGro.',
+                title: 'Learning is <span class="highlight">What You</span> Make of it. Make it Yours at RevisionHubKenya.',
                 btnLink: `${baseUrl}/contact`,
                 btnText: 'Start Free Trial',
                 videoLink: 'https://www.youtube.com/watch?v=pMzGDBP6Bic',

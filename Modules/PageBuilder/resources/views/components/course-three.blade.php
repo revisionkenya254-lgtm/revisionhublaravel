@@ -211,7 +211,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>
@@ -276,7 +276,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>
@@ -341,7 +341,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>
@@ -406,7 +406,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>
@@ -471,7 +471,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>
@@ -536,7 +536,7 @@
                                 <ul class="list-wrap">
                                     <li><i class="flaticon-book"></i>{{ __('Lessons') }}
                                         {{ $course?->lessons_count }}</li>
-                                    <li><i class="skillgro-group"></i>{{ __('Students') }}
+                                    <li><i class="revisionhubkenya-group"></i>{{ __('Students') }}
                                         {{ $course?->enrollments_count }}</li>
                                 </ul>
                             </div>

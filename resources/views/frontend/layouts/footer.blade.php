@@ -92,7 +92,7 @@
                 <div class="col-md-7">
                     <div class="copy-right-text">
                         @if($setting?->copyright_text)
-                        <p>© {{ $setting?->copyright_text }}</p>
+                        <p>&copy; {{ $setting?->copyright_text }}</p>
                         @endif
                     </div>
                 </div>

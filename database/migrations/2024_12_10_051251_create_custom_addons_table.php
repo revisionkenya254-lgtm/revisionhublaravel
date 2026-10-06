@@ -22,7 +22,6 @@ return new class extends Migration
             $table->json('author')->nullable();
             $table->json('options')->nullable();
             $table->string('icon')->nullable();
-            $table->string('license')->nullable();
             $table->string('url')->nullable();
             $table->string('version')->nullable();
             $table->date('last_update')->nullable();
@@ -39,6 +38,10 @@ return new class extends Migration
                             $addon = new CustomAddon();
                             $addon->slug = $module;
                             foreach ($wsusJsonData as $key => $value) {
+                                if (!in_array($key, ['name', 'is_default', 'isPaid', 'description', 'author', 'options', 'icon', 'url', 'version', 'last_update'], true)) {
+                                    continue;
+                                }
+
                                 if ($key == 'last_update') {
                                     $addon->$key = date('Y-m-d', strtotime($value));
                                 } else {

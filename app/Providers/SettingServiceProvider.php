@@ -76,7 +76,7 @@ View::composer('frontend.student-dashboard.layouts.sidebar', function ($view) { 
     private function defaultSetting(): array
     {
         return [
-            'app_name' => 'SkillGro',
+            'app_name' => 'RevisionHubKenya',
             'timezone' => config('app.timezone'),
             'site_theme' => ThemeList::MAIN->value,
             'version' => '3.4.0',

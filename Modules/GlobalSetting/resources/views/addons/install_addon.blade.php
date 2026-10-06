@@ -114,27 +114,6 @@
     </div>
     <x-admin.delete-modal />
 
-    <div tabindex="-1" role="dialog" id="verificationModal" class='modal fade'>
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-body">
-                    <div class="container-fluid">
-                        <div class="custom-modal-header mb-3">
-                            <h5 class="modal-title">{{ __('Addon Purchase Key') }}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <input type="text" name="purchase_key" class="form-control">
-                    </div>
-                </div>
-                <div class="modal-footer bg-whitesmoke br">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">{{ __('Close') }}</button>
-                    <button type="submit" class="btn btn-primary" id="verifyButton">{{ __('Install') }}</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @push('css')
@@ -407,46 +386,6 @@
         jQuery(document).ready(function($) {
             $(".drag-input").kwtFileUpload();
 
-            $(document).on('submit', '#installForm', function(e) {
-                e.preventDefault()
-                $('#verificationModal').modal('show')
-            })
-            $(document).on('click', '#verifyButton', function(e) {
-                e.preventDefault()
-                const key = $('[name="purchase_key"]').val()
-                $.ajax({
-                    url: "{{ route('admin.addons.verify') }}",
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        key: key
-                    },
-                    beforeSend: function() {
-                        $('#verifyButton').attr('disabled', 'disabled')
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            toastr.success(response.message);
-                            $('#installForm').removeAttr('id', 'installForm').submit()
-                        } else {
-                            $('#verificationModal').modal('hide')
-                            toastr.error(response.message);
-                        }
-                        $('#verifyButton').removeAttr('disabled')
-                    },
-                    error: function (xhr, status, error) {
-                        $('#verifyButton').removeAttr('disabled');
-                        
-                        if (xhr.responseJSON?.errors) {
-                            $.each(xhr.responseJSON.errors, function (key, value) {
-                                toastr.error(value);
-                            });
-                        } else if (xhr.responseJSON?.message) {
-                            toastr.error(xhr.responseJSON.message);
-                        }
-                    }
-                })
-            })
         });
     </script>
 @endpush

@@ -45,7 +45,7 @@ use Spatie\LaravelImageOptimizer\Facades\ImageOptimizer;
 function file_upload(UploadedFile $file, string $path = 'uploads/custom-images/', string|null $oldFile = '', bool $optimize = false)
 {
     $extention = $file->getClientOriginalExtension();
-    $file_name = 'wsus-img' . date('-Y-m-d-h-i-s-') . rand(999, 9999) . '.' . $extention;
+    $file_name = 'revisionhubkenya-img' . date('-Y-m-d-h-i-s-') . rand(999, 9999) . '.' . $extention;
     $file_name = $path . $file_name;
     $file->move(public_path($path), $file_name);
 

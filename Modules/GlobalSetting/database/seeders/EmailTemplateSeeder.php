@@ -58,7 +58,7 @@ class EmailTemplateSeeder extends Seeder
             [
                 'name' => 'new_refund',
                 'subject' => 'New Refund Request',
-                'message' => '<p>Hello websolutionus, </p>
+                'message' => '<p>Hello RevisionHubKenya, </p>
 
                 <p>Mr. {{user_name}} has send a new refund request to you.</p>',
             ],
@@ -77,7 +77,7 @@ class EmailTemplateSeeder extends Seeder
                 'message' => '<p>Dear {{user_name}},</p>
                 <p>We are happy to say that, we have send a withdraw amount to your provided bank information.</p>
                 <p>Thanks &amp; Regards</p>
-                <p>WebSolutionUs</p>',
+                <p>RevisionHubKenya</p>',
             ],
             [
                 'name' => 'rejected_withdraw',
@@ -85,7 +85,7 @@ class EmailTemplateSeeder extends Seeder
                 'message' => '<p>Dear {{user_name}},</p>
                 <p> your withdraw request has been rejected.</p>
                 <p>Thanks &amp; Regards</p>
-                <p>WebSolutionUs</p>',
+                <p>RevisionHubKenya</p>',
             ],
             [
                 'name' => 'pending_withdraw',
@@ -93,7 +93,7 @@ class EmailTemplateSeeder extends Seeder
                 'message' => '<p>Dear {{user_name}},</p>
                 <p> your withdraw request is waiting for approval.</p>
                 <p>Thanks &amp; Regards</p>
-                <p>WebSolutionUs</p>',
+                <p>RevisionHubKenya</p>',
             ],
             [
                 'name' => 'instructor_request_approved',

@@ -110,7 +110,7 @@
                                     <div class="courses__item-bottom-three courses__item-bottom-five">
                                         <ul class="list-wrap">
                                             <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                            <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                            <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -166,7 +166,7 @@
                                     <div class="courses__item-bottom-three courses__item-bottom-five">
                                         <ul class="list-wrap">
                                             <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                            <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                            <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -222,7 +222,7 @@
                                     <div class="courses__item-bottom-three courses__item-bottom-five">
                                         <ul class="list-wrap">
                                             <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                            <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                            <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -278,7 +278,7 @@
                                     <div class="courses__item-bottom-three courses__item-bottom-five">
                                         <ul class="list-wrap">
                                             <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                            <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                            <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -334,7 +334,7 @@
                                     <div class="courses__item-bottom-three courses__item-bottom-five">
                                         <ul class="list-wrap">
                                             <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                            <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                            <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -390,7 +390,7 @@
                                 <div class="courses__item-bottom-three courses__item-bottom-five">
                                     <ul class="list-wrap">
                                         <li><i class="flaticon-book"></i>{{__('Lessons')}} {{ $course?->lessons_count }}</li>
-                                        <li><i class="skillgro-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
+                                        <li><i class="revisionhubkenya-group"></i>{{__('Students')}} {{ $course?->enrollments_count }}</li>
                                     </ul>
                                 </div>
                             </div>

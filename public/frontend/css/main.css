@@ -1,9 +1,9 @@
 /*============================================
 
-   Theme Name: SkillGro - Online Courses & Education Template
+   Theme Name: RevisionHubKenya Learning Platform
    Author : ThemeGenix
    Support: themegenix@gmail.com
-   Description: SkillGro - Online Courses & Education Template
+   Description: RevisionHubKenya learning, revision, and exam-preparation platform
    Version: 1.0
 
 ==============================================*/
@@ -2066,7 +2066,7 @@ textarea {
 .tgmenu__main-menu li.menu-item-has-children>a::after {
     content: "\f105";
     display: block;
-    font-family: "flaticon_skill_grow";
+    font-family: "flaticon_revisionhubkenya";
     -webkit-transform: rotate(90deg);
     -moz-transform: rotate(90deg);
     -ms-transform: rotate(90deg);
@@ -2099,7 +2099,7 @@ textarea {
 
 .tgmenu__main-menu li.menu-item-has-children>.sub-menu .menu-item-has-children>a::after {
     content: "\f105";
-    font-family: "flaticon_skill_grow";
+    font-family: "flaticon_revisionhubkenya";
     -webkit-transform: rotate(90deg);
     -moz-transform: rotate(90deg);
     -ms-transform: rotate(90deg);
@@ -17680,7 +17680,7 @@ textarea {
 .faq__wrap .accordion-item .accordion-button::after {
     content: "\f105";
     background-image: none;
-    font-family: "flaticon_skill_grow";
+    font-family: "flaticon_revisionhubkenya";
     font-size: 20px;
     position: absolute;
     right: 0;
@@ -17752,7 +17752,7 @@ textarea {
 .faq__wrap-two .accordion-item .accordion-button::after {
     content: "\f105";
     background-image: none;
-    font-family: "flaticon_skill_grow";
+    font-family: "flaticon_revisionhubkenya";
     font-size: 20px;
     position: absolute;
     right: 20px;

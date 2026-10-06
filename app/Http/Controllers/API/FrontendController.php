@@ -573,7 +573,7 @@ class FrontendController extends Controller {
     public function on_boarding_screen(): JsonResponse {
         $screens = [
             [
-                'title'       => 'Welcome to Skillgro',
+                'title'       => 'Welcome to RevisionHubKenya',
                 'description' => 'Discover a world of knowledge and unlock your potential with our curated courses.',
             ],
             [

@@ -24,7 +24,7 @@ const categoryHtml = categoryData.map(category => `
                     class="name"><strong>${category.name}</strong>${category.totalCourse} Courses</span>
             </div>
             <div class="icon">
-                <i class="skillgro-next-2"></i>
+                <i class="revisionhubkenya-next-2"></i>
             </div>
         </a>
     </div>

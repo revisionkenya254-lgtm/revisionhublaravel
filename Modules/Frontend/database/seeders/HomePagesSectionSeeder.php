@@ -329,7 +329,7 @@ class HomePagesSectionSeeder extends Seeder {
                             'video_url'  => 'https://www.youtube.com/watch?v=VkBnNxneA_A',
                             'image'      => 'uploads/custom-images/h8_about_img01.jpg',
                             'image_two'   => 'uploads/custom-images/h8_about_img02.jpg',
-                            'image_three'   => 'uploads/custom-images/skillgro-diploma.png',
+                            'image_three'   => 'uploads/custom-images/revisionhubkenya-diploma.png',
                             'course_success'   => '86',
                         ],
                     ],

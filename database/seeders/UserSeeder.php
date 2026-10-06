@@ -51,7 +51,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 
@@ -87,7 +87,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 
@@ -123,7 +123,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 
@@ -159,7 +159,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 
@@ -195,7 +195,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 
@@ -231,7 +231,7 @@ class UserSeeder extends Seeder
             'facebook' => 'https://www.facebook.com/',
             'twitter' => 'https://twitter.com/',
             'linkedin' => 'https://www.linkedin.com/',
-            'website' => 'https://www.websolutionus.com/',
+            'website' => 'https://revisionhubkenya.com/',
             'github' => 'https://www.github.com/',
         ]);
 

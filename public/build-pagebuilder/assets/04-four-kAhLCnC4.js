@@ -8,7 +8,7 @@ import{t as e}from"./registerComponent-vPl6l5lM.js";import{t}from"./h4_features_
                     class="name"><strong>${e.name}</strong>${e.totalCourse} Courses</span>
             </div>
             <div class="icon">
-                <i class="skillgro-next-2"></i>
+                <i class="revisionhubkenya-next-2"></i>
             </div>
         </a>
     </div>

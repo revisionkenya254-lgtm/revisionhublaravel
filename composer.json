@@ -1,10 +1,12 @@
 {
-    "name": "laravel/laravel",
+    "name": "revisionhubkenya/platform",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "The RevisionHubKenya learning, revision, and exam preparation platform.",
     "keywords": [
-        "laravel",
-        "framework"
+        "revisionhubkenya",
+        "education",
+        "revision",
+        "kenya"
     ],
     "license": "MIT",
     "require": {
@@ -59,8 +61,7 @@
         ],
         "files": [
             "app/Helpers/helper.php",
-            "Modules/Menubuilder/app/Helpers/helper.php",
-            "Modules/Installer/app/Helpers/helper.php"
+            "Modules/Menubuilder/app/Helpers/helper.php"
         ]
     },
     "autoload-dev": {

@@ -78,7 +78,7 @@ export default (editor, { folderName, fileName }, baseUrl) => {
                                 </div>
                             </div>
                             <div class="features__icon-five">
-                                <i class="skillgro-video-tutorial"></i>
+                                <i class="revisionhubkenya-video-tutorial"></i>
                                 <img src="${baseUrl}/frontend/img/icons/h5_features_icon.svg" class="injectable">
                             </div>
                             <div class="features__content-five">

@@ -89,7 +89,7 @@ export default (editor, { folderName, fileName }, baseUrl) => {
                                                 </div>
                                                 <h2 class="title">William Hope</h2>
                                                 <span class="designation">Digital Marketing</span>
-                                                <p>SkillGro The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested.</p>
+                                                <p>RevisionHubKenya The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested.</p>
                                                 <div class="instructor__social">
                                                     <ul class="list-wrap">
                                                         <li><a href="#"><i class="fab fa-facebook-f"></i></a></li>

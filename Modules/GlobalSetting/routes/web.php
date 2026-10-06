@@ -82,7 +82,6 @@ Route::group(['as' => 'admin.', 'prefix' => 'admin', 'middleware' => ['auth:admi
     });
     Route::controller(ManageAddonController::class)->prefix('settings')->group(function () {
         Route::get('addons', 'index')->name('addons.view');
-        Route::post('addons/verify', 'verifyAddon')->name('addons.verify');
         Route::get('addons/install', 'installAddon')->name('addons.install');
         Route::get('addons/update/{slug}', 'updateStatus')->name('addons.update.status');
         Route::post('addons/store', 'installStore')->name('addons.store');

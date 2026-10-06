@@ -14,7 +14,7 @@ class GlobalSettingInfoSeeder extends Seeder
     public function run(): void
     {
         $setting_data = [
-            'app_name' => 'SkillGro',
+            'app_name' => 'RevisionHubKenya',
             'version' => '3.4.0',
             'logo' => 'uploads/website-images/logo.svg',
             'timezone' => 'Asia/Dhaka',
@@ -31,7 +31,7 @@ class GlobalSettingInfoSeeder extends Seeder
             'link' => '/page/privacy-policy',
             'btn_text' => 'Yes',
             'message' => 'This website uses essential cookies to ensure its proper operation and tracking cookies to understand how you interact with it. The latter will be set only upon approval.',
-            'copyright_text' => 'this is copyright text',
+            'copyright_text' => '2026 RevisionHubKenya. All rights reserved.',
             'recaptcha_site_key' => 'recaptcha_site_key',
             'recaptcha_secret_key' => 'recaptcha_secret_key',
             'recaptcha_status' => 'inactive',
@@ -58,7 +58,7 @@ class GlobalSettingInfoSeeder extends Seeder
             'mail_password' => 'mail_password',
             'mail_port' => 'mail_port',
             'mail_encryption' => 'ssl',
-            'mail_sender_name' => 'WebSolutionUs',
+            'mail_sender_name' => 'RevisionHubKenya',
             'contact_message_receiver_mail' => 'receiver@gmail.com',
             'pusher_app_id' => 'pusher_app_id',
             'pusher_app_key' => 'pusher_app_key',
@@ -70,7 +70,7 @@ class GlobalSettingInfoSeeder extends Seeder
             'maintenance_mode' => 0,
             'maintenance_title' => 'Website Under maintenance',
             'maintenance_description' => '<p>We are currently performing maintenance on our website to<br>improve your experience. Please check back later.</p>
-            <p><a title="Websolutions" href="https://websolutionus.com/">Websolutions</a></p>',
+            <p><a title="RevisionHubKenya" href="https://revisionhubkenya.com/">RevisionHubKenya</a></p>',
             'last_update_date' => date('Y-m-d H:i:s'),
             'is_queable' => 'inactive',
             'commission_rate' => 0,

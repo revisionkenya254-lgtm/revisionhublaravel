@@ -1,14 +1,14 @@
 @font-face {
-    font-family: "flaticon_skill_grow";
-    src: url("../fonts/flaticon_skill_grow.ttf?b804fdf7efe64078cf35502d1d7c3cc7") format("truetype"),
-    url("../fonts/flaticon_skill_grow.woff?b804fdf7efe64078cf35502d1d7c3cc7") format("woff"),
-    url("../fonts/flaticon_skill_grow.woff2?b804fdf7efe64078cf35502d1d7c3cc7") format("woff2"),
-    url("../fonts/flaticon_skill_grow.eot?b804fdf7efe64078cf35502d1d7c3cc7#iefix") format("embedded-opentype"),
-    url("../fonts/flaticon_skill_grow.svg?b804fdf7efe64078cf35502d1d7c3cc7#flaticon_skill_grow") format("svg");
+    font-family: "flaticon_revisionhubkenya";
+    src: url("./flaticon_revisionhubkenya.ttf?b804fdf7efe64078cf35502d1d7c3cc7") format("truetype"),
+url("./flaticon_revisionhubkenya.woff?b804fdf7efe64078cf35502d1d7c3cc7") format("woff"),
+url("./flaticon_revisionhubkenya.woff2?b804fdf7efe64078cf35502d1d7c3cc7") format("woff2"),
+url("./flaticon_revisionhubkenya.eot?b804fdf7efe64078cf35502d1d7c3cc7#iefix") format("embedded-opentype"),
+url("./flaticon_revisionhubkenya.svg?b804fdf7efe64078cf35502d1d7c3cc7#flaticon_revisionhubkenya") format("svg");
 }
 
 i[class^="flaticon-"]:before, i[class*=" flaticon-"]:before {
-    font-family: flaticon_skill_grow !important;
+    font-family: flaticon_revisionhubkenya !important;
     font-style: normal;
     font-weight: normal !important;
     font-variant: normal;
@@ -17,10 +17,7 @@ i[class^="flaticon-"]:before, i[class*=" flaticon-"]:before {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
-[class*="flaticon-"] {
-    display: block;
-    line-height: 0;
-}
+
 .flaticon-search:before {
     content: "\f101";
 }

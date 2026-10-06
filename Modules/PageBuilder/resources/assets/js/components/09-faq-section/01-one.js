@@ -33,10 +33,10 @@ export default (editor, { folderName, fileName }, baseUrl) => {
                 description: 'Groove’s intuitive shared inbox makes it easy for team members to organize, prioritize and.In this episode.',
                 faq_img: faqImg,
                 faqs: [
-                    { title: 'What’s Skillgrow Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
-                    { title: 'What’s Skillgrow Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
-                    { title: 'What’s Skillgrow Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
-                    { title: 'What’s Skillgrow Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
+                    { title: 'What’s RevisionHubKenya Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
+                    { title: 'What’s RevisionHubKenya Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
+                    { title: 'What’s RevisionHubKenya Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
+                    { title: 'What’s RevisionHubKenya Want to give you?', answer: "Groove’s intuitive shared inbox makes it easy for team members organize prioritize and.In this episode.urvived not only five centuries.Edhen an unknown printer took a galley of type and scrambl" },
                 ],
                 script: function () {
                     $(".curved-circle").circleType({

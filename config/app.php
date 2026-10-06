@@ -16,7 +16,7 @@ return [
     |
      */
 
-    'name' => env('APP_NAME', 'SkillGro'),
+    'name' => env('APP_NAME', 'RevisionHubKenya'),
 
     /*
     |--------------------------------------------------------------------------

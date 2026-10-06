@@ -34,7 +34,7 @@ export default (editor, { folderName, fileName }, baseUrl) => {
                     }
                 ],
                 sub_title: 'Our Top Features',
-                title: 'Achieve Your Goal With SkillGrow',
+                title: 'Achieve Your Goal With RevisionHubKenyaw',
                 description: 'when an unknown printer took a galley of type and scrambled make <br> specimen book has survived not only five centuries',
 
                 features: [

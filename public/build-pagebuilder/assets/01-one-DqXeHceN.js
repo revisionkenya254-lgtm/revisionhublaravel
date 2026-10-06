@@ -15,7 +15,7 @@ import{t as e}from"./registerComponent-vPl6l5lM.js";import{t}from"./become_stude
                                 <div class="shape-one">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="224" height="158"
                                         viewBox="0 0 224 158" fill="none"
-                                        data-inject-url="https://skillgro.websolutionus.com/frontend/img/instructor/instructor_shape01.svg"
+                                        data-inject-url="https://revisionhubkenya.com/frontend/img/instructor/instructor_shape01.svg"
                                         class="injectable">
                                         <path fill-rule="evenodd" clip-rule="evenodd"
                                             d="M-44.3643 224.756C-12.2393 262.104 53.4544 248.637 109.818 221.047C165.437 193.82 219.176 148.021 222.855 93.9472C226.613 38.7315 180.039 6.40385 124.786 1.08905C73.1398 -3.87887 16.1752 23.3672 -19.5665 70.6284C-58.3852 121.958 -77.2268 186.551 -44.3643 224.756Z"
@@ -24,7 +24,7 @@ import{t as e}from"./registerComponent-vPl6l5lM.js";import{t}from"./become_stude
                                 </div>
                                 <div class="shape-two">
                                     <span class="svg-icon" id="instructor-svg"
-                                        data-svg-icon="https://skillgro.websolutionus.com/frontend/img/instructor/instructor_shape02.svg"><svg
+                                        data-svg-icon="https://revisionhubkenya.com/frontend/img/instructor/instructor_shape02.svg"><svg
                                             width="100%" height="100%" viewBox="0 0 48 55" fill="none"
                                             xmlns="http://www.w3.org/2000/svg">
                                             <path d="M42.3863 32.303C40.459 26.5102 36.4329 12.9132 35.7471 4.86755"

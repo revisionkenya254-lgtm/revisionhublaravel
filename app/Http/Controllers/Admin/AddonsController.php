@@ -23,6 +23,10 @@ class AddonsController extends Controller
                             $addon = new CustomAddon();
                             $addon->slug = $module;
                             foreach ($wsusJsonData as $key => $value) {
+                                if (!in_array($key, ['name', 'is_default', 'isPaid', 'description', 'author', 'options', 'icon', 'url', 'version', 'last_update'], true)) {
+                                    continue;
+                                }
+
                                 $addon->$key = is_array($value) ? json_encode($value) : $value;
                             }
                             $addon->status = 1;

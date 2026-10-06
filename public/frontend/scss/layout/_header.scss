@@ -269,7 +269,7 @@
                 &::after {
                     content: "\f105";
                     display: block;
-                    font-family: "flaticon_skill_grow";
+                    font-family: "flaticon_revisionhubkenya";
                     @include transform(rotate(90deg));
                     font-size: 14px;
                     font-weight: var(--tg-fw-bold);
@@ -288,7 +288,7 @@
                         justify-content: space-between;
                         &::after {
                             content: "\f105";
-                            font-family: "flaticon_skill_grow";
+                            font-family: "flaticon_revisionhubkenya";
                             @include transform(rotate(90deg));
                             font-size: 14px;
                             font-weight: var(--tg-fw-bold);

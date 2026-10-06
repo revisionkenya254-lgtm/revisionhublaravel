@@ -36,7 +36,7 @@ const generateCourseHTML = () => {
                     <div class="courses__item-bottom-three courses__item-bottom-five">
                         <ul class="list-wrap">
                             <li><i class="flaticon-book"></i>Lessons 21</li>
-                            <li><i class="skillgro-group"></i>Students 999</li>
+                            <li><i class="revisionhubkenya-group"></i>Students 999</li>
                         </ul>
                     </div>
                 </div>

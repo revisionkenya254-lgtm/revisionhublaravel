@@ -1085,11 +1085,11 @@ INSERT INTO `email_templates` (`id`, `name`, `subject`, `message`, `created_at`,
 (3, 'subscribe_notification', 'Subscribe Notification', '<p>Hi there, Congratulations! Your Subscription has been created successfully. Please Click the following link and Verified Your Subscription. If you will not approve this link, you can not get any newsletter from us.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (4, 'user_verification', 'User Verification', '<p>Dear {{user_name}},</p>\n                <p>Congratulations! Your Account has been created successfully. Please Click the following link and Active your Account.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (5, 'approved_refund', 'Refund Request Approval', '<p>Dear {{user_name}},</p>\n                <p>We are happy to say that, we have send {{refund_amount}} USD to your provided bank information. </p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
-(6, 'new_refund', 'New Refund Request', '<p>Hello websolutionus, </p>\n\n                <p>Mr. {{user_name}} has send a new refund request to you.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
+(6, 'new_refund', 'New Refund Request', '<p>Hello revisionhubkenya, </p>\n\n                <p>Mr. {{user_name}} has send a new refund request to you.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (7, 'pending_wallet_payment', 'Wallet Payment Approval', '<p>Hello {{user_name}},</p>\n                <p>We have received your wallet payment request. we find your payment to our bank account.</p>\n                <p>Thanks &amp; Regards</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
-(8, 'approved_withdraw', 'Withdraw Request Approval', '<p>Dear {{user_name}},</p>\n                <p>We are happy to say that, we have send a withdraw amount to your provided bank information.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>WebSolutionUs</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
-(9, 'rejected_withdraw', 'Withdraw Request Rejected', '<p>Dear {{user_name}},</p>\n                <p> your withdraw request has been rejected.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>WebSolutionUs</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
-(10, 'pending_withdraw', 'Withdraw Request Pending', '<p>Dear {{user_name}},</p>\n                <p> your withdraw request is waiting for approval.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>WebSolutionUs</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
+(8, 'approved_withdraw', 'Withdraw Request Approval', '<p>Dear {{user_name}},</p>\n                <p>We are happy to say that, we have send a withdraw amount to your provided bank information.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>RevisionHubKenya</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
+(9, 'rejected_withdraw', 'Withdraw Request Rejected', '<p>Dear {{user_name}},</p>\n                <p> your withdraw request has been rejected.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>RevisionHubKenya</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
+(10, 'pending_withdraw', 'Withdraw Request Pending', '<p>Dear {{user_name}},</p>\n                <p> your withdraw request is waiting for approval.</p>\n                <p>Thanks &amp; Regards</p>\n                <p>RevisionHubKenya</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (11, 'instructor_request_approved', 'Instructor Request Approval', '<p>Dear {{user_name}},</p>\n                <p>you are now approved as an instructor.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (12, 'instructor_request_rejected', 'Instructor Request Rejected', '<p>Dear {{user_name}},</p>\n                <p>your request has been rejected. please resubmit your request with proper document. or contact us.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (13, 'instructor_request_pending', 'Instructor Request is waiting for approval', '<p>Dear {{user_name}},</p>\n                <p>your request for become an instructor is waiting for approval. please wait. we will send you an email when your request is approved.</p>', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
@@ -1947,7 +1947,7 @@ CREATE TABLE IF NOT EXISTS `payment_gateways` (
 INSERT INTO `payment_gateways` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (1, 'razorpay_key', 'razorpay_key', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (2, 'razorpay_secret', 'razorpay_secret', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
-(3, 'razorpay_name', 'WebSolutionUs', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
+(3, 'razorpay_name', 'RevisionHubKenya', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (4, 'razorpay_description', 'This is test payment window', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (5, 'razorpay_charge', '0', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (6, 'razorpay_theme_color', '#6d0ce4', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
@@ -1956,7 +1956,7 @@ INSERT INTO `payment_gateways` (`id`, `key`, `value`, `created_at`, `updated_at`
 (9, 'razorpay_image', 'uploads/website-images/razorpay.jpeg', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (10, 'flutterwave_public_key', 'flutterwave_public_key', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (11, 'flutterwave_secret_key', 'flutterwave_secret_key', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
-(12, 'flutterwave_app_name', 'WebSolutionUs', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
+(12, 'flutterwave_app_name', 'RevisionHubKenya', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (13, 'flutterwave_charge', '0', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (14, 'flutterwave_currency_id', '2', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (15, 'flutterwave_status', 'inactive', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
@@ -2472,7 +2472,7 @@ INSERT INTO `sections` (`id`, `home_id`, `name`, `global_content`, `status`, `cr
 (33, 5, 'faq_section', '{\"image\": \"uploads/custom-images/theme_yoga_faq.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
 (34, 6, 'hero_section', '{\"banner_image\": \"uploads/custom-images/h8_hero_img.png\", \"hero_background\": \"uploads/custom-images/h8_hero_bg.jpg\", \"banner_background\": \"uploads/custom-images/h8_hero_img_shape.svg\", \"banner_background_two\": \"uploads/custom-images/h8_hero_img_shape02.svg\", \"enroll_students_image\": \"uploads/custom-images/theme_kitchen_enroll_students_image.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
 (35, 6, 'our_features_section', '{\"image_one\": \"uploads/custom-images/theme_kitchen_features_icon_1.png\", \"image_two\": \"uploads/custom-images/theme_kitchen_features_icon_2.png\", \"image_four\": \"uploads/custom-images/theme_kitchen_features_icon_4.png\", \"image_three\": \"uploads/custom-images/theme_kitchen_features_icon_3.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
-(36, 6, 'about_section', '{\"image\": \"uploads/custom-images/h8_about_img01.jpg\", \"image_two\": \"uploads/custom-images/h8_about_img02.jpg\", \"video_url\": \"https://www.youtube.com/watch?v=VkBnNxneA_A\", \"button_url\": \"/about-us\", \"image_three\": \"uploads/custom-images/skillgro-diploma.png\", \"course_success\": \"86\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
+(36, 6, 'about_section', '{\"image\": \"uploads/custom-images/h8_about_img01.jpg\", \"image_two\": \"uploads/custom-images/h8_about_img02.jpg\", \"video_url\": \"https://www.youtube.com/watch?v=VkBnNxneA_A\", \"button_url\": \"/about-us\", \"image_three\": \"uploads/custom-images/revisionhubkenya-diploma.png\", \"course_success\": \"86\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
 (37, 6, 'banner_section', '{\"student_image\": \"uploads/custom-images/h8_cta_img.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
 (38, 6, 'faq_section', '{\"image\": \"uploads/custom-images/theme_kitchen_faq.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
 (39, 6, 'newsletter_section', '{\"image\": \"uploads/custom-images/theme_kitchen_newslettter.png\"}', 1, '2024-10-15 15:42:24', '2024-10-15 15:42:24'),
@@ -2557,11 +2557,11 @@ CREATE TABLE IF NOT EXISTS `seo_settings` (
 --
 
 INSERT INTO `seo_settings` (`id`, `page_name`, `seo_title`, `seo_description`, `created_at`, `updated_at`) VALUES
-(1, 'home_page', 'Home || WebSolutionUS', 'Home || WebSolutionUS', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
-(2, 'about_page', 'About || WebSolutionUS', 'About || WebSolutionUS', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
-(3, 'course_page', 'Course || WebSolutionUS', 'Course || WebSolutionUS', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
-(4, 'blog_page', 'Blog || WebSolutionUS', 'Blog || WebSolutionUS', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
-(5, 'contact_page', 'Contact || WebSolutionUS', 'Contact || WebSolutionUS', '2024-08-14 21:23:18', '2024-08-14 21:23:18');
+(1, 'home_page', 'Home || RevisionHubKenya', 'Home || RevisionHubKenya', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
+(2, 'about_page', 'About || RevisionHubKenya', 'About || RevisionHubKenya', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
+(3, 'course_page', 'Course || RevisionHubKenya', 'Course || RevisionHubKenya', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
+(4, 'blog_page', 'Blog || RevisionHubKenya', 'Blog || RevisionHubKenya', '2024-08-14 21:23:18', '2024-08-14 21:23:18'),
+(5, 'contact_page', 'Contact || RevisionHubKenya', 'Contact || RevisionHubKenya', '2024-08-14 21:23:18', '2024-08-14 21:23:18');
 
 -- --------------------------------------------------------
 
@@ -2583,7 +2583,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
 --
 
 INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
-(1, 'app_name', 'SkillGro', '2024-06-03 02:02:30', '2024-06-25 00:17:45'),
+(1, 'app_name', 'RevisionHubKenya', '2024-06-03 02:02:30', '2024-06-25 00:17:45'),
 (2, 'version', '3.4.0', '2024-06-03 02:02:30', '2024-06-03 02:02:30'),
 (3, 'logo', 'uploads/website-images/logo.svg', '2024-06-03 02:02:30', '2024-06-04 06:28:37'),
 (4, 'timezone', 'Africa/Abidjan', '2024-06-03 02:02:30', '2024-06-25 00:17:45'),
@@ -2626,7 +2626,7 @@ INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (41, 'mail_password', 'mail_password', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (42, 'mail_port', 'mail_port', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (43, 'mail_encryption', 'ssl', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
-(44, 'mail_sender_name', 'WebSolutionUs', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
+(44, 'mail_sender_name', 'RevisionHubKenya', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (45, 'contact_message_receiver_mail', 'receiver@gmail.com', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (46, 'pusher_app_id', 'pusher_app_id', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (47, 'pusher_app_key', 'pusher_app_key', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
@@ -2637,7 +2637,7 @@ INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 (52, 'club_point_status', 'active', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (53, 'maintenance_mode', '0', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (54, 'maintenance_title', 'Website Under maintenance', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
-(55, 'maintenance_description', '<p>We are currently performing maintenance on our website to<br>improve your experience. Please check back later.</p>\n            <p><a title=\"Websolutions\" href=\"https://websolutionus.com/\">Websolutions</a></p>', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
+(55, 'maintenance_description', '<p>We are currently performing maintenance on our website to<br>improve your experience. Please check back later.</p>\n            <p><a title=\"RevisionHubKenya\" href=\"https://revisionhubkenya.com/\">RevisionHubKenya</a></p>', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (56, 'last_update_date', '2024-08-15 03:23:17', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (57, 'is_queable', 'inactive', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),
 (58, 'commission_rate', '0', '2024-08-14 21:23:17', '2024-08-14 21:23:17'),

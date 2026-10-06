@@ -4,7 +4,7 @@ export const builderAssets = {
         'frontend/css/animate.min.css',
         'frontend/css/magnific-popup.css',
         'frontend/css/fontawesome-all.min.css',
-        'frontend/css/flaticon-skillgro.css',
+        'frontend/css/flaticon-revisionhubkenya.css',
         'frontend/css/swiper-bundle.min.css',
         'frontend/css/default-icons.css',
         'frontend/css/select2.min.css',
