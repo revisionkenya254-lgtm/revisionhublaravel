@@ -24,7 +24,7 @@ jobs:
 
             echo "=== Starting deploy ==="
 
-            if [! -d "$CORE_PATH/.git" ]; then
+            if [ ! -d "$CORE_PATH/.git" ]; then
               echo "Cloning fresh..."
               rm -rf $CORE_PATH
               cd /home/u518207442/domains/revisionhubkenya.com/
