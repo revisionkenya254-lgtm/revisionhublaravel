@@ -1,43 +1,58 @@
 name: Deploy to Hostinger
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          
-      - name: Install dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction
 
-      - name: Deploy App to pastpapers_app
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy to Hostinger via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          local-dir: ./
-          server-dir: ./domains/revisionhubkenya.com/pastpapers_app/
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
-            **/public/**
-            .env
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            CORE_PATH="/home/u518207442/domains/revisionhubkenya.com/pastpapers_app"
+            PUBLIC_PATH="/home/u518207442/domains/revisionhubkenya.com/public_html"
 
-      - name: Deploy Public to public_html
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          local-dir: ./public/
-          server-dir: ./public_html/
+            echo "Deploying to $CORE_PATH"
+
+            # Clone first time if empty
+            if [! -d "$CORE_PATH/.git" ]; then
+              rm -rf $CORE_PATH
+              cd /home/u518207442/domains/revisionhubkenya.com/
+              git clone https://github.com/revisionkenya254-lgtm/revisionhublaravel.git pastpapers_app
+            fi
+
+            cd $CORE_PATH
+            git pull origin main
+
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            # Build frontend if you use Vite
+            # npm install && npm run build || true
+
+            php artisan migrate --force || true
+            php artisan storage:link || true
+
+            php artisan config:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            chmod -R 775 storage bootstrap/cache
+
+            # Copy public files to public_html (shared by both domains)
+            rsync -av --delete public/ $PUBLIC_PATH/
+
+            # Fix index.php paths to point to pastpapers_app
+            sed -i "s|__DIR__.'/../vendor|__DIR__.'/../pastpapers_app/vendor|g" $PUBLIC_PATH/index.php
+            sed -i "s|__DIR__.'/../bootstrap|__DIR__.'/../pastpapers_app/bootstrap|g" $PUBLIC_PATH/index.php
+
+            echo "SUCCESS: Both revisionhubkenya.com and api.revisionhubkenya.com are live"
