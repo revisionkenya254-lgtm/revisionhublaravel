@@ -38,7 +38,9 @@
             const option = new Option(label, label, false, normalize(label) === normalize(selected));
             select.add(option);
         });
-        if (!select.value && values?.length === 1) select.value = typeof values[0] === 'string' ? values[0] : values[0].label;
+        if (!select.value && values?.length) {
+            select.value = typeof values[0] === 'string' ? values[0] : values[0].label;
+        }
     };
     const currentRoot = () => (taxonomy.tree || []).find(node => matchesNode(node, educationLevel?.value));
     const currentGradeNode = root => (root?.children || []).find(node => matchesNode(node, classGrade?.value));
