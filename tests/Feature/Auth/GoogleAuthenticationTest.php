@@ -11,8 +11,21 @@ class GoogleAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_android_google_login_obeys_the_configured_demo_mode(): void
+    {
+        config(['app.app_mode' => 'DEMO']);
+
+        $this->postJson('/api/auth/google', [
+            'id_token' => 'test-token',
+            'platform' => 'android',
+        ])->assertForbidden()
+            ->assertJsonPath('message', 'In Demo Mode You Can Not Perform This Action');
+    }
+
     public function test_android_google_login_creates_a_user_and_returns_a_token(): void
     {
+        config(['app.app_mode' => 'LIVE']);
+
         $this->app->instance(GoogleTokenVerifier::class, new class extends GoogleTokenVerifier {
             public function verify(string $idToken): ?array
             {

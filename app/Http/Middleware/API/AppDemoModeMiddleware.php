@@ -13,7 +13,7 @@ class AppDemoModeMiddleware {
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response {
-        if (strtoupper(env('APP_MODE')) !== 'LIVE') {
+        if (strtoupper((string) config('app.app_mode')) !== 'LIVE') {
             $allowedRoutes = [
                 'api.register', 'api.login', 'api.verify-otp', 'api.resend-otp',
                 'api.forget-password', 'api.reset-password', 'api.logout', 'api.logoutAllApp'

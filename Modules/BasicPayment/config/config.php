@@ -12,6 +12,7 @@ return [
         'inactive_int' => 0,
     ],
     'mpesa_stk_push' => [
+        'callback_url' => env('MPESA_STK_PUSH_CALLBACK_URL', ''),
         'sandbox' => [
             'consumer_key' => env('MPESA_SANDBOX_CONSUMER_KEY', ''),
             'consumer_secret' => env('MPESA_SANDBOX_CONSUMER_SECRET', ''),

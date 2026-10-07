@@ -41,6 +41,7 @@ use App\Http\Controllers\Frontend\HeaderNotificationController;
 use App\Http\Controllers\Frontend\InstructorProductQuizController;
 use App\Http\Controllers\Frontend\InstructorProfileSettingController;
 use App\Http\Controllers\Frontend\ProductQuizController;
+use App\Http\Controllers\AccountDeletionController;
 use App\Models\AiChatConversation;
 use App\Models\StandaloneAiChatConversation;
 
@@ -399,6 +400,21 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
         Route::delete('tinymce-delete-image', [TinymceImageUploadController::class, 'destroy']);
     });
 });
+
+Route::get('delete-account', [AccountDeletionController::class, 'showRequestForm'])
+    ->name('account-deletion.form');
+Route::post('delete-account', [AccountDeletionController::class, 'requestByEmail'])
+    ->middleware('throttle:5,1')
+    ->name('account-deletion.request');
+Route::get('delete-account/confirm/{user}/{email_hash}', [AccountDeletionController::class, 'showConfirmation'])
+    ->middleware('signed')
+    ->name('account-deletion.confirm.show');
+Route::post('delete-account/confirm/{user}/{email_hash}', [AccountDeletionController::class, 'confirm'])
+    ->middleware('signed')
+    ->name('account-deletion.confirm.destroy');
+Route::post('account-deletion/request', [AccountDeletionController::class, 'requestAuthenticated'])
+    ->middleware(['auth', 'throttle:5,1'])
+    ->name('account-deletion.request.authenticated');
 
 //maintenance mode route
 Route::get('/maintenance-mode', function () {

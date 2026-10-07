@@ -105,6 +105,7 @@
                             @if (\Illuminate\Support\Facades\Route::has('contact.index'))
                                 <li><a href="{{ route('contact.index') }}">{{ __('Contact') }}</a></li>
                             @endif
+                            <li><a href="{{ route('account-deletion.form') }}">{{ __('Delete account') }}</a></li>
                         </ul>
                     </div>
                 </div>

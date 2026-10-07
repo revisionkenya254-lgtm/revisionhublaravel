@@ -35,6 +35,9 @@ Route::prefix('auth')->group(function () {
         Route::get('devices', [AuthenticatedController::class, 'devices']);
         Route::delete('devices/{sessionId}', [AuthenticatedController::class, 'destroyDevice']);
         Route::delete('devices', [AuthenticatedController::class, 'destroyAllDevices']);
+        Route::delete('account', [\App\Http\Controllers\AccountDeletionController::class, 'requestApi'])
+            ->middleware('throttle:5,1')
+            ->name('api.account-deletion.request');
     });
 });
 

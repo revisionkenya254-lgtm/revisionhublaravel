@@ -57,6 +57,7 @@
 
                     @include('frontend.student-dashboard.profile.sections.social')
                 </div>
+                @include('frontend.account-deletion.settings-action')
             </div>
         </div>
     </div>
