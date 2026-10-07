@@ -12,6 +12,20 @@
     $selectedSubject = old('subject', $taxonomyDefaults['subject'] ?? '');
     $selectedExamCategory = old('exam_category', $taxonomyDefaults['exam_category'] ?? '');
     $selectedYear = old('year', $taxonomyDefaults['year'] ?? now()->year);
+    $courseTaxonomy = [
+        'tree' => $categorySelection['tree'] ?? [],
+        'classGradesByLevel' => $categorySelection['class_grades_by_level'] ?? [],
+        'subjectsByLevel' => $categorySelection['subjects_by_education_level'] ?? [],
+        'subjects' => $categorySelection['subjects'] ?? [],
+        'examCategoriesByLevel' => $categorySelection['exam_categories_by_level'] ?? [],
+        'selected' => [
+            'educationLevel' => $selectedEducationLevel,
+            'classGrade' => $selectedClassGrade,
+            'subject' => $selectedSubject,
+            'examCategory' => $selectedExamCategory,
+            'categoryId' => old('category'),
+        ],
+    ];
 @endphp
 <div class="rh-page">
     <nav class="rh-breadcrumb"><a href="{{ $coursesRoute }}">{{ __('Courses') }}</a><span>›</span><strong>{{ __('Create Course') }}</strong></nav>
@@ -85,20 +99,7 @@
         <footer class="rh-actions"><button type="button" class="rh-btn rh-btn-outline" data-back hidden>← {{ __('Back') }}</button><span></span><button type="button" class="rh-btn rh-btn-primary" data-next>{{ __('Save & Continue') }} →</button><button type="submit" class="rh-btn rh-btn-primary" data-submit hidden>{{ __('Create Course & Add Lesson') }} →</button></footer>
     </form>
 </div>
-<script type="application/json" data-course-taxonomy>@json([
-    'tree' => $categorySelection['tree'] ?? [],
-    'classGradesByLevel' => $categorySelection['class_grades_by_level'] ?? [],
-    'subjectsByLevel' => $categorySelection['subjects_by_education_level'] ?? [],
-    'subjects' => $categorySelection['subjects'] ?? [],
-    'examCategoriesByLevel' => $categorySelection['exam_categories_by_level'] ?? [],
-    'selected' => [
-        'educationLevel' => $selectedEducationLevel,
-        'classGrade' => $selectedClassGrade,
-        'subject' => $selectedSubject,
-        'examCategory' => $selectedExamCategory,
-        'categoryId' => old('category'),
-    ],
-])</script>
+<script type="application/json" data-course-taxonomy>{{ Illuminate\Support\Js::from($courseTaxonomy) }}</script>
 @endsection
 
 @if(! $isAdmin)
