@@ -49,7 +49,7 @@
             data-placement="top" class="fa fa-info-circle text--primary"
             title="{{__('Copy the Gmail login URL and paste it wherever you need to use it.')}}"></span></label>
         <div class="input-group">
-            <input type="text" value="{{url('/auth/google')}}" id="gmail_redirect_url" class="form-control" readonly>
+            <input type="text" value="{{ route('auth.google') }}" id="gmail_redirect_url" class="form-control" readonly>
           <div class="input-group-append">
             <div class="input-group-text">
                 <span id="copyButton"  data-toggle="tooltip" title="{{__('Copy the Gmail login URL and paste it wherever you need to use it.')}}"><i class="fas fa-copy"></i></span>
