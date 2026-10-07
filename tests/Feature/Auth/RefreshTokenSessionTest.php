@@ -17,7 +17,7 @@ class RefreshTokenSessionTest extends TestCase
     {
         $user = User::factory()->create();
         $service = app(TokenSessionService::class);
-        $request = Request::create('/auth/google', 'POST', [
+        $request = Request::create('/auth/google/callback', 'POST', [
             'device_installation_id' => 'install-1',
             'device_name' => 'Pixel test device',
         ]);

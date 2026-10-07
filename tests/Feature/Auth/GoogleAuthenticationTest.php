@@ -25,7 +25,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $response = $this->postJson('/auth/google', [
+        $response = $this->postJson('/auth/google/callback', [
             'id_token' => 'test-token',
             'platform' => 'android',
         ]);
@@ -57,7 +57,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $this->postJson('/auth/google', ['id_token' => 'test-token'])->assertOk();
+        $this->postJson('/auth/google/callback', ['id_token' => 'test-token'])->assertOk();
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -74,7 +74,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $this->postJson('/auth/google', ['id_token' => 'invalid-token'])
+        $this->postJson('/auth/google/callback', ['id_token' => 'invalid-token'])
             ->assertUnauthorized();
     }
 
@@ -92,7 +92,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $this->postJson('/auth/google', [
+        $this->postJson('/auth/google/callback', [
             'id_token' => 'test-token',
             'nonce' => 'different-nonce',
             'platform' => 'android',
@@ -120,7 +120,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $this->postJson('/auth/google', ['id_token' => 'test-token'])
+        $this->postJson('/auth/google/callback', ['id_token' => 'test-token'])
             ->assertStatus(409);
     }
 
@@ -140,7 +140,7 @@ class GoogleAuthenticationTest extends TestCase
 
         $response = $this
             ->withUnencryptedCookie('g_csrf_token', 'google-csrf-token')
-            ->post('/auth/google', [
+            ->post('/auth/google/callback', [
                 'credential' => 'test-token',
                 'g_csrf_token' => 'google-csrf-token',
             ]);
@@ -153,7 +153,7 @@ class GoogleAuthenticationTest extends TestCase
     {
         $response = $this
             ->withUnencryptedCookie('g_csrf_token', 'cookie-token')
-            ->post('/auth/google', [
+            ->post('/auth/google/callback', [
                 'credential' => 'test-token',
                 'g_csrf_token' => 'body-token',
             ]);
@@ -164,7 +164,7 @@ class GoogleAuthenticationTest extends TestCase
 
     public function test_google_login_rejects_ambiguous_token_fields(): void
     {
-        $this->postJson('/auth/google', [
+        $this->postJson('/auth/google/callback', [
             'credential' => 'web-token',
             'id_token' => 'android-token',
         ])->assertUnprocessable();

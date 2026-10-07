@@ -3,13 +3,13 @@
 Web and Android authenticate through one Laravel endpoint:
 
 ```text
-POST /auth/google
+POST /auth/google/callback
 ```
 
 Use the same Google **Web OAuth client ID** for the GIS web button, Android's
 `serverClientId`, and Laravel's `GOOGLE_CLIENT_ID`. In Google Cloud Console, add
 the production site to Authorized JavaScript origins and add
-`https://your-domain.example/auth/google` to Authorized redirect URIs.
+`https://revisionhubkenya.com/auth/google/callback` to Authorized redirect URIs.
 
 The Android OAuth client (package name plus SHA-1 certificate fingerprint) must
 still be registered in the same Google Cloud project. It identifies the Android
@@ -83,7 +83,7 @@ data class GoogleLoginRequest(
 )
 
 interface AuthApi {
-    @POST("auth/google")
+    @POST("auth/google/callback")
     suspend fun google(@Body request: GoogleLoginRequest): AuthTokenResponse
 }
 ```

@@ -42,7 +42,7 @@ Route::middleware('guest:web')->group(function () {
         Route::get('auth/{driver}/callback', 'handleDriverCallback')->name('auth.social.callback')->where('driver', 'facebook');
     });
 
-    Route::post('auth/google', [GoogleIdentityController::class, 'store'])
+    Route::post('auth/google/callback', [GoogleIdentityController::class, 'store'])
         ->name('auth.google')
         ->middleware('throttle:auth');
 

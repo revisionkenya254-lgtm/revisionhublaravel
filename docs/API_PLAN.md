@@ -108,7 +108,7 @@ Reuse the existing OTP flow, but normalize it into mobile-friendly endpoints.
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
-- `POST /auth/google` (shared by Google Identity Services on web and Android Credential Manager)
+- `POST /auth/google/callback` (shared by Google Identity Services on web and Android Credential Manager)
 - `POST /api/auth/verify-otp`
 - `POST /api/auth/resend-otp`
 - `POST /api/auth/forgot-password`
@@ -334,4 +334,3 @@ The mobile client will be easier to maintain if we lock down a few contract rule
 - Do we want a single API version for web and mobile, or separate compatibility layers?
 - Should downloads be in-app only, or should we support offline file storage?
 - Do we want push notifications in the first release, or after the core learning flow ships?
-

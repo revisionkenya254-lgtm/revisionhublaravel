@@ -15,6 +15,6 @@ class VerifyCsrfToken extends Middleware
         'tinymce-upload-image',
         'tinymce-delete-image',
         // Google GIS supplies its own double-submit g_csrf_token. Android has no browser CSRF context.
-        'auth/google',
+        'auth/google/callback',
     ];
 }
