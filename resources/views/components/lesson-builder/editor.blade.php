@@ -43,7 +43,6 @@
 
             <x-lesson-builder.details :chapters="$chapters" :selected-chapter-id="$selectedChapterId" :default-lecture-number="$defaultLectureNumber" />
             <x-lesson-builder.media />
-            <x-lesson-builder.qna />
             <x-lesson-builder.access />
             <x-lesson-builder.publish :course="$course" />
 

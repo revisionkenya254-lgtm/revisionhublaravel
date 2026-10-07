@@ -3,7 +3,7 @@
 <section class="lesson-card lesson-step is-active" data-step="1">
     <div class="lesson-card__heading">
         <span class="lesson-card__icon"><i class="fas fa-align-left"></i></span>
-        <div><span>{{ __('Step 1 of 5') }}</span><h2>{{ __('Lesson Details') }}</h2></div>
+        <div><span>{{ __('Step 1 of 4') }}</span><h2>{{ __('Lesson Details') }}</h2></div>
     </div>
 
     <div class="lesson-field">

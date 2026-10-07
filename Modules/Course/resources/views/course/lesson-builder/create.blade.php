@@ -1,21 +1,18 @@
-@extends('admin.master_layout')
+@extends('layouts.course-builder')
 
-@section('title')
-    <title>{{ __('Add Video Lesson') }}</title>
-@endsection
+@section('title', __('Add Video Lesson'))
 
-@section('admin-content')
-    <main class="main-content lesson-builder-admin-shell">
-        <section class="section">
-            <x-lesson-builder.editor :course="$course" :chapters="$chapters" :selected-chapter-id="$selectedChapterId" :is-admin="true" />
-        </section>
+@section('content')
+    <main class="lesson-builder-standalone">
+        <x-lesson-builder.editor :course="$course" :chapters="$chapters" :selected-chapter-id="$selectedChapterId" :is-admin="true" />
     </main>
 @endsection
 
-@push('css')
-    <link rel="stylesheet" href="{{ asset('frontend/css/lesson-builder.css') }}?v={{ $setting?->version }}">
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('frontend/css/fontawesome-all.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('frontend/css/lesson-builder.css') }}?v={{ config('app.asset_version', '1') }}">
 @endpush
 
-@push('js')
-    <script src="{{ asset('frontend/js/lesson-builder.js') }}?v={{ $setting?->version }}" defer></script>
+@push('scripts')
+    <script src="{{ asset('frontend/js/lesson-builder.js') }}?v={{ config('app.asset_version', '1') }}" defer></script>
 @endpush

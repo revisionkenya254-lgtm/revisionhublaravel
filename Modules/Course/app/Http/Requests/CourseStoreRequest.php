@@ -28,7 +28,14 @@ class CourseStoreRequest extends FormRequest
             'price' => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', new ValidateDiscountRule()],
             'description' => ['required', 'string', 'max:5000'],
-            'instructor' => ['required', 'numeric'],
+            'instructor' => ['required', 'integer', 'exists:users,id'],
+            'category' => ['required_if:builder_flow,1', 'nullable', 'integer', 'exists:course_categories,id'],
+            'course_duration' => ['required_if:builder_flow,1', 'nullable', 'integer', 'min:1'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'levels' => ['nullable', 'array'],
+            'levels.*' => ['integer', 'exists:course_levels,id'],
+            'languages' => ['nullable', 'array'],
+            'languages.*' => ['integer', 'exists:course_languages,id'],
         ];
 
         return $rules;

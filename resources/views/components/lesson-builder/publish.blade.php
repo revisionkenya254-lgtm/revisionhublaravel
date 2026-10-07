@@ -1,7 +1,7 @@
 @props(['course'])
 
-<section class="lesson-card lesson-step" data-step="5" hidden>
-    <div class="lesson-card__heading"><span class="lesson-card__icon"><i class="fas fa-check-circle"></i></span><div><span>{{ __('Step 5 of 5') }}</span><h2>{{ __('Publish Lesson') }}</h2></div></div>
+<section class="lesson-card lesson-step" data-step="4" hidden>
+    <div class="lesson-card__heading"><span class="lesson-card__icon"><i class="fas fa-check-circle"></i></span><div><span>{{ __('Step 4 of 4') }}</span><h2>{{ __('Publish Lesson') }}</h2></div></div>
     <p class="lesson-card__intro">{{ __('Review the mobile app data before publishing. You can also keep the lesson inactive as a draft.') }}</p>
     <div class="lesson-review">
         <div><span>{{ __('Course') }}</span><strong>{{ $course->title }}</strong></div>

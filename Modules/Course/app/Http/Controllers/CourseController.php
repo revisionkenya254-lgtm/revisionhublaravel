@@ -54,7 +54,12 @@ class CourseController extends Controller {
 
     function create() {
         $instructors = User::where('role', 'instructor')->get();
-        return view('course::course.create', compact('instructors'));
+        $categories = CourseCategoryHelper::getTree();
+        $levels = CourseLevel::with('translation')->where('status', 1)->get();
+        $languages = CourseLanguage::where('status', 1)->get();
+
+        return view('course-builder.create', compact('instructors', 'categories', 'levels', 'languages'))
+            ->with('isAdmin', true);
     }
 
     function editView(string $id) {
@@ -97,19 +102,56 @@ class CourseController extends Controller {
         $course->discount = $request->discount_price;
         $course->description = $request->description;
         $course->instructor_id = $request->instructor;
+        if ($request->boolean('builder_flow')) {
+            $course->category_id = $request->category;
+            $course->duration = $request->course_duration;
+            $course->capacity = $request->capacity;
+            $course->qna = $request->boolean('qna');
+            $course->certificate = $request->boolean('certificate');
+            $course->status = 'is_draft';
+        }
         $course->save();
 
-        $this->storeCourseMedia($request, $course, 'admin', auth()->id(), $oldThumbnail, $oldVideoStorage, $oldVideoSource);
+        $this->storeCourseMedia($request, $course, 'admin', (int) auth('admin')->id(), $oldThumbnail, $oldVideoStorage, $oldVideoSource);
         $course->save();
+
+        if ($request->boolean('builder_flow')) {
+            $this->syncBuilderOptions($course, $request);
+            $chapter = CourseChapter::where('course_id', $course->id)->where('order', 1)->first();
+            if (! $chapter) {
+                $chapter = new CourseChapter();
+                $chapter->course_id = $course->id;
+                $chapter->instructor_id = $course->instructor_id;
+                $chapter->title = __('Section 1: Introduction');
+                $chapter->order = 1;
+                $chapter->status = 'active';
+                $chapter->save();
+            }
+        }
 
         // save course id in session
         Session::put('course_create', $course->id);
 
         return response()->json([
             'status'   => 'success',
-            'message'  => __('Updated successfully'),
-            'redirect' => route('admin.courses.edit', ['id' => $course->id, 'step' => $request->next_step]),
+            'message'  => $request->boolean('builder_flow') ? __('Course created. Add your first lesson.') : __('Updated successfully'),
+            'redirect' => $request->boolean('builder_flow')
+                ? route('admin.lessons.create', ['course' => $course->id, 'chapter' => $chapter->id])
+                : route('admin.courses.edit', ['id' => $course->id, 'step' => $request->next_step]),
         ]);
+    }
+
+    private function syncBuilderOptions(Course $course, Request $request): void
+    {
+        CourseSelectedLevel::where('course_id', $course->id)->delete();
+        foreach ($request->input('levels', []) as $levelId) {
+            CourseSelectedLevel::create(['course_id' => $course->id, 'level_id' => $levelId]);
+        }
+
+        CourseSelectedLanguage::where('course_id', $course->id)->delete();
+        foreach ($request->input('languages', []) as $languageId) {
+            CourseSelectedLanguage::create(['course_id' => $course->id, 'language_id' => $languageId]);
+        }
     }
 
     private function storeCourseMedia(Request $request, Course $course, string $actorRole, int $actorId, ?string $oldThumbnail = null, ?string $oldVideoStorage = null, ?string $oldVideoSource = null): void

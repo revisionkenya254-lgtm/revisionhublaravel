@@ -1,7 +1,7 @@
 <section class="lesson-card lesson-step" data-step="2" hidden>
     <div class="lesson-card__heading">
         <span class="lesson-card__icon"><i class="fas fa-cloud-upload-alt"></i></span>
-        <div><span>{{ __('Step 2 of 5') }}</span><h2>{{ __('Video & Resources') }}</h2></div>
+        <div><span>{{ __('Step 2 of 4') }}</span><h2>{{ __('Video & Resources') }}</h2></div>
     </div>
 
     <div class="lesson-section-title"><div><h3>{{ __('Video Upload') }}</h3><p>{{ __('Upload to private Bunny Stream storage or use a YouTube URL.') }}</p></div></div>

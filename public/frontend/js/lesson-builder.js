@@ -37,7 +37,7 @@
     }
 
     function showStep(stepNumber) {
-        currentStep = Math.max(1, Math.min(5, stepNumber));
+        currentStep = Math.max(1, Math.min(4, stepNumber));
         highestStep = Math.max(highestStep, currentStep);
         steps.forEach((step) => {
             const active = Number(step.dataset.step) === currentStep;
@@ -52,9 +52,9 @@
             if (button) button.setAttribute('aria-current', number === currentStep ? 'step' : 'false');
         });
         previousButton.hidden = currentStep === 1;
-        nextButton.hidden = currentStep === 5;
-        publishButton.hidden = currentStep !== 5;
-        if (currentStep === 5) updateSummary();
+        nextButton.hidden = currentStep === 4;
+        publishButton.hidden = currentStep !== 4;
+        if (currentStep === 4) updateSummary();
         const card = steps.find((step) => Number(step.dataset.step) === currentStep);
         if (card && window.matchMedia('(max-width: 700px)').matches) {
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -337,7 +337,7 @@
                 return;
             }
             if (xhr.status === 422 && response.errors) {
-                let firstStep = 5;
+                let firstStep = 4;
                 Object.entries(response.errors).forEach(([name, messages]) => {
                     firstStep = Math.min(firstStep, setFieldError(name, messages));
                 });

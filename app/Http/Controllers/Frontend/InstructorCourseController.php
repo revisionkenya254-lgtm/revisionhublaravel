@@ -35,7 +35,12 @@ class InstructorCourseController extends Controller {
     }
 
     public function create() {
-        return view('frontend.instructor-dashboard.course.create');
+        $categories = CourseCategoryHelper::getTree();
+        $levels = CourseLevel::with('translation')->where('status', 1)->get();
+        $languages = CourseLanguage::where('status', 1)->get();
+
+        return view('course-builder.create', compact('categories', 'levels', 'languages'))
+            ->with('isAdmin', false);
     }
 
     public function editView(string $id) {
@@ -60,6 +65,13 @@ class InstructorCourseController extends Controller {
             'price'             => ['required', 'numeric', 'min:0'],
             'discount_price'    => ['nullable', 'numeric', new ValidateDiscountRule()],
             'description'       => ['required', 'string', 'max:5000'],
+            'category'          => ['required_if:builder_flow,1', 'nullable', 'integer', 'exists:course_categories,id'],
+            'course_duration'   => ['required_if:builder_flow,1', 'nullable', 'integer', 'min:1'],
+            'capacity'          => ['nullable', 'integer', 'min:1'],
+            'levels'            => ['nullable', 'array'],
+            'levels.*'          => ['integer', 'exists:course_levels,id'],
+            'languages'         => ['nullable', 'array'],
+            'languages.*'       => ['integer', 'exists:course_languages,id'],
         ];
         $messages = [
             'title.required'           => __('Title is required'),
@@ -121,18 +133,51 @@ class InstructorCourseController extends Controller {
         $course->price = $request->price;
         $course->discount = $request->discount_price;
         $course->description = $request->description;
+        if ($request->boolean('builder_flow')) {
+            $course->category_id = $request->category;
+            $course->duration = $request->course_duration;
+            $course->capacity = $request->capacity;
+            $course->qna = $request->boolean('qna');
+            $course->certificate = $request->boolean('certificate');
+            $course->status = 'is_draft';
+        }
         $course->save();
 
         $this->storeCourseMedia($request, $course, 'instructor', userAuth()->id, $oldThumbnail, $oldVideoStorage, $oldVideoSource);
         $course->save();
+
+        if ($request->boolean('builder_flow')) {
+            CourseSelectedLevel::where('course_id', $course->id)->delete();
+            foreach ($request->input('levels', []) as $levelId) {
+                CourseSelectedLevel::create(['course_id' => $course->id, 'level_id' => $levelId]);
+            }
+
+            CourseSelectedLanguage::where('course_id', $course->id)->delete();
+            foreach ($request->input('languages', []) as $languageId) {
+                CourseSelectedLanguage::create(['course_id' => $course->id, 'language_id' => $languageId]);
+            }
+
+            $chapter = CourseChapter::where('course_id', $course->id)->where('order', 1)->first();
+            if (! $chapter) {
+                $chapter = new CourseChapter();
+                $chapter->course_id = $course->id;
+                $chapter->instructor_id = $course->instructor_id;
+                $chapter->title = __('Section 1: Introduction');
+                $chapter->order = 1;
+                $chapter->status = 'active';
+                $chapter->save();
+            }
+        }
 
         // save course id in session
         Session::put('course_create', $course->id);
 
         $response = [
             'status'   => 'success',
-            'message'  => __('Updated successfully'),
-            'redirect' => route('instructor.courses.edit', ['id' => $course->id, 'step' => $request->next_step]),
+            'message'  => $request->boolean('builder_flow') ? __('Course created. Add your first lesson.') : __('Updated successfully'),
+            'redirect' => $request->boolean('builder_flow')
+                ? route('instructor.lessons.create', ['course' => $course->id, 'chapter' => $chapter->id])
+                : route('instructor.courses.edit', ['id' => $course->id, 'step' => $request->next_step]),
         ];
 
         return $request->expectsJson()

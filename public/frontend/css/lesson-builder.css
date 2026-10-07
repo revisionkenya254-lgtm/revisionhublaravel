@@ -1,14 +1,17 @@
 :root {
-    --lesson-navy: #10233f;
-    --lesson-muted: #64748b;
-    --lesson-teal: #059cb3;
-    --lesson-teal-dark: #057f94;
-    --lesson-teal-soft: #e7f8fb;
-    --lesson-border: #dce7ef;
+    --lesson-navy: #101828;
+    --lesson-muted: #667085;
+    --lesson-teal: #4f46f5;
+    --lesson-teal-dark: #4338ca;
+    --lesson-teal-soft: #eeecff;
+    --lesson-border: #e4e7ec;
     --lesson-surface: #ffffff;
-    --lesson-canvas: #f5f8fb;
+    --lesson-canvas: #f7f9fc;
     --lesson-danger: #d94a57;
 }
+
+.lesson-builder-standalone { min-height: 100vh; background: var(--lesson-canvas); }
+.lesson-builder-standalone .lesson-builder { width: min(1420px, calc(100% - 40px)); margin: 0 auto; }
 
 .lesson-builder, .lesson-builder * { box-sizing: border-box; }
 .lesson-builder { color: var(--lesson-navy); font-family: Inter, "Segoe UI", sans-serif; max-width: 1540px; margin: 0 auto; padding: 8px 6px 44px; }
@@ -25,7 +28,7 @@
 .lesson-builder__notice { padding: 13px 16px; margin: 0 0 18px; border: 1px solid #a9dce5; border-radius: 12px; background: #eefbfc; color: #0a7182; font-size: 14px; }
 .lesson-builder__notice.is-error { border-color: #f3bec4; background: #fff2f3; color: #a52d3a; }
 
-.lesson-stepper { display: grid; grid-template-columns: repeat(5, 1fr); list-style: none; padding: 0; margin: 0 0 30px; border: 1px solid var(--lesson-border); border-radius: 16px; background: var(--lesson-surface); overflow: hidden; box-shadow: 0 8px 30px rgba(15, 35, 64, .045); }
+.lesson-stepper { display: grid; grid-template-columns: repeat(4, 1fr); list-style: none; padding: 0; margin: 0 0 30px; border: 1px solid var(--lesson-border); border-radius: 16px; background: var(--lesson-surface); overflow: hidden; box-shadow: 0 8px 30px rgba(15, 35, 64, .045); }
 .lesson-stepper__item { position: relative; margin: 0; }
 .lesson-stepper__item:not(:last-child)::after { content: ""; position: absolute; z-index: 1; right: -1px; top: 50%; width: 2px; height: 28px; transform: translateY(-50%); background: #edf2f6; }
 .lesson-stepper button { appearance: none; border: 0; width: 100%; min-height: 82px; display: flex; justify-content: center; align-items: center; gap: 11px; padding: 12px; color: #75879a; background: transparent; cursor: pointer; font: inherit; }
@@ -242,7 +245,7 @@
     .lesson-builder__header { margin-bottom: 20px; }
     .lesson-builder__header h1 { font-size: 28px; }
     .lesson-builder__header p { font-size: 13px; }
-    .lesson-stepper { grid-template-columns: repeat(5, minmax(56px,1fr)); overflow-x: auto; border-radius: 12px; }
+    .lesson-stepper { grid-template-columns: repeat(4, minmax(56px,1fr)); overflow-x: auto; border-radius: 12px; }
     .lesson-stepper button { min-height: 64px; flex-direction: column; gap: 4px; padding: 8px 4px; }
     .lesson-stepper__number { width: 24px; height: 24px; }
     .lesson-stepper__label { max-width: 74px; font-size: 8px; white-space: normal; line-height: 1.2; }
