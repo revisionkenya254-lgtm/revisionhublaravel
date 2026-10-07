@@ -30,7 +30,6 @@ class CacheService
         'junior-school' => 'menu_book',
         'senior-school-cbc' => 'school',
         'high-school' => 'menu_book',
-        'sne-intermediate' => 'accessibility',
         'tvet' => 'construction',
         'certificate-courses' => 'workspace_premium',
         'diploma-courses' => 'description',
@@ -88,7 +87,7 @@ class CacheService
      */
     public function getMainCategories($languageCode = 'en', $limit = -1)
     {
-        $cacheKey = "main_categories_v4_{$languageCode}_{$limit}";
+        $cacheKey = "main_categories_v6_{$languageCode}_{$limit}";
         
         return Cache::remember($cacheKey, self::TTL_CATEGORIES, function () use ($languageCode, $limit) {
             $categories = collect(app(\App\Services\MenuCacheService::class)->getCategoryLinks($languageCode))

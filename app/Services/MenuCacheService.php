@@ -9,7 +9,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v10';
+    const CACHE_VERSION = 'v12';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -23,7 +23,6 @@ class MenuCacheService
         'junior-school',
         'senior-school-cbc',
         'high-school',
-        'sne-intermediate',
         'tvet',
         'certificate-courses',
         'diploma-courses',
@@ -131,12 +130,6 @@ class MenuCacheService
         $kpseaNode = $buildAssessmentNode('kpsea', 'KPSEA', $upperPrimarySubjects);
         $kpleaNode = $buildAssessmentNode('kplea', 'KPLEA', $lowerPrimarySubjects);
         $kjseaNode = $buildAssessmentNode('kjsea', 'KJSEA', $juniorSchoolSubjects);
-        $kileaNode = [
-            'slug' => 'kilea',
-            'name' => 'KILEA',
-            'children' => [],
-        ];
-
         $buildGradeTree = function (array $grades, array $subjects): array {
             return collect($grades)
                 ->map(function (array $grade) use ($subjects) {
@@ -263,11 +256,6 @@ class MenuCacheService
                 ], $highSchoolSubjects)),
             ],
             [
-                'slug' => 'sne-intermediate',
-                'name' => 'SNE / Intermediate',
-                'children' => [$kileaNode],
-            ],
-            [
                 'slug' => 'tvet',
                 'name' => 'TVET',
                 'children' => $buildSchoolTree('TVET'),
@@ -291,12 +279,6 @@ class MenuCacheService
                 'slug' => 'professional-courses',
                 'name' => 'Professional Courses',
                 'children' => collect([
-                    ['slug' => 'kasneb', 'name' => 'KASNEB'],
-                    ['slug' => 'cpa', 'name' => 'CPA'],
-                    ['slug' => 'cs', 'name' => 'CS'],
-                    ['slug' => 'cifa', 'name' => 'CIFA'],
-                    ['slug' => 'ccp', 'name' => 'CCP'],
-                    ['slug' => 'cams', 'name' => 'CAMS'],
                     ['slug' => 'icdl', 'name' => 'ICDL'],
                     ['slug' => 'cisco', 'name' => 'CISCO'],
                     ['slug' => 'aws', 'name' => 'AWS'],

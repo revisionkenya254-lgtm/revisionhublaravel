@@ -737,13 +737,6 @@ class CatalogResourceController extends Controller
                 ->values()
                 ->all(),
         ];
-        $kileaNode = [
-            'id' => 'sne-intermediate-kilea',
-            'slug' => 'kilea',
-            'label' => 'KILEA',
-            'children' => [],
-        ];
-
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])
@@ -760,7 +753,7 @@ class CatalogResourceController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $kileaNode) {
+            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -791,10 +784,6 @@ class CatalogResourceController extends Controller
 
                 if ($definition['slug'] === 'high-school') {
                     $children[] = $kcseNode;
-                }
-
-                if ($definition['slug'] === 'sne-intermediate') {
-                    $children[] = $kileaNode;
                 }
 
                 return [

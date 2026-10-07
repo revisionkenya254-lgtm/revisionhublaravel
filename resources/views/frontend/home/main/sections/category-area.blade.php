@@ -37,7 +37,7 @@
         ],
         [
             'label' => __('Professional'),
-            'meta' => __('KASNEB, CPA, ACCA'),
+            'meta' => __('ICDL, Cisco, AWS'),
             'icon' => 'fa-briefcase',
             'color' => '#8b5cf6',
             'href' => route('catalog', ['main_category' => 'professional-courses']),

@@ -269,12 +269,6 @@ return new class extends Migration
                 'slug' => 'professional-courses',
                 'name' => 'Professional Courses',
                 'children' => $this->leafBranch([
-                    ['slug' => 'kasneb', 'name' => 'KASNEB'],
-                    ['slug' => 'cpa', 'name' => 'CPA'],
-                    ['slug' => 'cs', 'name' => 'CS'],
-                    ['slug' => 'cifa', 'name' => 'CIFA'],
-                    ['slug' => 'ccp', 'name' => 'CCP'],
-                    ['slug' => 'cams', 'name' => 'CAMS'],
                     ['slug' => 'icdl', 'name' => 'ICDL'],
                     ['slug' => 'cisco', 'name' => 'CISCO'],
                     ['slug' => 'aws', 'name' => 'AWS'],

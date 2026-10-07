@@ -1516,13 +1516,6 @@ class InstructorProductController extends Controller
                 ->values()
                 ->all(),
         ];
-        $kileaNode = [
-            'id' => 'sne-intermediate-kilea',
-            'slug' => 'kilea',
-            'label' => 'KILEA',
-            'children' => [],
-        ];
-
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])
@@ -1539,7 +1532,7 @@ class InstructorProductController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $kileaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
+            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -1575,10 +1568,6 @@ class InstructorProductController extends Controller
 
                 if ($definition['slug'] === 'high-school') {
                     $children[] = $kcseNode;
-                }
-
-                if ($definition['slug'] === 'sne-intermediate') {
-                    $children[] = $kileaNode;
                 }
 
                 return [
