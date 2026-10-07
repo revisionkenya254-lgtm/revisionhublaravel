@@ -72,7 +72,9 @@ class GoogleIdentityController extends Controller
             );
         }
 
-        $result = DB::transaction(function () use ($claims) {
+        $avatarUrl = $this->googleAvatarUrl($claims['picture'] ?? null);
+
+        $result = DB::transaction(function () use ($claims, $avatarUrl) {
             $user = User::query()
                 ->where('google_id', $claims['sub'])
                 ->lockForUpdate()
@@ -114,11 +116,19 @@ class GoogleIdentityController extends Controller
                     'email_verified_at' => now(),
                     'password' => Hash::make(Str::random(64)),
                 ]);
+
+                if ($avatarUrl) {
+                    $user->forceFill(['image' => $avatarUrl])->save();
+                }
             } elseif (! $user->google_id) {
                 $user->forceFill([
                     'google_id' => $claims['sub'],
                     'email_verified_at' => $user->email_verified_at ?? now(),
                 ])->save();
+            }
+
+            if ($avatarUrl && $user->image === '/uploads/website-images/frontend-avatar.png') {
+                $user->forceFill(['image' => $avatarUrl])->save();
             }
 
             return ['user' => $user];
@@ -136,10 +146,17 @@ class GoogleIdentityController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => __('Logged in successfully.'),
+                'message' => __('Google login successful'),
                 'bearer_token' => $tokens['access_token'],
                 ...$tokens,
                 'user_id' => $user->id,
+                'user' => [
+                    'id' => (string) $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'avatar_url' => $avatarUrl ?? asset($user->image),
+                    'is_verified' => $user->email_verified_at !== null,
+                ],
             ]);
         }
 
@@ -160,6 +177,15 @@ class GoogleIdentityController extends Controller
             && is_string($bodyToken)
             && $cookieToken !== ''
             && hash_equals($cookieToken, $bodyToken);
+    }
+
+    private function googleAvatarUrl(mixed $picture): ?string
+    {
+        if (! is_string($picture) || ! filter_var($picture, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        return parse_url($picture, PHP_URL_SCHEME) === 'https' ? $picture : null;
     }
 
     private function failure(bool $wantsJson, string $message, int $status, ?string $redirect = null): JsonResponse|RedirectResponse

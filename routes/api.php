@@ -10,12 +10,14 @@ use App\Http\Controllers\API\LibraryController;
 use App\Http\Controllers\API\ProductDownloadController;
 use App\Http\Controllers\API\SubscriptionController;
 use App\Http\Controllers\API\WishlistController;
+use App\Http\Controllers\Auth\GoogleIdentityController;
 use Illuminate\Support\Facades\Route;
 use Modules\BasicPayment\app\Http\Controllers\API\MpesaStkPushCallbackController;
 use Modules\BasicPayment\app\Http\Controllers\API\PaymentController as BasicPaymentController;
 
 Route::prefix('auth')->group(function () {
     Route::middleware('guest:sanctum')->group(function () {
+        Route::post('google', [GoogleIdentityController::class, 'store'])->name('api.google')->middleware('throttle:auth');
         Route::post('register', [AuthenticatedController::class, 'register'])->name('api.register')->middleware('throttle:auth');
         Route::post('login', [AuthenticatedController::class, 'login'])->name('api.login')->middleware('throttle:auth');
         Route::post('verify-otp', [AuthenticatedController::class, 'verifyOtp'])->name('api.verify-otp')->middleware('throttle:auth');

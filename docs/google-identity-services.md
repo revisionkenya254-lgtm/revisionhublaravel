@@ -1,9 +1,11 @@
 # Google Identity Services
 
-Web and Android authenticate through one Laravel endpoint:
+Web and Android share one Google token-verification and account-resolution
+handler, with transport-specific routes:
 
 ```text
-POST /auth/google/callback
+Web:     POST /auth/google/callback
+Android: POST /api/auth/google
 ```
 
 Use the same Google **Web OAuth client ID** for the GIS web button, Android's
@@ -19,7 +21,7 @@ Laravel.
 ## Web
 
 The login and registration pages load `https://accounts.google.com/gsi/client`.
-GIS posts these fields directly to the endpoint:
+GIS posts these fields directly to its callback endpoint:
 
 ```text
 credential=<Google ID token>
@@ -70,6 +72,10 @@ if (credential is CustomCredential &&
 }
 ```
 
+Android posts to `/api/auth/google` with an ID-token payload. Its success
+response includes `access_token`, `bearer_token`, refresh/session fields, and
+`user` (`id`, `email`, `name`, `avatar_url`, and `is_verified`).
+
 Example Retrofit contract:
 
 ```kotlin
@@ -83,7 +89,7 @@ data class GoogleLoginRequest(
 )
 
 interface AuthApi {
-    @POST("auth/google/callback")
+    @POST("api/auth/google")
     suspend fun google(@Body request: GoogleLoginRequest): AuthTokenResponse
 }
 ```

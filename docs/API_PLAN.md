@@ -108,7 +108,8 @@ Reuse the existing OTP flow, but normalize it into mobile-friendly endpoints.
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
-- `POST /auth/google/callback` (shared by Google Identity Services on web and Android Credential Manager)
+- `POST /auth/google/callback` (Google Identity Services browser callback)
+- `POST /api/auth/google` (Android Credential Manager; shares the Google identity handler)
 - `POST /api/auth/verify-otp`
 - `POST /api/auth/resend-otp`
 - `POST /api/auth/forgot-password`

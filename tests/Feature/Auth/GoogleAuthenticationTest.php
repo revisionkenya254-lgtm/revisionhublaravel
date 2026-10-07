@@ -21,21 +21,44 @@ class GoogleAuthenticationTest extends TestCase
                     'email' => 'google@example.com',
                     'email_verified' => true,
                     'name' => 'Google User',
+                    'picture' => 'https://images.example.com/google-user.jpg',
                 ];
             }
         });
 
-        $response = $this->postJson('/auth/google/callback', [
+        $response = $this->postJson('/api/auth/google', [
             'id_token' => 'test-token',
             'platform' => 'android',
+            'device_installation_id' => 'android-install-123',
+            'device_name' => 'Google Pixel 8',
+            'app_version' => '3.0',
         ]);
 
         $response->assertOk()
-            ->assertJsonStructure(['status', 'message', 'bearer_token', 'user_id']);
+            ->assertJsonStructure([
+                'status',
+                'message',
+                'access_token',
+                'bearer_token',
+                'access_token_expires_at',
+                'refresh_token',
+                'refresh_token_expires_at',
+                'session_id',
+                'user_id',
+                'user' => ['id', 'email', 'name', 'avatar_url', 'is_verified'],
+            ])
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Google login successful')
+            ->assertJsonPath('user.email', 'google@example.com')
+            ->assertJsonPath('user.name', 'Google User')
+            ->assertJsonPath('user.avatar_url', 'https://images.example.com/google-user.jpg')
+            ->assertJsonPath('user.is_verified', true);
 
+        $response->assertJsonPath('bearer_token', $response->json('access_token'));
         $this->assertDatabaseHas('users', [
             'email' => 'google@example.com',
             'google_id' => 'google-user-123',
+            'image' => 'https://images.example.com/google-user.jpg',
         ]);
     }
 
@@ -92,7 +115,7 @@ class GoogleAuthenticationTest extends TestCase
             }
         });
 
-        $this->postJson('/auth/google/callback', [
+        $this->postJson('/api/auth/google', [
             'id_token' => 'test-token',
             'nonce' => 'different-nonce',
             'platform' => 'android',
