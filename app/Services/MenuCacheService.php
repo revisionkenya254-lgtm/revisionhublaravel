@@ -9,7 +9,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v12';
+    const CACHE_VERSION = 'v13';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -684,11 +684,116 @@ class MenuCacheService
                 ? $this->mergeCategoryTrees($this->categoryMenuBlueprint(), $databaseTree)
                 : $this->categoryMenuBlueprint();
 
+            $sourceTree = $this->filterGrandchildrenWithoutContent($sourceTree, $languageCode);
+
             return collect($sourceTree)
                 ->map(fn (array $category) => $this->normalizeCategoryNode($category, [], $languageCode))
                 ->values()
                 ->all();
         });
+    }
+
+    /**
+     * Keep the predefined category tree, but expose only grandchild categories
+     * that lead to at least one active, approved product on that exact path.
+     */
+    protected function filterGrandchildrenWithoutContent(array $tree, string $languageCode): array
+    {
+        $contentPaths = $this->activeProductCategoryPaths($languageCode);
+
+        return collect($tree)
+            ->map(function (array $root) use ($contentPaths) {
+                $rootSlug = Str::slug((string) ($root['slug'] ?? ''));
+
+                $root['children'] = collect($root['children'] ?? [])
+                    ->map(function (array $child) use ($contentPaths, $rootSlug) {
+                        $grandchildren = $child['children'] ?? [];
+
+                        if (empty($grandchildren)) {
+                            return $child;
+                        }
+
+                        $childSlug = Str::slug((string) ($child['slug'] ?? ''));
+                        $pathPrefix = "{$rootSlug}/{$childSlug}/";
+                        $grandchildrenWithContent = collect($contentPaths)
+                            ->filter(fn (array $grandchild, string $path) => Str::startsWith($path, $pathPrefix));
+                        $includedSlugs = [];
+
+                        $filteredGrandchildren = collect($grandchildren)
+                            ->filter(function (array $grandchild) use ($grandchildrenWithContent) {
+                                $grandchildSlug = Str::slug((string) ($grandchild['slug'] ?? ''));
+
+                                return $grandchildrenWithContent->contains(
+                                    fn (array $contentGrandchild) => $contentGrandchild['slug'] === $grandchildSlug
+                                );
+                            })
+                            ->each(function (array $grandchild) use (&$includedSlugs) {
+                                $includedSlugs[] = Str::slug((string) ($grandchild['slug'] ?? ''));
+                            });
+
+                        $contentOnlyGrandchildren = $grandchildrenWithContent
+                            ->reject(fn (array $grandchild) => in_array($grandchild['slug'], $includedSlugs, true))
+                            ->sortBy('name');
+
+                        $child['children'] = $filteredGrandchildren
+                            ->concat($contentOnlyGrandchildren)
+                            ->values()
+                            ->all();
+
+                        return $child;
+                    })
+                    ->values()
+                    ->all();
+
+                return $root;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    protected function activeProductCategoryPaths(string $languageCode): array
+    {
+        $identityService = app(ProductIdentityService::class);
+
+        return Product::active()
+            ->with([
+                'category.translations' => fn ($query) => $query->where('lang_code', $languageCode),
+                'category.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
+                'category.parentCategory.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
+            ])
+            ->get(['id', 'category_id', 'metadata'])
+            ->reduce(function (array $paths, Product $product) use ($identityService) {
+                $categoryPath = $this->productCategoryPath($product);
+
+                if (count($categoryPath) >= 3) {
+                    $segments = collect(array_slice($categoryPath, 0, 3))
+                        ->map(fn (array $category) => Str::slug((string) ($category['slug'] ?? '')));
+                    $grandchild = $categoryPath[2];
+                    $grandchildName = (string) data_get(
+                        $grandchild,
+                        'translations.0.name',
+                        data_get($grandchild, 'name', $segments->get(2))
+                    );
+                } else {
+                    $identity = $identityService->identityForProduct($product);
+                    $segments = collect(['main_category', 'category', 'subject'])
+                        ->map(fn (string $key) => Str::slug((string) ($identity[$key] ?? '')));
+                    $grandchildName = (string) ($identity['subject_label'] ?? $segments->get(2, ''));
+                }
+
+                if ($segments->every(fn (string $segment) => $segment !== '')) {
+                    $paths[$segments->implode('/')] = [
+                        'slug' => $segments->get(2),
+                        'name' => $grandchildName,
+                        'children' => [],
+                    ];
+                }
+
+                return $paths;
+            }, []);
     }
 
     /**
@@ -714,7 +819,8 @@ class MenuCacheService
      */
     public function getSubCategoriesForMenu($parentSlug, $languageCode = 'en')
     {
-        $cacheKey = "menu_subcategories_".self::CACHE_VERSION."_{$languageCode}_{$parentSlug}";
+        $catalogVersion = CatalogCacheClear::version();
+        $cacheKey = "menu_subcategories_".self::CACHE_VERSION."_{$catalogVersion}_{$languageCode}_{$parentSlug}";
 
         return Cache::rememberForever($cacheKey, function () use ($parentSlug, $languageCode) {
             $tree = $this->getCategoryTree($languageCode);

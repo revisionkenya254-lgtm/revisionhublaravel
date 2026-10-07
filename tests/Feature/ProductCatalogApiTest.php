@@ -71,6 +71,50 @@ class ProductCatalogApiTest extends TestCase
             ->assertJsonCount(0, 'data.quiz');
     }
 
+    public function test_category_apis_only_include_grandchildren_with_active_approved_content(): void
+    {
+        $instructor = User::factory()->create();
+        $root = CourseCategory::create(['slug' => 'lower-primary']);
+        $gradeOne = CourseCategory::create(['slug' => 'grade-1', 'parent_id' => $root->id]);
+        $gradeTwo = CourseCategory::create(['slug' => 'grade-2', 'parent_id' => $root->id]);
+        $gradeOneMathematics = CourseCategory::create(['slug' => 'mathematics', 'parent_id' => $gradeOne->id]);
+        $gradeOneEnglish = CourseCategory::create(['slug' => 'english', 'parent_id' => $gradeOne->id]);
+        $gradeOneNumeracy = CourseCategory::create(['slug' => 'numeracy', 'parent_id' => $gradeOne->id]);
+        $gradeTwoMathematics = CourseCategory::create(['slug' => 'mathematics', 'parent_id' => $gradeTwo->id]);
+
+        $mathematics = $this->createProduct($instructor, Product::TYPE_NOTE, 'active-grade-one-mathematics', 'active', $gradeOneMathematics->id);
+        $mathematics->update(['metadata' => ['subject' => 'English']]);
+        $this->createProduct($instructor, Product::TYPE_NOTE, 'active-grade-one-numeracy', 'active', $gradeOneNumeracy->id);
+        $this->createProduct($instructor, Product::TYPE_NOTE, 'inactive-grade-one-english', 'inactive', $gradeOneEnglish->id);
+        $this->createProduct($instructor, Product::TYPE_NOTE, 'inactive-grade-two-mathematics', 'inactive', $gradeTwoMathematics->id);
+
+        $response = $this->getJson('/api/catalog/categories/lower-primary/subcategories');
+
+        $response->assertOk();
+        $grades = collect($response->json('data'))->keyBy('slug');
+
+        $this->assertSame(['mathematics', 'numeracy'], collect($grades['grade-1']['children'])->pluck('slug')->all());
+        $this->assertSame([], collect($grades['grade-2']['children'])->pluck('slug')->all());
+
+        $this->createProduct($instructor, Product::TYPE_QUIZ, 'active-grade-one-english', 'active', $gradeOneEnglish->id);
+
+        $refreshedResponse = $this->getJson('/api/catalog/categories/lower-primary/subcategories');
+        $refreshedGrades = collect($refreshedResponse->json('data'))->keyBy('slug');
+
+        $this->assertSame(
+            ['mathematics', 'english', 'numeracy'],
+            collect($refreshedGrades['grade-1']['children'])->pluck('slug')->all()
+        );
+
+        $menuResponse = $this->getJson('/api/bootstrap/menu');
+        $menuResponse->assertOk();
+        $lowerPrimary = collect($menuResponse->json('data.categories'))->firstWhere('slug', 'lower-primary');
+        $menuGrades = collect($lowerPrimary['children'])->keyBy('slug');
+
+        $this->assertSame(['mathematics', 'english', 'numeracy'], collect($menuGrades['grade-1']['children'])->pluck('slug')->all());
+        $this->assertSame([], collect($menuGrades['grade-2']['children'])->pluck('slug')->all());
+    }
+
     public function test_an_active_approved_product_can_be_retrieved_by_type_and_slug(): void
     {
         $instructor = User::factory()->create();
