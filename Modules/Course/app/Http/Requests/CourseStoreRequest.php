@@ -36,6 +36,11 @@ class CourseStoreRequest extends FormRequest
             'levels.*' => ['integer', 'exists:course_levels,id'],
             'languages' => ['nullable', 'array'],
             'languages.*' => ['integer', 'exists:course_languages,id'],
+            'education_level' => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'class_grade' => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'subject' => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'exam_category' => ['nullable', 'string', 'max:255'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ];
 
         return $rules;

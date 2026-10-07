@@ -21,10 +21,12 @@ use Modules\Course\app\Models\CourseLanguage;
 use Modules\Course\app\Models\CourseLevel;
 use Modules\Order\app\Models\OrderItem;
 use App\Services\Storage\CourseMediaStorageService;
+use App\Services\CourseCategorySelectionService;
 
 class CourseController extends Controller {
     public function __construct(
-        protected CourseMediaStorageService $courseMediaStorage
+        protected CourseMediaStorageService $courseMediaStorage,
+        protected CourseCategorySelectionService $categorySelection
     ) {
     }
 
@@ -57,8 +59,9 @@ class CourseController extends Controller {
         $categories = CourseCategoryHelper::getTree();
         $levels = CourseLevel::with('translation')->where('status', 1)->get();
         $languages = CourseLanguage::where('status', 1)->get();
+        $categorySelection = $this->categorySelection->formData();
 
-        return view('course-builder.create', compact('instructors', 'categories', 'levels', 'languages'))
+        return view('course-builder.create', compact('instructors', 'categories', 'levels', 'languages', 'categorySelection'))
             ->with('isAdmin', true);
     }
 
@@ -104,6 +107,11 @@ class CourseController extends Controller {
         $course->instructor_id = $request->instructor;
         if ($request->boolean('builder_flow')) {
             $course->category_id = $request->category;
+            $course->education_level = $request->education_level;
+            $course->class_grade = $request->class_grade;
+            $course->subject = $request->subject;
+            $course->exam_category = $request->exam_category;
+            $course->academic_year = $request->year;
             $course->duration = $request->course_duration;
             $course->capacity = $request->capacity;
             $course->qna = $request->boolean('qna');

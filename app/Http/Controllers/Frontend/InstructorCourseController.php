@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseSelectedLanguage;
 use App\Models\CoursePartnerInstructor;
 use App\Services\Storage\CourseMediaStorageService;
+use App\Services\CourseCategorySelectionService;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Modules\Course\app\Helper\CourseCategoryHelper;
@@ -25,7 +26,8 @@ use Modules\Course\app\Models\CourseDeleteRequest;
 
 class InstructorCourseController extends Controller {
     public function __construct(
-        protected CourseMediaStorageService $courseMediaStorage
+        protected CourseMediaStorageService $courseMediaStorage,
+        protected CourseCategorySelectionService $categorySelection
     ) {
     }
 
@@ -38,8 +40,9 @@ class InstructorCourseController extends Controller {
         $categories = CourseCategoryHelper::getTree();
         $levels = CourseLevel::with('translation')->where('status', 1)->get();
         $languages = CourseLanguage::where('status', 1)->get();
+        $categorySelection = $this->categorySelection->formData();
 
-        return view('course-builder.create', compact('categories', 'levels', 'languages'))
+        return view('course-builder.create', compact('categories', 'levels', 'languages', 'categorySelection'))
             ->with('isAdmin', false);
     }
 
@@ -72,6 +75,11 @@ class InstructorCourseController extends Controller {
             'levels.*'          => ['integer', 'exists:course_levels,id'],
             'languages'         => ['nullable', 'array'],
             'languages.*'       => ['integer', 'exists:course_languages,id'],
+            'education_level'   => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'class_grade'       => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'subject'           => ['required_if:builder_flow,1', 'nullable', 'string', 'max:255'],
+            'exam_category'     => ['nullable', 'string', 'max:255'],
+            'year'              => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ];
         $messages = [
             'title.required'           => __('Title is required'),
@@ -135,6 +143,11 @@ class InstructorCourseController extends Controller {
         $course->description = $request->description;
         if ($request->boolean('builder_flow')) {
             $course->category_id = $request->category;
+            $course->education_level = $request->education_level;
+            $course->class_grade = $request->class_grade;
+            $course->subject = $request->subject;
+            $course->exam_category = $request->exam_category;
+            $course->academic_year = $request->year;
             $course->duration = $request->course_duration;
             $course->capacity = $request->capacity;
             $course->qna = $request->boolean('qna');

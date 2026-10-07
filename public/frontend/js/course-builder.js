@@ -9,6 +9,89 @@
     const next = form.querySelector('[data-next]');
     const submit = form.querySelector('[data-submit]');
     const alert = document.querySelector('[data-form-alert]');
+    const taxonomyElement = document.querySelector('[data-course-taxonomy]');
+    const taxonomy = taxonomyElement ? JSON.parse(taxonomyElement.textContent) : {};
+    const educationLevel = form.elements.education_level;
+    const classGrade = form.elements.class_grade;
+    const subject = form.elements.subject;
+    const examCategory = form.elements.exam_category;
+    const categoryId = form.elements.category;
+    const classGradeLabel = document.querySelector('[data-class-grade-label]');
+    const subjectLabel = document.querySelector('[data-subject-label]');
+
+    const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const matchesNode = (node, value) => normalize(node?.label) === normalize(value) || normalize(node?.slug) === normalize(value);
+    const findNode = (nodes, value) => {
+        for (const node of nodes || []) {
+            if (matchesNode(node, value)) return node;
+            const child = findNode(node.children, value);
+            if (child) return child;
+        }
+        return null;
+    };
+    const addOptions = (select, values, selected, placeholder) => {
+        if (!select) return;
+        select.innerHTML = '';
+        select.add(new Option(placeholder, ''));
+        (values || []).forEach(value => {
+            const label = typeof value === 'string' ? value : value.label;
+            const option = new Option(label, label, false, normalize(label) === normalize(selected));
+            select.add(option);
+        });
+        if (!select.value && values?.length === 1) select.value = typeof values[0] === 'string' ? values[0] : values[0].label;
+    };
+    const currentRoot = () => (taxonomy.tree || []).find(node => matchesNode(node, educationLevel?.value));
+    const currentGradeNode = root => (root?.children || []).find(node => matchesNode(node, classGrade?.value));
+    const syncTaxonomyLabels = () => {
+        const higherEducation = /tvet|university|college|certificate|diploma|undergraduate|professional|tertiary|higher education/i.test(educationLevel?.value || '');
+        if (classGradeLabel) classGradeLabel.textContent = higherEducation ? 'School of *' : 'Class / Grade *';
+        if (subjectLabel) subjectLabel.textContent = higherEducation ? 'Course *' : 'Subject *';
+    };
+    const syncCategoryId = () => {
+        const root = currentRoot();
+        const grade = currentGradeNode(root);
+        const subjectNode = (grade?.children || []).find(node => matchesNode(node, subject?.value));
+        categoryId.value = subjectNode?.id || grade?.id || root?.id || '';
+    };
+    const populateSubjects = selected => {
+        const root = currentRoot();
+        const grade = currentGradeNode(root);
+        const treeSubjects = grade?.children || [];
+        const fallback = taxonomy.subjectsByLevel?.[educationLevel?.value] || taxonomy.subjects || [];
+        addOptions(subject, treeSubjects.length ? treeSubjects : fallback, selected, 'Choose subject');
+        syncCategoryId();
+    };
+    const populateExamCategories = selected => {
+        const values = taxonomy.examCategoriesByLevel?.[educationLevel?.value]
+            || taxonomy.examCategoriesByLevel?.default
+            || [];
+        addOptions(examCategory, values, selected, 'Choose exam category');
+    };
+    const populateGrades = (selected, selectedSubject) => {
+        const root = currentRoot();
+        const treeGrades = root?.children || [];
+        const fallback = taxonomy.classGradesByLevel?.[educationLevel?.value]
+            || taxonomy.classGradesByLevel?.default
+            || [];
+        addOptions(classGrade, treeGrades.length ? treeGrades : fallback, selected, 'Choose class or grade');
+        populateSubjects(selectedSubject);
+        syncCategoryId();
+    };
+
+    if (educationLevel && classGrade && subject) {
+        const selected = taxonomy.selected || {};
+        educationLevel.addEventListener('change', () => {
+            syncTaxonomyLabels();
+            populateGrades('', '');
+            populateExamCategories('');
+        });
+        classGrade.addEventListener('change', () => populateSubjects(''));
+        subject.addEventListener('change', syncCategoryId);
+        syncTaxonomyLabels();
+        populateGrades(selected.classGrade, selected.subject);
+        populateExamCategories(selected.examCategory);
+        syncCategoryId();
+    }
 
     const show = value => {
         step = value;
@@ -46,7 +129,7 @@
         document.querySelector('[data-review-title]').textContent = form.title.value.trim() || 'Untitled course';
         document.querySelector('[data-review-description]').textContent = form.description.value.trim() || '—';
         document.querySelector('[data-review-duration]').textContent = form.course_duration.value ? `${form.course_duration.value} minutes` : '—';
-        document.querySelector('[data-review-category]').textContent = form.category.options[form.category.selectedIndex]?.text || '—';
+        document.querySelector('[data-review-category]').textContent = [educationLevel?.value, classGrade?.value, subject?.value].filter(Boolean).join(' › ') || '—';
         document.querySelector('[data-review-access]').textContent = form.access_type.value === 'paid' ? 'Paid course' : 'Free course';
     };
 

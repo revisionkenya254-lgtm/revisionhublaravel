@@ -6,6 +6,12 @@
 @php
     $storeRoute = $isAdmin ? route('admin.courses.store') : route('instructor.courses.store');
     $coursesRoute = $isAdmin ? route('admin.courses.index') : route('instructor.courses.index');
+    $taxonomyDefaults = $categorySelection['defaults'] ?? [];
+    $selectedEducationLevel = old('education_level', $taxonomyDefaults['education_level'] ?? '');
+    $selectedClassGrade = old('class_grade', $taxonomyDefaults['class_grade'] ?? '');
+    $selectedSubject = old('subject', $taxonomyDefaults['subject'] ?? '');
+    $selectedExamCategory = old('exam_category', $taxonomyDefaults['exam_category'] ?? '');
+    $selectedYear = old('year', $taxonomyDefaults['year'] ?? now()->year);
 @endphp
 <div class="rh-page">
     <nav class="rh-breadcrumb"><a href="{{ $coursesRoute }}">{{ __('Courses') }}</a><span>›</span><strong>{{ __('Create Course') }}</strong></nav>
@@ -28,14 +34,25 @@
         <input type="hidden" name="next_step" value="3">
         <input type="hidden" name="edit_mode" value="0">
         <input type="hidden" name="thumbnail" value="">
+        <input type="hidden" id="category" name="category" value="{{ old('category') }}" required>
 
         <section class="rh-panel active" data-step="1">
             <div class="rh-card"><h2 class="rh-section-title">{{ __('Course details') }}</h2><p class="rh-muted">{{ __('Give students a clear picture of what they will learn.') }}</p>
                 <div class="rh-field"><label class="rh-label" for="title">{{ __('Course title') }} *</label><input class="rh-input" id="title" name="title" maxlength="255" required value="{{ old('title') }}"><div class="rh-help">{{ __('Use a specific, outcome-focused title.') }}</div></div>
                 <div class="rh-field"><label class="rh-label" for="description">{{ __('Overview') }} *</label><textarea class="rh-textarea" id="description" name="description" maxlength="5000" required>{{ old('description') }}</textarea></div>
-                <div class="rh-grid-2">
-                    <div class="rh-field"><label class="rh-label" for="seo_description">{{ __('Short description') }}</label><input class="rh-input" id="seo_description" name="seo_description" maxlength="255" value="{{ old('seo_description') }}"></div>
-                    <div class="rh-field"><label class="rh-label" for="category">{{ __('Category') }} *</label><select class="rh-select" id="category" name="category" required><option value="">{{ __('Choose a category') }}</option>@foreach($categories as $category)@if($category->subCategories->isNotEmpty())<optgroup label="{{ $category->translation?->name }}">@foreach($category->subCategories as $subCategory)<option value="{{ $subCategory->id }}" @selected(old('category') == $subCategory->id)>{{ $subCategory->translation?->name }}</option>@endforeach</optgroup>@else<option value="{{ $category->id }}">{{ $category->translation?->name }}</option>@endif @endforeach</select></div>
+                <div class="rh-field"><label class="rh-label" for="seo_description">{{ __('Short description') }}</label><input class="rh-input" id="seo_description" name="seo_description" maxlength="255" value="{{ old('seo_description') }}"></div>
+                <div class="rh-taxonomy-block">
+                    <div class="rh-section-title">{{ __('Education category') }}</div>
+                    <p class="rh-muted">{{ __('Classify this course using the same education structure as Past Papers.') }}</p>
+                    <div class="rh-grid-3">
+                        <div class="rh-field"><label class="rh-label" for="education_level">{{ __('Education Level') }} *</label><select class="rh-select" id="education_level" name="education_level" required><option value="">{{ __('Choose level') }}</option>@foreach($categorySelection['education_levels'] ?? [] as $option)<option value="{{ $option }}" @selected($selectedEducationLevel === $option)>{{ $option }}</option>@endforeach</select></div>
+                        <div class="rh-field"><label class="rh-label" for="class_grade" data-class-grade-label>{{ __('Class / Grade') }} *</label><select class="rh-select" id="class_grade" name="class_grade" required><option value="">{{ __('Choose class or grade') }}</option></select></div>
+                        <div class="rh-field"><label class="rh-label" for="subject" data-subject-label>{{ __('Subject') }} *</label><select class="rh-select" id="subject" name="subject" required><option value="">{{ __('Choose subject') }}</option></select></div>
+                    </div>
+                    <div class="rh-grid-2">
+                        <div class="rh-field"><label class="rh-label" for="exam_category">{{ __('Exam Category') }}</label><select class="rh-select" id="exam_category" name="exam_category"><option value="">{{ __('Choose exam category') }}</option></select></div>
+                        <div class="rh-field"><label class="rh-label" for="year">{{ __('Year') }}</label><select class="rh-select" id="year" name="year"><option value="">{{ __('Choose year') }}</option>@foreach($categorySelection['years'] ?? [] as $year)<option value="{{ $year }}" @selected((string) $selectedYear === (string) $year)>{{ $year }}</option>@endforeach</select></div>
+                    </div>
                 </div>
                 <div class="rh-grid-2">
                     <div class="rh-field"><label class="rh-label" for="course_duration">{{ __('Estimated duration (minutes)') }} *</label><input class="rh-input" id="course_duration" name="course_duration" type="number" min="1" required value="{{ old('course_duration') }}"></div>
@@ -68,6 +85,20 @@
         <footer class="rh-actions"><button type="button" class="rh-btn rh-btn-outline" data-back hidden>← {{ __('Back') }}</button><span></span><button type="button" class="rh-btn rh-btn-primary" data-next>{{ __('Save & Continue') }} →</button><button type="submit" class="rh-btn rh-btn-primary" data-submit hidden>{{ __('Create Course & Add Lesson') }} →</button></footer>
     </form>
 </div>
+<script type="application/json" data-course-taxonomy>@json([
+    'tree' => $categorySelection['tree'] ?? [],
+    'classGradesByLevel' => $categorySelection['class_grades_by_level'] ?? [],
+    'subjectsByLevel' => $categorySelection['subjects_by_education_level'] ?? [],
+    'subjects' => $categorySelection['subjects'] ?? [],
+    'examCategoriesByLevel' => $categorySelection['exam_categories_by_level'] ?? [],
+    'selected' => [
+        'educationLevel' => $selectedEducationLevel,
+        'classGrade' => $selectedClassGrade,
+        'subject' => $selectedSubject,
+        'examCategory' => $selectedExamCategory,
+        'categoryId' => old('category'),
+    ],
+])</script>
 @endsection
 
 @push('scripts')
