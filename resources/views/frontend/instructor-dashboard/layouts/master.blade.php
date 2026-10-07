@@ -39,7 +39,9 @@
             default => __('Instructor Dashboard'),
         };
 
-        $isPaperEditor = Route::is('instructor.products.create') || Route::is('instructor.products.edit');
+        $isPaperEditor = Route::is('instructor.products.create')
+            || Route::is('instructor.products.edit')
+            || Route::is('instructor.courses.create');
         $pendingBadge = isset($pendingContent) ? min((int) $pendingContent, 99) : 0;
         $orderBadge = isset($totalPendingOrders) ? min((int) $totalPendingOrders, 99) : 0;
         $aiDocumentNotificationSeed = auth()->check() && $hasNotificationsTable

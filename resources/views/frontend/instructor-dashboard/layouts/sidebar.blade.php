@@ -55,16 +55,16 @@
                     <button type="button" class="dashboard-nav__group-trigger" data-dashboard-group-toggle aria-expanded="{{ $isCourseOpen ? 'true' : 'false' }}">
                         <span class="dashboard-nav__trigger-left">
                             <i class="fas fa-video"></i>
-                            <span>{{ __('Video Lessons') }}</span>
+                            <span>{{ __('Courses') }}</span>
                         </span>
                         <span class="dashboard-nav__chevron"><i class="fas fa-chevron-{{ $isCourseOpen ? 'up' : 'down' }}"></i></span>
                     </button>
                     <ul class="dashboard-nav__submenu">
                         <li class="{{ $isCourseOpen && Route::is('instructor.courses.index') ? 'active' : '' }}">
-                            <a href="{{ route('instructor.courses.index') }}">{{ __('All Video Lessons') }}</a>
+                            <a href="{{ route('instructor.courses.index') }}">{{ __('All Courses') }}</a>
                         </li>
                         <li class="{{ $isCourseOpen && Route::is('instructor.courses.create') ? 'active' : '' }}">
-                            <a href="{{ route('instructor.courses.create') }}">{{ __('Add New Video Lesson') }}</a>
+                            <a href="{{ route('instructor.courses.create') }}">{{ __('Create Course') }}</a>
                         </li>
                     </ul>
                 </li>

@@ -1,8 +1,8 @@
-@extends('layouts.course-builder')
+@extends($isAdmin ? 'layouts.course-builder' : 'frontend.instructor-dashboard.layouts.master')
 
 @section('title', __('Create Course'))
 
-@section('content')
+@section($isAdmin ? 'content' : 'dashboard-contents')
 @php
     $storeRoute = $isAdmin ? route('admin.courses.store') : route('instructor.courses.store');
     $coursesRoute = $isAdmin ? route('admin.courses.index') : route('instructor.courses.index');
@@ -100,6 +100,34 @@
     ],
 ])</script>
 @endsection
+
+@if(! $isAdmin)
+    @push('styles')
+        <link rel="stylesheet" href="{{ asset('frontend/css/course-builder.css') }}?v={{ config('app.asset_version', '1') }}">
+        <style>
+            .instructor-dashboard-content .rh-page {
+                width: 100%;
+                padding: 0 0 52px;
+            }
+
+            .instructor-dashboard-content .rh-page-head {
+                margin-top: 4px;
+            }
+
+            .instructor-dashboard-content .rh-stepper {
+                border: 1px solid rgba(98, 117, 157, 0.14);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.88);
+                box-shadow: 0 12px 30px rgba(20, 33, 61, 0.05);
+                padding: 8px 0;
+            }
+
+            .instructor-dashboard-content .rh-card {
+                box-shadow: 0 12px 30px rgba(20, 33, 61, 0.05);
+            }
+        </style>
+    @endpush
+@endif
 
 @push('scripts')
 <script src="{{ asset('frontend/js/course-builder.js') }}?v={{ config('app.asset_version', '1') }}" defer></script>
