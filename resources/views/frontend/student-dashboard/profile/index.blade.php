@@ -2,8 +2,15 @@
 
 @section('dashboard-contents')
     <div class="dashboard__content-wrap">
-        <div class="dashboard__content-title">
+        <div class="dashboard__content-title d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h4 class="title">{{ __('Settings') }}</h4>
+            <form action="{{ route('logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt"></i>
+                    {{ __('Logout') }}
+                </button>
+            </form>
         </div>
         <div class="row">
             <div class="col-lg-12">

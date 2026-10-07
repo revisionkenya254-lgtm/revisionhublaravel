@@ -7,6 +7,13 @@
         <section class="section">
             <div class="section-header">
                 <h1>{{ __('Edit Profile') }}</h1>
+                <form action="{{ route('admin.logout') }}" method="POST" class="ml-auto">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-sign-out-alt"></i>
+                        {{ __('Logout') }}
+                    </button>
+                </form>
             </div>
 
             {{-- edit profile area  --}}
