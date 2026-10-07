@@ -14,7 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CourseSelectedLanguage;
 use App\Models\CoursePartnerInstructor;
 use App\Services\Storage\CourseMediaStorageService;
-use App\Services\CourseCategorySelectionService;
+use App\Services\ProductMetadataCatalogService;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Modules\Course\app\Helper\CourseCategoryHelper;
@@ -26,8 +26,7 @@ use Modules\Course\app\Models\CourseDeleteRequest;
 
 class InstructorCourseController extends Controller {
     public function __construct(
-        protected CourseMediaStorageService $courseMediaStorage,
-        protected CourseCategorySelectionService $categorySelection
+        protected CourseMediaStorageService $courseMediaStorage
     ) {
     }
 
@@ -40,7 +39,7 @@ class InstructorCourseController extends Controller {
         $categories = CourseCategoryHelper::getTree();
         $levels = CourseLevel::with('translation')->where('status', 1)->get();
         $languages = CourseLanguage::where('status', 1)->get();
-        $categorySelection = $this->categorySelection->formData();
+        $categorySelection = app(ProductMetadataCatalogService::class)->courseSelectionOptions();
 
         return view('course-builder.create', compact('categories', 'levels', 'languages', 'categorySelection'))
             ->with('isAdmin', false);

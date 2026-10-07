@@ -3,10 +3,58 @@
 namespace App\Services;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Modules\Course\app\Helper\CourseCategoryHelper;
 
 class ProductMetadataCatalogService
 {
+    public function courseSelectionOptions(): array
+    {
+        $categories = CourseCategoryHelper::getAll();
+        $catalog = $this->paperSelectionOptions();
+        $tree = $this->buildCourseCategoryTree($categories);
+
+        return [
+            'tree' => $tree,
+            'education_levels' => collect($tree)->pluck('label')->filter()->values()->all()
+                ?: ($catalog['education_levels'] ?? []),
+            'class_grades_by_level' => $catalog['class_grades_by_level'] ?? [],
+            'subjects_by_education_level' => $catalog['subjects_by_education_level'] ?? [],
+            'subjects' => $catalog['subjects'] ?? [],
+            'exam_categories_by_level' => $catalog['exam_categories_by_level'] ?? [],
+            'years' => $catalog['years'] ?? [],
+            'defaults' => $this->sharedDefaults(),
+        ];
+    }
+
+    private function buildCourseCategoryTree(Collection $categories): array
+    {
+        $byParent = $categories->groupBy(fn ($category) => $category->parent_id ? (string) $category->parent_id : 'root');
+
+        $buildNode = function ($category, array $ancestors = []) use (&$buildNode, $byParent): array {
+            $id = (int) $category->id;
+            $children = in_array($id, $ancestors, true)
+                ? []
+                : collect($byParent[(string) $id] ?? [])
+                    ->map(fn ($child) => $buildNode($child, [...$ancestors, $id]))
+                    ->values()
+                    ->all();
+
+            return [
+                'id' => $id,
+                'slug' => (string) $category->slug,
+                'label' => (string) $category->name,
+                'children' => $children,
+            ];
+        };
+
+        return collect($byParent['root'] ?? [])
+            ->map(fn ($category) => $buildNode($category))
+            ->values()
+            ->all();
+    }
+
     private function kcseSubjects(): array
     {
         return [

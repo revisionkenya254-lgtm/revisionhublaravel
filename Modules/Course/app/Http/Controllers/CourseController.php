@@ -21,12 +21,11 @@ use Modules\Course\app\Models\CourseLanguage;
 use Modules\Course\app\Models\CourseLevel;
 use Modules\Order\app\Models\OrderItem;
 use App\Services\Storage\CourseMediaStorageService;
-use App\Services\CourseCategorySelectionService;
+use App\Services\ProductMetadataCatalogService;
 
 class CourseController extends Controller {
     public function __construct(
-        protected CourseMediaStorageService $courseMediaStorage,
-        protected CourseCategorySelectionService $categorySelection
+        protected CourseMediaStorageService $courseMediaStorage
     ) {
     }
 
@@ -59,7 +58,7 @@ class CourseController extends Controller {
         $categories = CourseCategoryHelper::getTree();
         $levels = CourseLevel::with('translation')->where('status', 1)->get();
         $languages = CourseLanguage::where('status', 1)->get();
-        $categorySelection = $this->categorySelection->formData();
+        $categorySelection = app(ProductMetadataCatalogService::class)->courseSelectionOptions();
 
         return view('course-builder.create', compact('instructors', 'categories', 'levels', 'languages', 'categorySelection'))
             ->with('isAdmin', true);
