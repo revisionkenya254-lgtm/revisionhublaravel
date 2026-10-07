@@ -357,11 +357,20 @@ if (!function_exists('checkCrentials')) {
             $googleClientId = config('services.google.client_id') ?: ($settings->gmail_client_id ?? null);
             $googleClientSecret = config('services.google.client_secret') ?: ($settings->gmail_secret_id ?? null);
 
-            if ($settings->google_login_status !== 'inactive' && ($googleClientId == 'gmail_client_id' || $googleClientSecret == 'gmail_secret_id' || $googleClientId == '' || $googleClientSecret == '')) {
+            if ($settings->google_login_status !== 'inactive' && ($googleClientId == 'gmail_client_id' || $googleClientId == '')) {
                 return (object) [
                     'status' => true,
                     'message' => __('Google login credentails not found'),
-                    'description' => __('This may create a problem while logging in using google. Please fill up the credential to avoid any problem.'),
+                    'description' => __('Google Identity Services requires a Web OAuth client ID. Please add it to enable Google login.'),
+                    'route' => 'admin.crediential-setting',
+                ];
+            }
+
+            if (($settings->google_calendar_status ?? 'inactive') !== 'inactive' && ($googleClientId == '' || $googleClientSecret == '' || $googleClientSecret == 'gmail_secret_id')) {
+                return (object) [
+                    'status' => true,
+                    'message' => __('Google Calendar credentials not found'),
+                    'description' => __('Google Calendar requires both the OAuth client ID and client secret.'),
                     'route' => 'admin.crediential-setting',
                 ];
             }

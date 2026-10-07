@@ -18,7 +18,6 @@ Route::prefix('auth')->group(function () {
     Route::middleware('guest:sanctum')->group(function () {
         Route::post('register', [AuthenticatedController::class, 'register'])->name('api.register')->middleware('throttle:auth');
         Route::post('login', [AuthenticatedController::class, 'login'])->name('api.login')->middleware('throttle:auth');
-        Route::post('google', [AuthenticatedController::class, 'googleLogin'])->middleware('throttle:auth');
         Route::post('verify-otp', [AuthenticatedController::class, 'verifyOtp'])->name('api.verify-otp')->middleware('throttle:auth');
         Route::post('resend-otp', [AuthenticatedController::class, 'resendOtp'])->name('api.resend-otp')->middleware('throttle:auth');
         Route::post('forgot-password', [AuthenticatedController::class, 'forgetPassword'])->name('api.forget-password')->middleware('throttle:password-reset');

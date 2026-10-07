@@ -10,7 +10,6 @@ use App\Models\UserDevice;
 use App\Models\DeviceSession;
 use App\Services\AuthOtpService;
 use App\Services\DeviceService;
-use App\Services\GoogleTokenVerifier;
 use App\Services\MailSenderService;
 use App\Services\TokenSessionService;
 use Illuminate\Http\JsonResponse;
@@ -289,73 +288,6 @@ class AuthenticatedController extends Controller
                 ? 'A 5-digit OTP has been sent to your email address.'
                 : 'Your account is not verified yet. A 5-digit OTP has been sent to your email address.',
             'purpose' => $purpose,
-        ], 200);
-    }
-
-    public function googleLogin(Request $request, GoogleTokenVerifier $tokenVerifier): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'id_token' => ['required', 'string'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'message' => $validator->errors()], 422);
-        }
-
-        try {
-            $claims = $tokenVerifier->verify($request->string('id_token')->toString());
-        } catch (\Throwable $exception) {
-            report($exception);
-            $claims = null;
-        }
-
-        if (!$claims || empty($claims['sub']) || empty($claims['email']) || empty($claims['email_verified'])) {
-            return response()->json(['status' => 'error', 'message' => 'Invalid Google ID token.'], 401);
-        }
-
-        $user = User::where('google_id', $claims['sub'])->first();
-
-        if (!$user) {
-            $user = User::where('email', $claims['email'])->first();
-        }
-
-        if ($user && $user->google_id && $user->google_id !== $claims['sub']) {
-            return response()->json(['status' => 'error', 'message' => 'This email is linked to another Google account.'], 409);
-        }
-
-        if ($user && $user->status != UserStatus::ACTIVE->value) {
-            return response()->json(['status' => 'error', 'message' => 'Inactive account'], 403);
-        }
-
-        if ($user && $user->is_banned == UserStatus::BANNED->value) {
-            return response()->json(['status' => 'error', 'message' => 'Your account has been banned'], 403);
-        }
-
-        if (!$user) {
-            $user = User::create([
-                'role' => 'student',
-                'name' => $claims['name'] ?? $claims['email'],
-                'email' => $claims['email'],
-                'google_id' => $claims['sub'],
-                'status' => 'active',
-                'is_banned' => 'no',
-                'email_verified_at' => now(),
-                'password' => Hash::make(Str::random(64)),
-            ]);
-        } elseif (!$user->google_id) {
-            $user->google_id = $claims['sub'];
-            $user->email_verified_at ??= now();
-            $user->save();
-        }
-
-        $tokens = app(TokenSessionService::class)->createSession($user, $request);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Logged in successfully.',
-            'bearer_token' => $tokens['access_token'],
-            ...$tokens,
-            'user_id' => $user->id,
         ], 200);
     }
 

@@ -4,7 +4,7 @@
         @method('PUT')
 
         <div class="form-group">
-            <label for="">{{ __('Google Client Id') }}</label>
+            <label for="">{{ __('Google Web OAuth Client ID') }}</label>
             @if (env('APP_MODE') == 'DEMO')
                 <input type="text" value="GMAIL-ID-34343-DEMO-CLIENT" class="form-control" name="gmail_client_id">
             @else
@@ -15,7 +15,7 @@
         </div>
 
         <div class="form-group">
-            <label for="">{{ __('Google Secret Id') }}</label>
+            <label for="">{{ __('Google Client Secret (Calendar only)') }}</label>
             @if (env('APP_MODE') == 'DEMO')
                 <input type="text" value="GMAIL-ID-343943-TEST-SECRET" class="form-control" name="gmail_secret_id">
             @else
@@ -45,11 +45,11 @@
         <button class="btn btn-primary">{{ __('Update') }}</button>
     </form>
     <div class="form-group mt-3">
-        <label>{{ __('Social Login Callback url') }} <span data-toggle="tooltip"
+        <label>{{ __('Google Identity Services login endpoint') }} <span data-toggle="tooltip"
             data-placement="top" class="fa fa-info-circle text--primary"
             title="{{__('Copy the Gmail login URL and paste it wherever you need to use it.')}}"></span></label>
         <div class="input-group">
-            <input type="text" value="{{url('/auth/google/callback')}}" id="gmail_redirect_url" class="form-control" readonly>
+            <input type="text" value="{{url('/auth/google')}}" id="gmail_redirect_url" class="form-control" readonly>
           <div class="input-group-append">
             <div class="input-group-text">
                 <span id="copyButton"  data-toggle="tooltip" title="{{__('Copy the Gmail login URL and paste it wherever you need to use it.')}}"><i class="fas fa-copy"></i></span>

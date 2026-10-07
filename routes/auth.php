@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\AuthOtpController;
+use App\Http\Controllers\Auth\GoogleIdentityController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -37,9 +38,13 @@ Route::middleware('guest:web')->group(function () {
     Route::post('/reset-password-store/{token}', [NewPasswordController::class, 'custom_reset_password_store'])->name('reset-password-store');
 
     Route::controller(SocialiteController::class)->group(function () {
-        Route::get('auth/{driver}', 'redirectToDriver')->name('auth.social');
-        Route::get('auth/{driver}/callback', 'handleDriverCallback')->name('auth.social.callback');
+        Route::get('auth/{driver}', 'redirectToDriver')->name('auth.social')->where('driver', 'facebook');
+        Route::get('auth/{driver}/callback', 'handleDriverCallback')->name('auth.social.callback')->where('driver', 'facebook');
     });
+
+    Route::post('auth/google', [GoogleIdentityController::class, 'store'])
+        ->name('auth.google')
+        ->middleware('throttle:auth');
 
 });
 

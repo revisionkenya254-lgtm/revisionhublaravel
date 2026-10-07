@@ -21,17 +21,7 @@
                         <h2 class="title">{{ __('Welcome back!') }}</h2>
                         <p>{{ __('Enter your email address and we will send you a 5-digit OTP to sign in securely.') }}
                         </p>
-                        @if(data_get($authSettings, 'google_login_status') == 'active')
-                        <div class="account__social">
-                            <a href="{{ route('auth.social', 'google') }}" class="account__social-btn">
-                                <img src="{{ asset('frontend/img/icons/google.svg') }}" alt="img">
-                                {{ __('Continue with google') }}
-                            </a>
-                        </div>
-                        <div class="account__divider">
-                            <span>{{ __('or') }}</span>
-                        </div>
-                        @endif
+                        @include('auth.partials.google-identity-button', ['context' => 'signin', 'buttonText' => 'signin_with'])
                         <form method="POST" action="{{ route('user-login') }}" class="account__form" id="mainLoginForm"
                             data-account-check-url="{{ route('user-login.check') }}"
                             data-admin-login-url="{{ route('admin.login') }}">

@@ -13,7 +13,7 @@ trait SetConfigTrait
 
         Config::set('services.google.client_id', config('services.google.client_id') ?: ($setting->gmail_client_id ?? null));
         Config::set('services.google.client_secret', config('services.google.client_secret') ?: ($setting->gmail_secret_id ?? null));
-        Config::set('services.google.redirect', config('services.google.redirect') ?: url('/auth/google/callback'));
+        Config::set('services.google.redirect', config('services.google.redirect') ?: url('/auth/google'));
     }
 
     protected static function setFacebookLoginInfo()

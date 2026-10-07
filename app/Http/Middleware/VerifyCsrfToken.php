@@ -12,6 +12,9 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'tinymce-upload-image','tinymce-delete-image'
+        'tinymce-upload-image',
+        'tinymce-delete-image',
+        // Google GIS supplies its own double-submit g_csrf_token. Android has no browser CSRF context.
+        'auth/google',
     ];
 }

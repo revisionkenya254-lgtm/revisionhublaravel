@@ -16,17 +16,7 @@
                         <h2 class="title">{{ __('Create Your Account') }}</h2>
                         <p>{{ __('Create your account, then confirm it with a 5-digit OTP sent to your email.') }}
                         </p>
-                        @if(data_get($authSettings, 'google_login_status') == 'active')
-                        <div class="account__social">
-                            <a href="{{ route('auth.social', 'google') }}" class="account__social-btn">
-                                <img src="{{ asset('frontend/img/icons/google.svg') }}" alt="img">
-                                {{ __('Continue with google') }}
-                            </a>
-                        </div>
-                        <div class="account__divider">
-                            <span>{{ __('or') }}</span>
-                        </div>
-                        @endif
+                        @include('auth.partials.google-identity-button', ['context' => 'signup', 'buttonText' => 'signup_with'])
                         <form method="POST" action="{{ route('register') }}" class="account__form">
                             @csrf
 
