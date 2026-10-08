@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Modules\Course\app\Models\CourseCategory;
 use Tests\TestCase;
 
@@ -42,6 +43,56 @@ class ProductCatalogApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.slug', $note->slug)
             ->assertJsonPath('data.0.type', Product::TYPE_NOTE);
+    }
+
+    public function test_product_results_are_bounded_and_include_pagination_metadata(): void
+    {
+        $instructor = User::factory()->create();
+
+        foreach (range(1, 3) as $number) {
+            $this->createProduct($instructor, Product::TYPE_NOTE, "bounded-note-{$number}");
+        }
+
+        $response = $this->getJson('/api/catalog/products/note?limit=2');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('pagination.per_page', 2)
+            ->assertJsonPath('pagination.total', 3)
+            ->assertJsonPath('pagination.last_page', 2);
+    }
+
+    public function test_metadata_only_products_are_filtered_in_sql_by_catalog_path(): void
+    {
+        $instructor = User::factory()->create();
+        $product = $this->createProduct($instructor, Product::TYPE_QUIZ, 'metadata-only-quiz');
+        $product->update(['metadata' => [
+            'catalog_identity' => [
+                'main_category' => 'senior-school',
+                'category' => 'form-4',
+                'subject' => 'mathematics',
+            ],
+        ]]);
+
+        $this->getJson('/api/catalog/products/quiz?category_path=senior-school/form-4/mathematics')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.slug', 'metadata-only-quiz');
+    }
+
+    public function test_products_without_categories_do_not_trigger_relationship_queries_per_item(): void
+    {
+        $instructor = User::factory()->create();
+        foreach (range(1, 5) as $number) {
+            $this->createProduct($instructor, Product::TYPE_NOTE, "query-count-note-{$number}");
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->getJson('/api/catalog/products/note?limit=5')->assertOk();
+
+        $this->assertLessThanOrEqual(3, count(DB::getQueryLog()));
     }
 
     public function test_products_can_be_filtered_by_a_grandchild_category(): void

@@ -26,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Modules\Course\app\Models\CourseLanguage;
 use Modules\Course\app\Models\CourseCategory;
 use Modules\Course\app\Models\CourseLevel;
@@ -160,6 +161,7 @@ class FrontendController extends Controller {
 
     public function products(Request $request, ?string $type = null): JsonResponse
     {
+        $limit = min(max((int) $request->query('limit', 20), 1), 50);
         $categorySlugs = collect(explode(',', (string) $request->query('category')))
             ->map(fn (string $slug) => trim($slug))
             ->filter()
@@ -178,10 +180,10 @@ class FrontendController extends Controller {
             ]);
         }
 
-        $products = Product::active()
+        $query = Product::active()
             ->select([
                 'id', 'instructor_id', 'category_id', 'type', 'title', 'slug', 'thumbnail',
-                'description', 'price', 'discount', 'metadata', 'created_at',
+                'price', 'discount', 'metadata', 'created_at',
             ])
             ->when(auth('sanctum')->check(), fn ($query) => $query->withExists([
                 'orderItems as is_purchased' => fn ($orderItems) => $orderItems
@@ -196,24 +198,39 @@ class FrontendController extends Controller {
                 'category:id,slug,parent_id',
                 'category.translation:course_category_id,lang_code,name',
                 'category.parentCategory:id,slug,parent_id',
-                'category.parentCategory.parentCategory:id,slug',
+                'category.parentCategory.translation:course_category_id,lang_code,name',
+                'category.parentCategory.parentCategory:id,slug,parent_id',
+                'category.parentCategory.parentCategory.translation:course_category_id,lang_code,name',
             ])
             ->when($type !== null, fn ($query) => $query->where('type', $type))
             ->when($categoryPath->isEmpty() && $categorySlugs->isNotEmpty(), fn ($query) => $query->whereHas(
                 'category',
                 fn ($categoryQuery) => $categoryQuery->where('status', 1)->whereIn('slug', $categorySlugs)
-            ))
-            ->latest()
-            ->get()
-            ->when(
-                $categoryPath->isNotEmpty() || $request->filled('main_category') || $request->filled('subject'),
-                fn ($items) => $items->filter(fn (Product $product) => $this->productIdentityService->matchesRequest($product, $selectionRequest))->values()
-            );
+            ));
+
+        $catalogPath = $categoryPath->isNotEmpty()
+            ? $categoryPath
+            : collect([
+                $selectionRequest->input('main_category'),
+                $selectionRequest->input('category'),
+                $selectionRequest->input('subject'),
+            ]);
+
+        if (filled($catalogPath->get(0))) {
+            $this->applyProductCatalogPath($query, $catalogPath->all());
+        }
+
+        $products = $query
+            ->latest('created_at')
+            ->latest('id')
+            ->paginate($limit)
+            ->withQueryString();
 
         if ($type !== null) {
             return response()->json([
                 'status' => 'success',
-                'data' => ProductListResource::collection($products),
+                'data' => ProductListResource::collection($products->getCollection()),
+                'pagination' => $this->paginationData($products),
             ]);
         }
 
@@ -232,7 +249,76 @@ class FrontendController extends Controller {
             );
         }
 
-        return response()->json(['status' => 'success', 'data' => $data]);
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+            'pagination' => $this->paginationData($products),
+        ]);
+    }
+
+    /**
+     * Apply a normalized root/category/subject path in SQL so the API never
+     * loads the complete product catalog merely to filter it in PHP.
+     */
+    private function applyProductCatalogPath($query, array $segments): void
+    {
+        $segments = collect($segments)
+            ->map(fn ($segment) => filled($segment) ? Str::slug((string) $segment) : null)
+            ->take(3)
+            ->values();
+
+        $root = $segments->get(0);
+        $category = $segments->get(1);
+        $subject = $segments->get(2);
+
+        $query->where(function ($catalogQuery) use ($root, $category, $subject) {
+            $catalogQuery->where(function ($relationQuery) use ($root, $category, $subject) {
+                if ($subject !== null) {
+                    $relationQuery->whereHas('category', fn ($query) => $query
+                        ->where('slug', $subject)
+                        ->whereHas('parentCategory', fn ($query) => $query
+                            ->where('slug', $category)
+                            ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root))));
+
+                    return;
+                }
+
+                if ($category !== null) {
+                    $relationQuery->where(function ($query) use ($root, $category) {
+                        $query->whereHas('category', fn ($query) => $query
+                            ->where('slug', $category)
+                            ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root)))
+                            ->orWhereHas('category.parentCategory', fn ($query) => $query
+                                ->where('slug', $category)
+                                ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root)));
+                    });
+
+                    return;
+                }
+
+                $relationQuery->where(function ($query) use ($root) {
+                    $query->whereHas('category', fn ($query) => $query->where('slug', $root))
+                        ->orWhereHas('category.parentCategory', fn ($query) => $query->where('slug', $root))
+                        ->orWhereHas('category.parentCategory.parentCategory', fn ($query) => $query->where('slug', $root));
+                });
+            })->orWhere(function ($metadataQuery) use ($root, $category, $subject) {
+                $metadataQuery->where('metadata->catalog_identity->main_category', $root)
+                    ->when($category !== null, fn ($query) => $query->where('metadata->catalog_identity->category', $category))
+                    ->when($subject !== null, fn ($query) => $query->where('metadata->catalog_identity->subject', $subject));
+            });
+        });
+    }
+
+    private function paginationData(LengthAwarePaginator $products): array
+    {
+        return [
+            'current_page' => $products->currentPage(),
+            'per_page' => $products->perPage(),
+            'total' => $products->total(),
+            'last_page' => $products->lastPage(),
+            'next' => $products->nextPageUrl(),
+            'prev' => $products->previousPageUrl(),
+        ];
     }
 
     public function product(Request $request, string $type, string $slug): JsonResponse

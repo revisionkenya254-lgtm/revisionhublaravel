@@ -29,7 +29,10 @@ class ProductListResource extends JsonResource
             'type_label' => (string) $this->type_label,
             'title' => (string) $this->title,
             'thumbnail' => $this->thumbnail,
-            'description' => $this->description,
+            'description' => $this->when(
+                array_key_exists('description', $this->resource->getAttributes()),
+                fn () => $this->description
+            ),
             'price' => (float) $this->price,
             'discount' => $this->discount !== null ? (float) $this->discount : null,
             'effective_price' => (float) $this->effective_price,
@@ -53,11 +56,41 @@ class ProductListResource extends JsonResource
                 'subject' => $identity['subject'] ?? null,
                 'subject_label' => $identity['subject_label'] ?? null,
             ],
+            'category' => $this->categoryPath(),
             'access_label' => (string) $this->access_label,
             'instructor' => $this->whenLoaded('instructor', fn () => [
                 'name' => $this->instructor->name,
                 'image' => $this->instructor->image,
             ]),
+        ];
+    }
+
+    private function categoryPath(): ?array
+    {
+        $category = $this->relationLoaded('category') ? $this->getRelation('category') : null;
+
+        if (! $category || ! $category->exists) {
+            return null;
+        }
+
+        $parent = $category->relationLoaded('parentCategory')
+            ? $category->getRelation('parentCategory')
+            : null;
+        $grandparent = $parent && $parent->relationLoaded('parentCategory')
+            ? $parent->getRelation('parentCategory')
+            : null;
+
+        return [
+            'slug' => (string) $category->slug,
+            'name' => (string) $category->name,
+            'parent' => $parent && $parent->exists ? [
+                'slug' => (string) $parent->slug,
+                'name' => (string) $parent->name,
+                'grandparent' => $grandparent && $grandparent->exists ? [
+                    'slug' => (string) $grandparent->slug,
+                    'name' => (string) $grandparent->name,
+                ] : null,
+            ] : null,
         ];
     }
 }

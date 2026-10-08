@@ -128,6 +128,10 @@ class ProductIdentityService
 
     private function categoryIdentityForProduct(Product $product): array
     {
+        if ($product->category_id === null) {
+            return [];
+        }
+
         $category = $product->relationLoaded('category') ? $product->getRelation('category') : null;
 
         if (! $category || ! $category->exists) {

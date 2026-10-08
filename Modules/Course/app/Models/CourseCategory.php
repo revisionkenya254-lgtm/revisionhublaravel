@@ -31,9 +31,15 @@ class CourseCategory extends Model {
             return $this->translation_name;
         }
 
-        return $this->translation?->name
-            ?? $this->translations->first()?->name
-            ?? $this->slug;
+        if ($this->relationLoaded('translation')) {
+            return $this->getRelation('translation')?->name ?? $this->slug;
+        }
+
+        if ($this->relationLoaded('translations')) {
+            return $this->getRelation('translations')->first()?->name ?? $this->slug;
+        }
+
+        return $this->translation()->first()?->name ?? $this->slug;
     }
 
     public function getTranslation($code): ?CourseCategoryTranslation {
