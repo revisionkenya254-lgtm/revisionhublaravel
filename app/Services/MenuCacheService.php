@@ -2,14 +2,17 @@
 
 namespace App\Services;
 
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Product;
 use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v13';
+    const CACHE_VERSION = 'v14';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -38,6 +41,8 @@ class MenuCacheService
         'undergraduate' => 'Undergraduate',
         'professional-courses' => 'Professional Courses',
     ];
+
+    protected array $metadataSchoolChildrenByLanguage = [];
 
     /**
      * Canonical category menu used for navigation.
@@ -373,7 +378,7 @@ class MenuCacheService
 
             return [
                 'slug' => (string) $category->slug,
-                'name' => (string) ($category->translations->first()?->name ?? $category->translation?->name ?? $category->name ?? $category->slug),
+                'name' => (string) ($category->translations->first()?->name ?? $category->slug),
                 'icon' => (string) ($category->icon ?? ''),
                 'children' => $children,
             ];
@@ -382,9 +387,9 @@ class MenuCacheService
         return collect($byParent['root'] ?? [])
             ->filter(fn ($category) => in_array((string) $category->slug, $this->educationRootSlugs, true))
             ->sortBy(fn ($category) => $rootOrder[(string) $category->slug] ?? 999)
-            ->map(function ($category) use ($buildNode) {
+            ->map(function ($category) use ($buildNode, $languageCode) {
                 $node = $buildNode($category);
-                $metadataChildren = $this->metadataSchoolChildrenForRoot((string) $category->slug);
+                $metadataChildren = $this->metadataSchoolChildrenForRoot((string) $category->slug, $languageCode);
 
                 if (!empty($metadataChildren)) {
                     $node['children'] = $metadataChildren;
@@ -527,22 +532,32 @@ class MenuCacheService
         return $deduped;
     }
 
-    protected function metadataSchoolChildrenForRoot(string $rootSlug): array
+    protected function metadataSchoolChildrenForRoot(string $rootSlug, string $languageCode): array
     {
-        $educationLevel = $this->metadataEducationLevelByRootSlug[$rootSlug] ?? null;
-        if ($educationLevel === null) {
+        if (! isset($this->metadataEducationLevelByRootSlug[$rootSlug])) {
             return [];
         }
 
-        $products = Product::query()
+        if (isset($this->metadataSchoolChildrenByLanguage[$languageCode])) {
+            return $this->metadataSchoolChildrenByLanguage[$languageCode][$rootSlug] ?? [];
+        }
+
+        $rootsByEducationLevel = array_flip($this->metadataEducationLevelByRootSlug);
+        $schoolsByRoot = array_fill_keys(array_keys($this->metadataEducationLevelByRootSlug), []);
+        $products = Product::active()
+            ->where(function ($query) {
+                $query->whereIn('metadata->education_level', array_values($this->metadataEducationLevelByRootSlug))
+                    ->orWhereHas(
+                        'category.parentCategory.parentCategory',
+                        fn ($categoryQuery) => $categoryQuery->whereIn('slug', array_keys($this->metadataEducationLevelByRootSlug))
+                    );
+            })
             ->with([
-                'category.parentCategory.parentCategory.translation',
-                'category.parentCategory.translation',
-                'category.translation',
+                'category.translations' => fn ($query) => $query->where('lang_code', $languageCode),
+                'category.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
+                'category.parentCategory.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
             ])
             ->get(['id', 'category_id', 'metadata']);
-
-        $schools = [];
 
         foreach ($products as $product) {
             $metadata = $product->metadata ?? [];
@@ -550,26 +565,30 @@ class MenuCacheService
             $categoryRootSlug = (string) data_get($categoryPath, '0.slug', '');
             $categorySchoolNode = $categoryPath[1] ?? null;
             $categoryCourseNode = $categoryPath[2] ?? null;
+            $metadataEducationLevel = (string) data_get($metadata, 'education_level', '');
+            $rootSlug = isset($schoolsByRoot[$categoryRootSlug])
+                ? $categoryRootSlug
+                : ($rootsByEducationLevel[$metadataEducationLevel] ?? null);
 
-            if ((string) data_get($metadata, 'education_level') !== $educationLevel && $categoryRootSlug !== $rootSlug) {
+            if ($rootSlug === null) {
                 continue;
             }
 
-            $schoolName = trim((string) data_get($metadata, 'class_grade'));
+            $schoolName = $this->categoryNodeName($categorySchoolNode);
             if ($schoolName === '') {
-                $schoolName = (string) data_get($categorySchoolNode, 'name', data_get($categorySchoolNode, 'slug', ''));
+                $schoolName = trim((string) data_get($metadata, 'class_grade'));
             }
             if ($schoolName === '') {
                 continue;
             }
 
             $schoolSlug = Str::slug(preg_replace('/^school of /i', '', $schoolName) ?: $schoolName);
-            $courseName = trim((string) (data_get($metadata, 'course') ?: data_get($metadata, 'subject')));
+            $courseName = $this->categoryNodeName($categoryCourseNode);
             if ($courseName === '') {
-                $courseName = (string) data_get($categoryCourseNode, 'name', data_get($categoryCourseNode, 'slug', ''));
+                $courseName = trim((string) (data_get($metadata, 'course') ?: data_get($metadata, 'subject')));
             }
 
-            $schools[$schoolSlug] ??= [
+            $schoolsByRoot[$rootSlug][$schoolSlug] ??= [
                 'slug' => $schoolSlug,
                 'name' => $schoolName,
                 'children' => [],
@@ -578,26 +597,39 @@ class MenuCacheService
 
             if ($courseName !== '') {
                 $courseSlug = Str::slug($courseName);
-                if (!in_array($courseSlug, $schools[$schoolSlug]['_course_slugs'], true)) {
-                    $schools[$schoolSlug]['children'][] = [
+                if (!in_array($courseSlug, $schoolsByRoot[$rootSlug][$schoolSlug]['_course_slugs'], true)) {
+                    $schoolsByRoot[$rootSlug][$schoolSlug]['children'][] = [
                         'slug' => $courseSlug,
                         'name' => $courseName,
                         'children' => [],
                     ];
-                    $schools[$schoolSlug]['_course_slugs'][] = $courseSlug;
+                    $schoolsByRoot[$rootSlug][$schoolSlug]['_course_slugs'][] = $courseSlug;
                 }
             }
         }
 
-        return collect($schools)
-            ->map(function (array $school) {
-                unset($school['_course_slugs']);
+        $this->metadataSchoolChildrenByLanguage[$languageCode] = collect($schoolsByRoot)
+            ->map(fn (array $schools) => collect($schools)
+                ->map(function (array $school) {
+                    unset($school['_course_slugs']);
 
-                return $school;
-            })
-            ->sortBy('name')
-            ->values()
+                    return $school;
+                })
+                ->sortBy('name')
+                ->values()
+                ->all())
             ->all();
+
+        return $this->metadataSchoolChildrenByLanguage[$languageCode][$rootSlug] ?? [];
+    }
+
+    protected function categoryNodeName(?array $category): string
+    {
+        return trim((string) data_get(
+            $category,
+            'translations.0.name',
+            data_get($category, 'name', data_get($category, 'slug', ''))
+        ));
     }
 
     /**
@@ -621,9 +653,13 @@ class MenuCacheService
         $node = $category;
 
         while ($node && $node->exists) {
+            $translatedName = $node->relationLoaded('translations')
+                ? $node->translations->first()?->name
+                : null;
+
             array_unshift($path, $node->toArray() + [
                 'slug' => (string) $node->slug,
-                'name' => (string) ($node->name ?? $node->slug),
+                'name' => (string) ($translatedName ?? $node->slug),
             ]);
             $node = $node->parentCategory;
         }
@@ -678,7 +714,7 @@ class MenuCacheService
     {
         $cacheKey = "menu_category_tree_".self::CACHE_VERSION."_{$languageCode}";
 
-        return Cache::rememberForever($cacheKey, function () use ($languageCode) {
+        return $this->rememberForeverWithLock($cacheKey, function () use ($languageCode) {
             $databaseTree = $this->categoryMenuFromDatabase($languageCode);
             $sourceTree = !empty($databaseTree)
                 ? $this->mergeCategoryTrees($this->categoryMenuBlueprint(), $databaseTree)
@@ -691,6 +727,35 @@ class MenuCacheService
                 ->values()
                 ->all();
         });
+    }
+
+    /**
+     * Prevent concurrent cache misses from rebuilding the same category tree.
+     */
+    protected function rememberForeverWithLock(string $cacheKey, Closure $callback): mixed
+    {
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        try {
+            return Cache::lock("{$cacheKey}:build", 30)->block(10, function () use ($cacheKey, $callback) {
+                if (Cache::has($cacheKey)) {
+                    return Cache::get($cacheKey);
+                }
+
+                $value = $callback();
+                Cache::forever($cacheKey, $value);
+
+                return $value;
+            });
+        } catch (LockTimeoutException) {
+            if (Cache::has($cacheKey)) {
+                return Cache::get($cacheKey);
+            }
+
+            return Cache::rememberForever($cacheKey, $callback);
+        }
     }
 
     /**
@@ -752,48 +817,94 @@ class MenuCacheService
     }
 
     /**
-     * @return array<string, true>
+     * Build the content-bearing taxonomy with two compact queries:
+     * one DISTINCT join for real category paths and one metadata fallback for
+     * products that do not have a complete three-level database path.
+     *
+     * @return array<string, array{slug: string, name: string, children: array}>
      */
     protected function activeProductCategoryPaths(string $languageCode): array
     {
+        $paths = [];
+
+        $databasePaths = DB::table('products as products')
+            ->join('course_categories as grandchild', 'grandchild.id', '=', 'products.category_id')
+            ->join('course_categories as child', 'child.id', '=', 'grandchild.parent_id')
+            ->join('course_categories as root', 'root.id', '=', 'child.parent_id')
+            ->leftJoin('course_category_translations as grandchild_translation', function ($join) use ($languageCode) {
+                $join->on('grandchild_translation.course_category_id', '=', 'grandchild.id')
+                    ->where('grandchild_translation.lang_code', '=', $languageCode);
+            })
+            ->where('products.status', 'active')
+            ->where('products.is_approved', 'approved')
+            ->whereNull('products.deleted_at')
+            ->where('root.status', 1)
+            ->where('child.status', 1)
+            ->where('grandchild.status', 1)
+            ->whereNotNull('root.slug')
+            ->whereNotNull('child.slug')
+            ->whereNotNull('grandchild.slug')
+            ->select([
+                'root.slug as root_slug',
+                'child.slug as child_slug',
+                'grandchild.slug as grandchild_slug',
+                'grandchild_translation.name as grandchild_name',
+            ])
+            ->distinct()
+            ->get();
+
+        foreach ($databasePaths as $path) {
+            $segments = collect([$path->root_slug, $path->child_slug, $path->grandchild_slug])
+                ->map(fn ($slug) => Str::slug((string) $slug));
+
+            if ($segments->contains('')) {
+                continue;
+            }
+
+            $paths[$segments->implode('/')] = [
+                'slug' => $segments->get(2),
+                'name' => (string) ($path->grandchild_name ?: $path->grandchild_slug),
+                'children' => [],
+            ];
+        }
+
+        $metadataProducts = DB::table('products as products')
+            ->leftJoin('course_categories as grandchild', 'grandchild.id', '=', 'products.category_id')
+            ->leftJoin('course_categories as child', 'child.id', '=', 'grandchild.parent_id')
+            ->leftJoin('course_categories as root', 'root.id', '=', 'child.parent_id')
+            ->where('products.status', 'active')
+            ->where('products.is_approved', 'approved')
+            ->whereNull('products.deleted_at')
+            ->whereNull('root.id')
+            ->whereNotNull('products.metadata')
+            ->select(['products.metadata'])
+            ->distinct()
+            ->get();
+
         $identityService = app(ProductIdentityService::class);
 
-        return Product::active()
-            ->with([
-                'category.translations' => fn ($query) => $query->where('lang_code', $languageCode),
-                'category.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
-                'category.parentCategory.parentCategory.translations' => fn ($query) => $query->where('lang_code', $languageCode),
-            ])
-            ->get(['id', 'category_id', 'metadata'])
-            ->reduce(function (array $paths, Product $product) use ($identityService) {
-                $categoryPath = $this->productCategoryPath($product);
+        foreach ($metadataProducts as $metadataProduct) {
+            $metadata = json_decode((string) $metadataProduct->metadata, true);
+            if (! is_array($metadata)) {
+                continue;
+            }
 
-                if (count($categoryPath) >= 3) {
-                    $segments = collect(array_slice($categoryPath, 0, 3))
-                        ->map(fn (array $category) => Str::slug((string) ($category['slug'] ?? '')));
-                    $grandchild = $categoryPath[2];
-                    $grandchildName = (string) data_get(
-                        $grandchild,
-                        'translations.0.name',
-                        data_get($grandchild, 'name', $segments->get(2))
-                    );
-                } else {
-                    $identity = $identityService->identityForProduct($product);
-                    $segments = collect(['main_category', 'category', 'subject'])
-                        ->map(fn (string $key) => Str::slug((string) ($identity[$key] ?? '')));
-                    $grandchildName = (string) ($identity['subject_label'] ?? $segments->get(2, ''));
-                }
+            $identity = $identityService->buildIdentity($metadata);
+            $segments = collect(['main_category', 'category', 'subject'])
+                ->map(fn (string $key) => Str::slug((string) ($identity[$key] ?? '')));
 
-                if ($segments->every(fn (string $segment) => $segment !== '')) {
-                    $paths[$segments->implode('/')] = [
-                        'slug' => $segments->get(2),
-                        'name' => $grandchildName,
-                        'children' => [],
-                    ];
-                }
+            if ($segments->contains('')) {
+                continue;
+            }
 
-                return $paths;
-            }, []);
+            $paths[$segments->implode('/')] = [
+                'slug' => $segments->get(2),
+                'name' => (string) ($identity['subject_label'] ?? $segments->get(2)),
+                'children' => [],
+            ];
+        }
+
+        return $paths;
     }
 
     /**
@@ -819,15 +930,10 @@ class MenuCacheService
      */
     public function getSubCategoriesForMenu($parentSlug, $languageCode = 'en')
     {
-        $catalogVersion = CatalogCacheClear::version();
-        $cacheKey = "menu_subcategories_".self::CACHE_VERSION."_{$catalogVersion}_{$languageCode}_{$parentSlug}";
+        $tree = $this->getCategoryTree($languageCode);
+        $node = $this->findCategoryNode($tree, (string) $parentSlug);
 
-        return Cache::rememberForever($cacheKey, function () use ($parentSlug, $languageCode) {
-            $tree = $this->getCategoryTree($languageCode);
-            $node = $this->findCategoryNode($tree, (string) $parentSlug);
-
-            return $node['children'] ?? [];
-        });
+        return $node['children'] ?? [];
     }
 
     /**
@@ -900,7 +1006,20 @@ class MenuCacheService
      */
     public function clearMenuCache()
     {
-        foreach (['en', 'sw', config('app.locale'), function_exists('getSessionLanguage') ? getSessionLanguage() : null] as $language) {
+        $this->metadataSchoolChildrenByLanguage = [];
+
+        $languages = ['en', 'sw', config('app.locale'), function_exists('getSessionLanguage') ? getSessionLanguage() : null];
+
+        try {
+            $languages = array_merge(
+                $languages,
+                \Modules\Language\app\Models\Language::query()->pluck('code')->all()
+            );
+        } catch (\Throwable) {
+            // Language tables may not exist yet while migrations are running.
+        }
+
+        foreach (array_unique(array_filter($languages)) as $language) {
             if (blank($language)) {
                 continue;
             }

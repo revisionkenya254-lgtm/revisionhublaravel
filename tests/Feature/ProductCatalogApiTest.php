@@ -75,6 +75,7 @@ class ProductCatalogApiTest extends TestCase
     {
         $instructor = User::factory()->create();
         $root = CourseCategory::create(['slug' => 'lower-primary']);
+        CourseCategory::create(['slug' => 'tvet']);
         $gradeOne = CourseCategory::create(['slug' => 'grade-1', 'parent_id' => $root->id]);
         $gradeTwo = CourseCategory::create(['slug' => 'grade-2', 'parent_id' => $root->id]);
         $gradeOneMathematics = CourseCategory::create(['slug' => 'mathematics', 'parent_id' => $gradeOne->id]);
@@ -87,6 +88,12 @@ class ProductCatalogApiTest extends TestCase
         $this->createProduct($instructor, Product::TYPE_NOTE, 'active-grade-one-numeracy', 'active', $gradeOneNumeracy->id);
         $this->createProduct($instructor, Product::TYPE_NOTE, 'inactive-grade-one-english', 'inactive', $gradeOneEnglish->id);
         $this->createProduct($instructor, Product::TYPE_NOTE, 'inactive-grade-two-mathematics', 'inactive', $gradeTwoMathematics->id);
+        $metadataOnly = $this->createProduct($instructor, Product::TYPE_QUIZ, 'metadata-only-grade-two-science');
+        $metadataOnly->update(['metadata' => [
+            'education_level' => 'Lower Primary',
+            'class_grade' => 'Grade 2',
+            'subject' => 'Science & Technology',
+        ]]);
 
         $response = $this->getJson('/api/catalog/categories/lower-primary/subcategories');
 
@@ -94,7 +101,7 @@ class ProductCatalogApiTest extends TestCase
         $grades = collect($response->json('data'))->keyBy('slug');
 
         $this->assertSame(['mathematics', 'numeracy'], collect($grades['grade-1']['children'])->pluck('slug')->all());
-        $this->assertSame([], collect($grades['grade-2']['children'])->pluck('slug')->all());
+        $this->assertSame(['science-technology'], collect($grades['grade-2']['children'])->pluck('slug')->all());
 
         $this->createProduct($instructor, Product::TYPE_QUIZ, 'active-grade-one-english', 'active', $gradeOneEnglish->id);
 
@@ -112,7 +119,7 @@ class ProductCatalogApiTest extends TestCase
         $menuGrades = collect($lowerPrimary['children'])->keyBy('slug');
 
         $this->assertSame(['mathematics', 'english', 'numeracy'], collect($menuGrades['grade-1']['children'])->pluck('slug')->all());
-        $this->assertSame([], collect($menuGrades['grade-2']['children'])->pluck('slug')->all());
+        $this->assertSame(['science-technology'], collect($menuGrades['grade-2']['children'])->pluck('slug')->all());
     }
 
     public function test_an_active_approved_product_can_be_retrieved_by_type_and_slug(): void

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class CatalogCacheClear
 {
@@ -10,7 +11,7 @@ class CatalogCacheClear
 
     public static function clear(): void
     {
-        Cache::forever(self::VERSION_KEY, (string) now()->format('YmdHisv'));
+        Cache::forever(self::VERSION_KEY, (string) Str::uuid());
     }
 
     public static function version(): string
