@@ -162,6 +162,9 @@ class FrontendController extends Controller {
     public function products(Request $request, ?string $type = null): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', 20), 1), 50);
+        $selectedYear = $type === Product::TYPE_PAST_PAPER
+            ? Product::normalizePaperYearFilter($request->query('year'))
+            : null;
         $categorySlugs = collect(explode(',', (string) $request->query('category')))
             ->map(fn (string $slug) => trim($slug))
             ->filter()
@@ -203,6 +206,7 @@ class FrontendController extends Controller {
                 'category.parentCategory.parentCategory.translation:course_category_id,lang_code,name',
             ])
             ->when($type !== null, fn ($query) => $query->where('type', $type))
+            ->when(filled($selectedYear), fn ($query) => $query->forPaperYear($selectedYear))
             ->when($categoryPath->isEmpty() && $categorySlugs->isNotEmpty(), fn ($query) => $query->whereHas(
                 'category',
                 fn ($categoryQuery) => $categoryQuery->where('status', 1)->whereIn('slug', $categorySlugs)

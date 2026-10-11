@@ -17,6 +17,7 @@ class LibraryItemResource extends JsonResource
             'type' => (string) $product->type,
             'type_label' => (string) $product->type_label,
             'title' => (string) $product->title,
+            'year' => $product->paper_year,
             'thumbnail' => $product->thumbnail,
             'description' => $product->description,
             'access_source' => $this->resource->access_source,

@@ -23,6 +23,7 @@ class Product extends Model
     public const TYPE_PREDICTION = 'prediction';
     public const TYPE_NOTE = 'note';
     public const TYPE_QUIZ = 'quiz';
+    public const YEAR_ALL = 'all';
     public const YEAR_MISSING = 'missing';
 
     protected $fillable = [
@@ -187,6 +188,10 @@ class Product extends Model
     public static function normalizePaperYearFilter(mixed $year): ?string
     {
         $year = trim((string) $year);
+
+        if ($year === '' || $year === self::YEAR_ALL) {
+            return null;
+        }
 
         return $year === self::YEAR_MISSING
             ? self::YEAR_MISSING

@@ -19,8 +19,12 @@ class LibraryController extends Controller
     {
         $validated = $request->validate([
             'type' => ['nullable', 'in:course,note,past_paper,prediction,quiz'],
+            'year' => ['nullable', 'regex:/^(?:\d{4}|all|missing)$/'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+        $selectedYear = ($validated['type'] ?? null) === Product::TYPE_PAST_PAPER
+            ? Product::normalizePaperYearFilter($validated['year'] ?? null)
+            : null;
 
         $user = $request->user();
         $subscriptionActive = hasActiveSubscription($user);
@@ -51,6 +55,7 @@ class LibraryController extends Controller
         $items = Product::approved()
             ->with(['category.translation'])
             ->when($validated['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
+            ->when(filled($selectedYear), fn ($query) => $query->forPaperYear($selectedYear))
             ->get()
             ->filter(fn (Product $product) => $subscriptionActive
                 || (float) $product->effective_price === 0.0

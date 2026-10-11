@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 use Modules\Course\app\Models\CourseCategory;
 use Tests\TestCase;
 
@@ -43,6 +44,59 @@ class ProductCatalogApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.slug', $note->slug)
             ->assertJsonPath('data.0.type', Product::TYPE_NOTE);
+    }
+
+    public function test_past_paper_products_can_be_filtered_by_year(): void
+    {
+        $instructor = User::factory()->create();
+        $paper2026 = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'paper-2026');
+        $paper2026->update(['metadata' => ['year' => '2026']]);
+        $paper2025 = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'paper-2025');
+        $paper2025->update(['metadata' => ['year' => '2025']]);
+
+        $response = $this->getJson('/api/catalog/products/past_paper?year=2026');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $paper2026->id)
+            ->assertJsonPath('data.0.year', '2026');
+    }
+
+    public function test_authenticated_library_can_filter_past_papers_by_year(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'status' => 'active']);
+        $instructor = User::factory()->create();
+        $paper2026 = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'library-paper-2026');
+        $paper2026->update(['metadata' => ['year' => '2026']]);
+        $paper2025 = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'library-paper-2025');
+        $paper2025->update(['metadata' => ['year' => '2025']]);
+        Sanctum::actingAs($student);
+
+        $response = $this->getJson('/api/library?type=past_paper&year=2026');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $paper2026->id)
+            ->assertJsonPath('data.0.year', '2026');
+    }
+
+    public function test_all_year_value_returns_every_past_paper_for_legacy_api_clients(): void
+    {
+        $student = User::factory()->create(['role' => 'student', 'status' => 'active']);
+        $instructor = User::factory()->create();
+        $paper2026 = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'all-years-paper-2026');
+        $paper2026->update(['metadata' => ['year' => '2026']]);
+        $legacyPaper = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'all-years-legacy-paper');
+
+        $this->getJson('/api/catalog/products/past_paper?year=all')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/library?type=past_paper&year=all')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_product_results_are_bounded_and_include_pagination_metadata(): void

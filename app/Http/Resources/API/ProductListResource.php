@@ -28,6 +28,7 @@ class ProductListResource extends JsonResource
             'type' => (string) $this->type,
             'type_label' => (string) $this->type_label,
             'title' => (string) $this->title,
+            'year' => $this->paper_year,
             'thumbnail' => $this->thumbnail,
             'description' => $this->when(
                 array_key_exists('description', $this->resource->getAttributes()),
