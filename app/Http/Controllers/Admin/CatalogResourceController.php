@@ -56,6 +56,17 @@ class CatalogResourceController extends Controller
     public function index(Request $request, string $type): View
     {
         $meta = $this->typeMeta($type);
+        $selectedYear = $type === Product::TYPE_PAST_PAPER
+            ? Product::normalizePaperYearFilter($request->input('year'))
+            : null;
+        $yearOptions = $type === Product::TYPE_PAST_PAPER
+            ? Product::paperYearOptions(
+                Product::query()
+                    ->where('type', Product::TYPE_PAST_PAPER)
+                    ->get(['metadata']),
+                $this->metadataCatalog->availableYears(20)
+            )
+            : [];
 
         $query = Product::query()->where('type', $type)->with([
             'category.translation',
@@ -66,6 +77,9 @@ class CatalogResourceController extends Controller
         $query->when($request->date, fn($q) => $q->whereDate('created_at', $request->date));
         $query->when($request->approve_status, fn($q) => $q->where('is_approved', $request->approve_status));
         $query->when($request->status, fn($q) => $q->where('status', $request->status));
+        if ($type === Product::TYPE_PAST_PAPER && filled($selectedYear)) {
+            $query->forPaperYear($selectedYear);
+        }
 
         $orderBy = $request->order_by == 1 ? 'asc' : 'desc';
         $resources = $query->orderBy('id', $orderBy)
@@ -75,7 +89,15 @@ class CatalogResourceController extends Controller
         $categories = CourseCategoryHelper::getTree();
         $metadataOptions = $this->metadataCatalog->paperSelectionOptions();
 
-        return view('admin.catalog-resources.index', compact('resources', 'categories', 'type', 'meta', 'metadataOptions'));
+        return view('admin.catalog-resources.index', compact(
+            'resources',
+            'categories',
+            'type',
+            'meta',
+            'metadataOptions',
+            'selectedYear',
+            'yearOptions'
+        ));
     }
 
     public function create(string $type): View
@@ -298,7 +320,9 @@ class CatalogResourceController extends Controller
             'subject' => ['nullable', 'string', 'max:255'],
             'course' => ['nullable', 'string', 'max:255'],
             'paper' => ['nullable', 'string', 'max:255'],
-            'year' => ['nullable', 'string', 'max:20'],
+            'year' => $type === Product::TYPE_PAST_PAPER
+                ? ['nullable', 'regex:/^\d{4}$/']
+                : ['nullable', 'string', 'max:20'],
             'language' => ['nullable', 'string', 'max:255'],
             'access_type' => ['nullable', Rule::in(['paid', 'free'])],
             'preview_pages' => ['nullable', 'string', 'max:255'],
@@ -330,7 +354,9 @@ class CatalogResourceController extends Controller
                 ? $request->input('subject')
                 : ($request->input('course') ?: ($existingMetadata['subject'] ?? $defaults['subject'])),
             'paper' => $valueOrExisting('paper', $defaults['paper']),
-            'year' => $valueOrExisting('year', $defaults['year']),
+            'year' => $type === Product::TYPE_PAST_PAPER
+                ? ($valueOrExisting('year', $defaults['year']) ?: $defaults['year'])
+                : $valueOrExisting('year', $defaults['year']),
             'language' => $valueOrExisting('language', $defaults['language']),
             'tags' => collect(explode(',', (string) $request->input('tags', isset($existingMetadata['tags']) ? implode(', ', (array) $existingMetadata['tags']) : '')))
                 ->map(fn ($tag) => trim($tag))

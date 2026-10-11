@@ -11,6 +11,7 @@ use App\Models\CourseReview;
 use App\Models\Product;
 use App\Models\ProductNoteProgress;
 use App\Models\ProductQuizAttempt;
+use App\Services\ProductMetadataCatalogService;
 use App\Models\QuizResult;
 use Dompdf\Dompdf;
 use Illuminate\Support\Facades\Cache;
@@ -134,23 +135,51 @@ class StudentDashboardController extends Controller {
         return view('frontend.student-dashboard.enrolled-courses.index', compact('enrolls'));
     }
 
-    function library() {
+    function library(ProductMetadataCatalogService $metadataCatalog) {
         $items = $this->accessibleProducts();
         $requestedType = request()->string('type')->toString();
-
-        if (filled($requestedType) && in_array($requestedType, [
+        $allowedTypes = [
             Product::TYPE_NOTE,
             Product::TYPE_PAST_PAPER,
             Product::TYPE_PREDICTION,
             Product::TYPE_QUIZ,
             Product::TYPE_COURSE,
-        ], true)) {
-            $items = $items->filter(fn (object $item) => $item->product?->type === $requestedType)->values();
+        ];
+        $selectedType = in_array($requestedType, $allowedTypes, true) ? $requestedType : '';
+        $selectedYear = $selectedType === Product::TYPE_PAST_PAPER
+            ? Product::normalizePaperYearFilter(request()->input('year'))
+            : null;
+        $pastPaperProducts = $items
+            ->filter(fn (object $item) => $item->product?->type === Product::TYPE_PAST_PAPER)
+            ->map(fn (object $item) => $item->product)
+            ->filter();
+        $yearOptions = Product::paperYearOptions(
+            $pastPaperProducts,
+            $metadataCatalog->availableYears(20)
+        );
+
+        if (filled($selectedType)) {
+            $items = $items->filter(fn (object $item) => $item->product?->type === $selectedType)->values();
+        }
+
+        if ($selectedType === Product::TYPE_PAST_PAPER && filled($selectedYear)) {
+            $items = $items->filter(function (object $item) use ($selectedYear) {
+                $year = $item->product?->paper_year;
+
+                return $selectedYear === Product::YEAR_MISSING
+                    ? $year === null
+                    : $year === $selectedYear;
+            })->values();
         }
 
         $items = $this->paginateCollection($items, 12);
 
-        return view('frontend.student-dashboard.library.index', compact('items'));
+        return view('frontend.student-dashboard.library.index', compact(
+            'items',
+            'selectedType',
+            'selectedYear',
+            'yearOptions'
+        ));
     }
 
     function quizAttempts() {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,6 +23,7 @@ class Product extends Model
     public const TYPE_PREDICTION = 'prediction';
     public const TYPE_NOTE = 'note';
     public const TYPE_QUIZ = 'quiz';
+    public const YEAR_MISSING = 'missing';
 
     protected $fillable = [
         'course_id',
@@ -64,6 +66,20 @@ class Product extends Model
     public function scopeNonCourse($query)
     {
         return $query->where('type', '!=', 'course');
+    }
+
+    public function scopeForPaperYear(Builder $query, ?string $year): Builder
+    {
+        if ($year === self::YEAR_MISSING) {
+            return $query->where(function (Builder $query) {
+                $query->whereNull('metadata->year')
+                    ->orWhere('metadata->year', '');
+            });
+        }
+
+        return filled($year)
+            ? $query->where('metadata->year', $year)
+            : $query;
     }
 
     public function course(): BelongsTo
@@ -154,6 +170,39 @@ class Product extends Model
             self::TYPE_QUIZ => __('Start quiz'),
             default => __('Open'),
         };
+    }
+
+    public function getPaperYearAttribute(): ?string
+    {
+        return self::normalizePaperYear($this->metadata['year'] ?? null);
+    }
+
+    public static function normalizePaperYear(mixed $year): ?string
+    {
+        $year = trim((string) $year);
+
+        return preg_match('/^\d{4}$/', $year) === 1 ? $year : null;
+    }
+
+    public static function normalizePaperYearFilter(mixed $year): ?string
+    {
+        $year = trim((string) $year);
+
+        return $year === self::YEAR_MISSING
+            ? self::YEAR_MISSING
+            : self::normalizePaperYear($year);
+    }
+
+    public static function paperYearOptions(iterable $products, array $fallbackYears = []): array
+    {
+        return collect($fallbackYears)
+            ->merge(collect($products)->map(fn (self $product) => $product->paper_year))
+            ->map(fn ($year) => self::normalizePaperYear($year))
+            ->filter()
+            ->unique()
+            ->sortByDesc(fn (string $year) => (int) $year)
+            ->values()
+            ->all();
     }
 
     public function getTopicCountAttribute(): int

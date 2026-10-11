@@ -37,7 +37,6 @@
                 $metadata['class_grade'] ?? null,
                 $metadata['exam_category'] ?? null,
                 $metadata['course'] ?? $metadata['subject'] ?? null,
-                $metadata['year'] ?? null,
             ]);
 
             return implode(' • ', $parts);
@@ -53,6 +52,31 @@
                 {{ $typeMeta ? __('Add ' . $typeMeta['name']) : __('Add Product') }}
             </a>
         </div>
+        @if ($type === \App\Models\Product::TYPE_PAST_PAPER)
+            <form action="{{ route('instructor.products.index') }}" method="GET" class="card border-0 shadow-sm mb-3">
+                <input type="hidden" name="type" value="{{ \App\Models\Product::TYPE_PAST_PAPER }}">
+                <div class="card-body py-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label for="instructor-paper-year" class="form-label">{{ __('Exam year') }}</label>
+                            <select id="instructor-paper-year" name="year" class="form-select">
+                                <option value="">{{ __('All years') }}</option>
+                                @foreach ($yearOptions as $year)
+                                    <option value="{{ $year }}" @selected($selectedYear === (string) $year)>{{ $year }}</option>
+                                @endforeach
+                                <option value="{{ \App\Models\Product::YEAR_MISSING }}" @selected($selectedYear === \App\Models\Product::YEAR_MISSING)>{{ __('Year not set') }}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">{{ __('Filter') }}</button>
+                            @if (filled($selectedYear))
+                                <a href="{{ route('instructor.products.index', ['type' => \App\Models\Product::TYPE_PAST_PAPER]) }}" class="btn btn-outline-secondary">{{ __('Clear') }}</a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </form>
+        @endif
         <div class="row g-3">
             <div class="col-12">
                 <div class="dashboard__review-table dash_instructor_course instructor-product-list__table">
@@ -91,6 +115,9 @@
                                     <div class="instructor-product-row__top">
                                         <div class="instructor-product-row__meta">
                                             <span>{{ $product->type_label }}</span>
+                                            @if ($isPaperType)
+                                                <span>{{ $product->paper_year ? __('Year :year', ['year' => $product->paper_year]) : __('Year not set') }}</span>
+                                            @endif
                                             @if ($product->category && @$product->category->translation->name)
                                                 <span>{{ @$product->category->translation->name }}</span>
                                             @endif

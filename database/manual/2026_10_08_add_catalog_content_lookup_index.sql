@@ -7,7 +7,7 @@ SET @revisionhub_migration := '2026_10_07_000002_add_catalog_content_lookup_inde
 
 SELECT COUNT(*) INTO @revisionhub_index_exists
 FROM information_schema.statistics
-WHERE table_schema = @revisionhub_schema
+WHERE table_schema = @revisionhub_schemamake 
   AND table_name = 'products'
   AND index_name = @revisionhub_index_name;
 

@@ -65,6 +65,9 @@ class InstructorProductController extends Controller
     {
         $instructorId = userAuth()->id;
         $type = $request->input('type');
+        $selectedYear = $type === Product::TYPE_PAST_PAPER
+            ? Product::normalizePaperYearFilter($request->input('year'))
+            : null;
 
         $query = Product::instructorOwned($instructorId)->nonCourse();
 
@@ -73,14 +76,33 @@ class InstructorProductController extends Controller
             $query->where('type', $type);
         }
 
-        $products = $query->orderBy('id', 'desc')->paginate(20);
+        $yearOptions = $type === Product::TYPE_PAST_PAPER
+            ? Product::paperYearOptions(
+                Product::instructorOwned($instructorId)
+                    ->where('type', Product::TYPE_PAST_PAPER)
+                    ->get(['metadata']),
+                $this->metadataCatalog->availableYears(20)
+            )
+            : [];
+
+        if ($type === Product::TYPE_PAST_PAPER && filled($selectedYear)) {
+            $query->forPaperYear($selectedYear);
+        }
+
+        $products = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
 
         // Get type label for page title
         $typeMeta = $type && isset($this->typeDefinitions[$type])
             ? $this->typeDefinitions[$type]
             : null;
 
-        return view('frontend.instructor-dashboard.product.index', compact('products', 'type', 'typeMeta'));
+        return view('frontend.instructor-dashboard.product.index', compact(
+            'products',
+            'type',
+            'typeMeta',
+            'selectedYear',
+            'yearOptions'
+        ));
     }
 
     /**
@@ -734,7 +756,9 @@ class InstructorProductController extends Controller
             'subject' => ['nullable', 'string', 'max:255'],
             'course' => ['nullable', 'string', 'max:255'],
             'paper' => ['nullable', 'string', 'max:255'],
-            'year' => ['nullable', 'string', 'max:20'],
+            'year' => $request->input('type') === Product::TYPE_PAST_PAPER
+                ? ['nullable', 'regex:/^\d{4}$/']
+                : ['nullable', 'string', 'max:20'],
             'language' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'string', 'max:255'],
             'access_type' => ['nullable', 'in:paid,free'],
@@ -1017,7 +1041,9 @@ class InstructorProductController extends Controller
             'class_grade' => $request->input('class_grade', $defaults['class_grade']),
             'exam_category' => $request->input('exam_category', $defaults['exam_category']),
             'paper' => $paper,
-            'year' => $request->input('year', $defaults['year']),
+            'year' => $productType === Product::TYPE_PAST_PAPER
+                ? ($request->input('year') ?: $defaults['year'])
+                : $request->input('year', $defaults['year']),
             'language' => $request->input('language', $defaults['language']),
             'tags' => $tags,
             'access_type' => $request->input('access_type', 'paid'),

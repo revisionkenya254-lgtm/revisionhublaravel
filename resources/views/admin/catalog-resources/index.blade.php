@@ -5,6 +5,9 @@
 @endsection
 
 @section('admin-content')
+    @php
+        $isPastPaperList = $type === \App\Models\Product::TYPE_PAST_PAPER;
+    @endphp
     <div class="main-content">
         <section class="section">
             <div class="section-header">
@@ -74,6 +77,18 @@
                                             </select>
                                         </div>
 
+                                        @if ($isPastPaperList)
+                                            <div class="col-md-3 form-group">
+                                                <select name="year" class="form-control">
+                                                    <option value="">{{ __('All years') }}</option>
+                                                    @foreach ($yearOptions as $year)
+                                                        <option value="{{ $year }}" @selected($selectedYear === (string) $year)>{{ $year }}</option>
+                                                    @endforeach
+                                                    <option value="{{ \App\Models\Product::YEAR_MISSING }}" @selected($selectedYear === \App\Models\Product::YEAR_MISSING)>{{ __('Year not set') }}</option>
+                                                </select>
+                                            </div>
+                                        @endif
+
                                         <div class="col-md-3 form-group">
                                             <select name="order_by" class="form-control">
                                                 <option value="">{{ __('Order By') }}</option>
@@ -114,6 +129,9 @@
                                                 <th>{{ __('SN') }}</th>
                                                 <th>{{ __('Title') }}</th>
                                                 <th>{{ __('Category') }}</th>
+                                                @if ($isPastPaperList)
+                                                    <th>{{ __('Year') }}</th>
+                                                @endif
                                                 <th>{{ __('Price') }}</th>
                                                 <th>{{ __('Created Date') }}</th>
                                                 <th>{{ __('Status') }}</th>
@@ -134,7 +152,7 @@
                                                         $resourceMetadata['class_grade'] ?? null,
                                                         $resourceMetadata['exam_category'] ?? null,
                                                         $resourceMetadata['subject'] ?? null,
-                                                        $resourceMetadata['year'] ?? null,
+                                                        $isPastPaperList ? null : ($resourceMetadata['year'] ?? null),
                                                     ])->filter()->implode(' • ');
                                                 @endphp
                                                 <tr>
@@ -149,6 +167,11 @@
                                                         @endif
                                                     </td>
                                                     <td>{{ $resource->category?->translation?->name ?? '-' }}</td>
+                                                    @if ($isPastPaperList)
+                                                        <td>
+                                                            <span class="badge badge-light">{{ $resource->paper_year ?? __('Year not set') }}</span>
+                                                        </td>
+                                                    @endif
                                                     <td>
                                                         @if ($resource->price == 0)
                                                             {{ __('Free') }}
@@ -188,7 +211,7 @@
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="7" class="text-center text-muted py-4">
+                                                    <td colspan="{{ $isPastPaperList ? 8 : 7 }}" class="text-center text-muted py-4">
                                                         {{ __('No data found!') }}
                                                     </td>
                                                 </tr>
