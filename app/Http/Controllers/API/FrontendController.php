@@ -161,7 +161,7 @@ class FrontendController extends Controller {
 
     public function products(Request $request, ?string $type = null): JsonResponse
     {
-        $limit = min(max((int) $request->query('limit', 20), 1), 50);
+        $limit = min(max((int) $request->query('per_page', $request->query('limit', 10)), 1), 50);
         $selectedYear = $type === Product::TYPE_PAST_PAPER
             ? Product::normalizePaperYearFilter($request->query('year'))
             : null;

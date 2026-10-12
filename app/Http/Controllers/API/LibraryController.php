@@ -89,7 +89,7 @@ class LibraryController extends Controller
             ->sortByDesc(fn (object $item) => $item->last_activity_at?->timestamp ?? 0)
             ->values();
 
-        $perPage = $validated['per_page'] ?? 12;
+        $perPage = $validated['per_page'] ?? 10;
         $page = LengthAwarePaginator::resolveCurrentPage();
         $paginator = new LengthAwarePaginator(
             $items->forPage($page, $perPage)->values(),

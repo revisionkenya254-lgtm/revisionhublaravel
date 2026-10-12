@@ -59,7 +59,8 @@ class ProductCatalogApiTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $paper2026->id)
-            ->assertJsonPath('data.0.year', '2026');
+            ->assertJsonPath('data.0.year', '2026')
+            ->assertJsonPath('pagination.per_page', 10);
     }
 
     public function test_authenticated_library_can_filter_past_papers_by_year(): void
@@ -77,7 +78,8 @@ class ProductCatalogApiTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $paper2026->id)
-            ->assertJsonPath('data.0.year', '2026');
+            ->assertJsonPath('data.0.year', '2026')
+            ->assertJsonPath('pagination.per_page', 10);
     }
 
     public function test_all_year_value_returns_every_past_paper_for_legacy_api_clients(): void
