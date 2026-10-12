@@ -7,6 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 
 class UserRegistration extends Mailable
 {
@@ -22,10 +23,14 @@ class UserRegistration extends Mailable
 
     public $purpose;
 
+    public $otp_expiry = 10;
+
     public function __construct($mail_message, $mail_subject, $from_user, $otp_code, $purpose)
     {
         $this->mail_subject = $mail_subject;
-        $this->mail_message = $mail_message;
+        $this->mail_message = $this->messageContainsOtp($mail_message, $otp_code)
+            ? null
+            : $mail_message;
         $this->from_user = $from_user;
         $this->otp_code = $otp_code;
         $this->purpose = $purpose;
@@ -36,8 +41,10 @@ class UserRegistration extends Mailable
      */
     public function envelope(): Envelope
     {
+        $appName = data_get(Cache::get('setting'), 'app_name') ?: config('app.name', 'RevisionHub');
+
         return new Envelope(
-            subject: $this->mail_subject,
+            subject: "Your {$appName} verification code is {$this->otp_code}",
         );
     }
 
@@ -48,7 +55,18 @@ class UserRegistration extends Mailable
     {
         return new Content(
             view: 'auth.email_otp_mail',
+            text: 'auth.email_otp_mail_text',
         );
+    }
+
+    private function messageContainsOtp($message, $otpCode): bool
+    {
+        if (! is_string($message)) {
+            return false;
+        }
+
+        return str_contains($message, '{{otp}}')
+            || str_contains(html_entity_decode(strip_tags($message)), (string) $otpCode);
     }
 
     /**
