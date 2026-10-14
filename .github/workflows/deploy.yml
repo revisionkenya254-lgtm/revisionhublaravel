@@ -16,13 +16,15 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          timeout: 60s
+          command_timeout: 20m
+          debug: true
           script: |
             cd /home/ploi/revisionhubkenya.com
+            git config --global --add safe.directory /home/ploi/revisionhubkenya.com
             git pull origin main
-            composer install --no-dev --no-interaction --optimize-autoloader
+            composer install --no-dev --no-interaction --optimize-autoloader --no-scripts
             php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan queue:restart
-            echo "Deployed!"
+            php artisan optimize:clear
+            php artisan optimize
+            echo "Deployed OK!"
