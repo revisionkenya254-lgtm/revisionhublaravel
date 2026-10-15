@@ -54,6 +54,7 @@ class MenuCacheService
         $lowerPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('lower-primary');
         $upperPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('upper-primary');
         $juniorSchoolSubjects = $metadataCatalog->schoolSubjectsForLevel('junior-school');
+        $seniorSchoolSubjects = $metadataCatalog->schoolSubjectsForLevel('senior-school-cbc');
 
         $highSchoolSubjects = [
             ['slug' => 'mathematics', 'name' => 'Mathematics'],
@@ -106,6 +107,7 @@ class MenuCacheService
         $kpseaNode = $buildAssessmentNode('kpsea', 'KPSEA', $upperPrimarySubjects);
         $kpleaNode = $buildAssessmentNode('kplea', 'KPLEA', $lowerPrimarySubjects);
         $kjseaNode = $buildAssessmentNode('kjsea', 'KJSEA', $juniorSchoolSubjects);
+        $kcbeNode = $buildAssessmentNode('kcbe', 'KCBE – National Assessment', $seniorSchoolSubjects);
         $buildGradeTree = function (array $grades, array $subjects): array {
             return collect($grades)
                 ->map(function (array $grade) use ($subjects) {
@@ -217,11 +219,11 @@ class MenuCacheService
             [
                 'slug' => 'senior-school-cbc',
                 'name' => 'Senior School (CBC)',
-                'children' => $buildGradeTree([
+                'children' => array_merge($buildGradeTree([
                     ['slug' => 'grade-10', 'name' => 'Grade 10'],
                     ['slug' => 'grade-11', 'name' => 'Grade 11'],
                     ['slug' => 'grade-12', 'name' => 'Grade 12'],
-                ], $highSchoolSubjects),
+                ], $seniorSchoolSubjects), [$kcbeNode]),
             ],
             [
                 'slug' => 'high-school',

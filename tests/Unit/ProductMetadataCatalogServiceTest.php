@@ -86,4 +86,32 @@ class ProductMetadataCatalogServiceTest extends TestCase
             array_column($kjsea['children'], 'label')
         );
     }
+
+    public function test_kcbe_follows_grade_twelve_with_shared_senior_school_subjects(): void
+    {
+        $catalog = new ProductMetadataCatalogService();
+        $nodes = $catalog->seniorSchoolClassGradeNodes();
+
+        $this->assertSame(
+            ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
+            array_column($nodes, 'label')
+        );
+        $this->assertSame(
+            $catalog->subjectNamesForLevel('senior-school-cbc'),
+            array_column($nodes[3]['children'], 'label')
+        );
+
+        foreach ([CatalogResourceController::class, InstructorProductController::class] as $controllerClass) {
+            $controller = $this->app->make($controllerClass);
+            $method = new ReflectionMethod($controller, 'buildPaperEducationTreeForForm');
+            $tree = $method->invoke($controller, collect());
+            $seniorSchool = collect($tree)->firstWhere('slug', 'senior-school-cbc');
+
+            $this->assertSame(
+                ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
+                array_column($seniorSchool['children'] ?? [], 'label'),
+                $controllerClass
+            );
+        }
+    }
 }

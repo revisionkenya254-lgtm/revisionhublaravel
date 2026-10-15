@@ -1211,12 +1211,6 @@ class InstructorProductController extends Controller
             'nursing' => 'Health',
             'microsoft' => 'Microsoft Azure',
         ];
-        $commonSubjectsNode = [
-            'id' => 'senior-school-cbc-common-subjects',
-            'slug' => 'common-subjects',
-            'label' => 'Common Subjects',
-            'children' => [],
-        ];
         $ictAndComputingCourseChildren = [
             ['id' => 'certificate-ict-computing-ict', 'slug' => 'information-communication-technology-ict', 'label' => 'Certificate in Information Communication Technology (ICT)'],
             ['id' => 'certificate-ict-computing-computer-science', 'slug' => 'computer-science', 'label' => 'Certificate in Computer Science'],
@@ -1423,35 +1417,7 @@ class InstructorProductController extends Controller
                 ['id' => 'undergraduate-maritime-studies', 'slug' => 'maritime-studies', 'label' => 'School of Maritime Studies', 'children' => $maritimeStudiesCourseChildren],
             ],
         ];
-        $seniorSchoolSubjects = [
-            ['slug' => 'stem', 'name' => 'STEM'],
-            ['slug' => 'social-sciences', 'name' => 'Social Sciences'],
-            ['slug' => 'arts-and-sports', 'name' => 'Arts & Sports'],
-            ['slug' => 'languages', 'name' => 'Languages'],
-        ];
-        $seniorSchoolGrades = collect([
-            ['slug' => 'grade-10', 'name' => 'Grade 10'],
-            ['slug' => 'grade-11', 'name' => 'Grade 11'],
-            ['slug' => 'grade-12', 'name' => 'Grade 12'],
-        ])
-            ->map(function (array $grade) use ($seniorSchoolSubjects) {
-                return [
-                    'id' => $grade['slug'],
-                    'slug' => $grade['slug'],
-                    'label' => $grade['name'],
-                    'children' => collect($seniorSchoolSubjects)
-                        ->map(fn (array $subject) => [
-                            'id' => $grade['slug'] . '-' . $subject['slug'],
-                            'slug' => $subject['slug'],
-                            'label' => $subject['name'],
-                            'children' => [],
-                        ])
-                        ->values()
-                        ->all(),
-                ];
-            })
-            ->values()
-            ->all();
+        $seniorSchoolGrades = $this->metadataCatalog->seniorSchoolClassGradeNodes();
         $professionalCoursesCfaNode = [
             'id' => 'professional-courses-cfa',
             'slug' => 'cfa',
@@ -1498,7 +1464,7 @@ class InstructorProductController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
+            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))

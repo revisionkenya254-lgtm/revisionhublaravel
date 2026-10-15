@@ -468,12 +468,6 @@ class CatalogResourceController extends Controller
             'nursing' => 'Health',
             'microsoft' => 'Microsoft Azure',
         ];
-        $commonSubjectsNode = [
-            'id' => 'senior-school-cbc-common-subjects',
-            'slug' => 'common-subjects',
-            'label' => 'Common Subjects',
-            'children' => [],
-        ];
         $ictAndComputingCourseChildren = [
             ['id' => 'certificate-ict-computing-ict', 'slug' => 'information-communication-technology-ict', 'label' => 'Certificate in Information Communication Technology (ICT)'],
             ['id' => 'certificate-ict-computing-computer-science', 'slug' => 'computer-science', 'label' => 'Certificate in Computer Science'],
@@ -703,6 +697,7 @@ class CatalogResourceController extends Controller
         $kpleaNode = $this->metadataCatalog->assessmentNode('lower-primary', 'kplea', 'KPLEA');
         $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
         $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
+        $seniorSchoolGrades = $this->metadataCatalog->seniorSchoolClassGradeNodes();
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])
@@ -719,7 +714,7 @@ class CatalogResourceController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $commonSubjectsNode, $schoolOnlyNodesByLevel, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode) {
+            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $seniorSchoolGrades) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -732,7 +727,7 @@ class CatalogResourceController extends Controller
                     ->all();
 
                 if ($definition['slug'] === 'senior-school-cbc') {
-                    $children[] = $commonSubjectsNode;
+                    $children = $seniorSchoolGrades;
                 }
 
                 if (array_key_exists($definition['slug'], $schoolOnlyNodesByLevel)) {

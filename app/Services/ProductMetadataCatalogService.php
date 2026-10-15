@@ -176,6 +176,40 @@ class ProductMetadataCatalogService
     }
 
     /**
+     * Canonical class/grade branches for Senior School product builders.
+     */
+    public function seniorSchoolClassGradeNodes(): array
+    {
+        $subjects = $this->schoolSubjectsForLevel('senior-school-cbc');
+        $grades = collect([
+            ['slug' => 'grade-10', 'label' => 'Grade 10'],
+            ['slug' => 'grade-11', 'label' => 'Grade 11'],
+            ['slug' => 'grade-12', 'label' => 'Grade 12'],
+        ])->map(fn (array $grade) => [
+            'id' => $grade['slug'],
+            'slug' => $grade['slug'],
+            'label' => $grade['label'],
+            'children' => collect($subjects)
+                ->map(fn (array $subject) => [
+                    'id' => $grade['slug'] . '-' . $subject['slug'],
+                    'slug' => $subject['slug'],
+                    'label' => $subject['name'],
+                    'children' => [],
+                ])
+                ->values()
+                ->all(),
+        ])->values()->all();
+
+        $grades[] = $this->assessmentNode(
+            'senior-school-cbc',
+            'kcbe',
+            'KCBE – National Assessment'
+        );
+
+        return $grades;
+    }
+
+    /**
      * Add national-assessment choices to a category tree without duplicating
      * curriculum subjects in each product builder.
      */
@@ -191,6 +225,13 @@ class ProductMetadataCatalogService
         return collect($tree)
             ->map(function (array $levelNode) use ($assessmentsByLevel) {
                 $levelSlug = (string) ($levelNode['slug'] ?? '');
+
+                if ($levelSlug === 'senior-school-cbc') {
+                    $levelNode['children'] = $this->seniorSchoolClassGradeNodes();
+
+                    return $levelNode;
+                }
+
                 $assessment = $assessmentsByLevel[$levelSlug] ?? null;
 
                 if (! $assessment) {
@@ -276,11 +317,11 @@ class ProductMetadataCatalogService
             'Pre-Primary' => ['PP1', 'PP2'],
             'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3', 'KPLEA'],
             'Upper Primary' => ['Grade 4', 'Grade 5', 'Grade 6', 'KPSEA'],
-            'Senior School (CBC)' => ['Grade 10', 'Grade 11', 'Grade 12'],
+            'Senior School (CBC)' => ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
             'High School' => ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5', 'KCSE'],
             'Primary School' => ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
             'Junior School' => ['Grade 7', 'Grade 8', 'Grade 9', 'KJSEA'],
-            'Senior School' => ['Grade 10', 'Grade 11', 'Grade 12'],
+            'Senior School' => ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
             'Certificate Courses' => $certificateSchoolOfGrades,
             'Diploma Courses' => $certificateSchoolOfGrades,
             'Undergraduate' => $certificateSchoolOfGrades,
