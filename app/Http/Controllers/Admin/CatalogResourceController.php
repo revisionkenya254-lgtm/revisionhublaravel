@@ -702,7 +702,7 @@ class CatalogResourceController extends Controller
         ];
         $kpleaNode = $this->metadataCatalog->assessmentNode('lower-primary', 'kplea', 'KPLEA');
         $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
-        $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEAs');
+        $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])
