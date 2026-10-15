@@ -36,9 +36,13 @@ jobs:
 
             chmod -R 775 storage bootstrap/cache
 
-            # Make sure no fake index.html exists
+            # Make sure no fake index.html exists - DELETE IT FROM REPO SOURCE
             rm -f index.html
+            rm -f public/index.html
             rm -f public/index.html.bak || true
+            
+            # Restore REAL Laravel index.php if it got overwritten
+            git checkout HEAD -- public/index.php || true
 
             # Restart PHP
             systemctl restart php8.2-fpm || clpctl system:restart --service=php-fpm || true
