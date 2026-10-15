@@ -20,7 +20,7 @@ jobs:
           script: |
             cd /home/revisionhubkenya/htdocs/www.revisionhubkenya.com
 
-            echo "Pulling latest..."
+            echo "Pulling latest.."
             git pull origin main
 
             composer install --no-dev --optimize-autoloader --no-interaction
