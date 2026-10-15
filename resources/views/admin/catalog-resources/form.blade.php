@@ -2526,12 +2526,12 @@
                     subjectSelect.appendChild(createOption(value, value, false, isSelected));
                 });
 
-                if (!matched && previousValue) {
-                    subjectSelect.appendChild(createOption(previousValue, previousValue, false, true));
-                    subjectSelect.value = previousValue;
-                } else if (!matched && options.length) {
+                if (!matched && options.length) {
                     const firstOption = options[0].label ?? options[0].name ?? options[0].value ?? '';
                     subjectSelect.value = firstOption;
+                } else if (!matched && previousValue) {
+                    subjectSelect.appendChild(createOption(previousValue, previousValue, false, true));
+                    subjectSelect.value = previousValue;
                 } else {
                     subjectSelect.value = previousValue;
                 }

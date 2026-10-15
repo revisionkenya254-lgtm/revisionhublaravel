@@ -2,8 +2,11 @@
 
 namespace Tests\Unit;
 
+use App\Http\Controllers\Admin\CatalogResourceController;
+use App\Http\Controllers\Frontend\InstructorProductController;
 use App\Services\ProductMetadataCatalogService;
-use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use Tests\TestCase;
 
 class ProductMetadataCatalogServiceTest extends TestCase
 {
@@ -38,6 +41,23 @@ class ProductMetadataCatalogServiceTest extends TestCase
                 array_column($catalog->schoolSubjectsForLevel($level), 'name'),
                 array_column($node['children'], 'label')
             );
+        }
+    }
+
+    public function test_admin_and_instructor_past_paper_trees_expose_kjsea_subjects(): void
+    {
+        foreach ([CatalogResourceController::class, InstructorProductController::class] as $controllerClass) {
+            $controller = $this->app->make($controllerClass);
+            $method = new ReflectionMethod($controller, 'buildPaperEducationTreeForForm');
+            $tree = $method->invoke($controller, collect());
+
+            $juniorSchool = collect($tree)->firstWhere('slug', 'junior-school');
+            $kjsea = collect($juniorSchool['children'] ?? [])->firstWhere('slug', 'kjsea');
+            $subjectLabels = array_column($kjsea['children'] ?? [], 'label');
+
+            $this->assertContains('Mathematics', $subjectLabels, $controllerClass);
+            $this->assertContains('Integrated Science', $subjectLabels, $controllerClass);
+            $this->assertNotContains('Grade 9', $subjectLabels, $controllerClass);
         }
     }
 }
