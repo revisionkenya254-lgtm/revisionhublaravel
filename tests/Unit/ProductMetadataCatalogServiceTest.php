@@ -60,4 +60,30 @@ class ProductMetadataCatalogServiceTest extends TestCase
             $this->assertNotContains('Grade 9', $subjectLabels, $controllerClass);
         }
     }
+
+    public function test_all_product_selection_options_share_junior_school_subjects(): void
+    {
+        $catalog = new ProductMetadataCatalogService();
+        $expectedSubjects = $catalog->subjectNamesForLevel('junior-school');
+
+        foreach ([$catalog->paperSelectionOptions(), $catalog->quizSelectionOptions()] as $options) {
+            $this->assertSame($expectedSubjects, $options['subjects_by_education_level']['Junior School']);
+            $this->assertContains('KJSEA', $options['class_grades_by_level']['Junior School']);
+        }
+    }
+
+    public function test_course_category_trees_receive_the_same_kjsea_branch(): void
+    {
+        $catalog = new ProductMetadataCatalogService();
+        $tree = $catalog->addAssessmentNodes([
+            ['id' => 1, 'slug' => 'junior-school', 'label' => 'Junior School', 'children' => []],
+        ]);
+
+        $kjsea = collect($tree[0]['children'])->firstWhere('slug', 'kjsea');
+
+        $this->assertSame(
+            $catalog->subjectNamesForLevel('junior-school'),
+            array_column($kjsea['children'], 'label')
+        );
+    }
 }

@@ -2405,11 +2405,10 @@
 
             if (options.includes(previousValue)) {
                 classGradeSelect.value = previousValue;
-            } else if (previousValue) {
-                classGradeSelect.appendChild(new Option(previousValue, previousValue, true, true));
-                classGradeSelect.value = previousValue;
             } else if (options.length) {
                 classGradeSelect.value = options[0];
+            } else {
+                classGradeSelect.value = '';
             }
         };
         const populateSubjectOptions = (educationLevel, preferredValue = '') => {
@@ -2430,9 +2429,6 @@
             });
 
             if (options.includes(previousValue)) {
-                subjectSelect.value = previousValue;
-            } else if (previousValue) {
-                subjectSelect.appendChild(new Option(previousValue, previousValue, true, true));
                 subjectSelect.value = previousValue;
             } else {
                 subjectSelect.value = options[0] || '';

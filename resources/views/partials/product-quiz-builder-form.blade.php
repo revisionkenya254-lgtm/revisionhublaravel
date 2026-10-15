@@ -273,22 +273,16 @@
         const populateDependentOptions = (educationLevel, preferredGrade = '', preferredSubject = '') => {
             const grades = classGradesByLevel[educationLevel] ?? classGradesByLevel.default ?? [];
             const subjects = subjectsByLevel[educationLevel] ?? @json($metadataOptions['subjects'] ?? []);
-            const selectedGrade = grades.includes(preferredGrade) ? preferredGrade : (preferredGrade || grades[0] || '');
-            const selectedSubject = subjects.includes(preferredSubject) ? preferredSubject : (preferredSubject || subjects[0] || '');
+            const selectedGrade = grades.includes(preferredGrade) ? preferredGrade : (grades[0] || '');
+            const selectedSubject = subjects.includes(preferredSubject) ? preferredSubject : (subjects[0] || '');
 
             if (classGradeSelect) {
-                const gradeOptions = grades.includes(selectedGrade) || !selectedGrade
-                    ? grades
-                    : [...grades, selectedGrade];
-                classGradeSelect.innerHTML = gradeOptions.map((option) => `<option value="${option}">${option}</option>`).join('');
+                classGradeSelect.innerHTML = grades.map((option) => `<option value="${option}">${option}</option>`).join('');
                 classGradeSelect.value = selectedGrade;
             }
 
             if (subjectSelect) {
-                const subjectOptions = subjects.includes(selectedSubject) || !selectedSubject
-                    ? subjects
-                    : [...subjects, selectedSubject];
-                subjectSelect.innerHTML = subjectOptions.map((option) => `<option value="${option}">${option}</option>`).join('');
+                subjectSelect.innerHTML = subjects.map((option) => `<option value="${option}">${option}</option>`).join('');
                 subjectSelect.value = selectedSubject;
             }
         };

@@ -13,7 +13,7 @@ class ProductMetadataCatalogService
     {
         $categories = CourseCategoryHelper::getAll();
         $catalog = $this->paperSelectionOptions();
-        $tree = $this->buildCourseCategoryTree($categories);
+        $tree = $this->addAssessmentNodes($this->buildCourseCategoryTree($categories));
 
         return [
             'tree' => $tree,
@@ -128,8 +128,28 @@ class ProductMetadataCatalogService
                 ['slug' => 'business-studies', 'name' => 'Business Studies'],
                 ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
             ],
+            'senior-school-cbc' => [
+                ['slug' => 'stem', 'name' => 'STEM'],
+                ['slug' => 'social-sciences', 'name' => 'Social Sciences'],
+                ['slug' => 'arts-and-sports', 'name' => 'Arts & Sports'],
+                ['slug' => 'languages', 'name' => 'Languages'],
+            ],
+            'high-school' => collect($this->kcseSubjects())
+                ->map(fn (string $subject) => [
+                    'slug' => Str::slug($subject),
+                    'name' => $subject,
+                ])
+                ->all(),
             default => [],
         };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function subjectNamesForLevel(string $levelSlug): array
+    {
+        return array_column($this->schoolSubjectsForLevel($levelSlug), 'name');
     }
 
     /**
@@ -153,6 +173,48 @@ class ProductMetadataCatalogService
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * Add national-assessment choices to a category tree without duplicating
+     * curriculum subjects in each product builder.
+     */
+    public function addAssessmentNodes(array $tree): array
+    {
+        $assessmentsByLevel = [
+            'lower-primary' => ['slug' => 'kplea', 'label' => 'KPLEA'],
+            'upper-primary' => ['slug' => 'kpsea', 'label' => 'KPSEA'],
+            'junior-school' => ['slug' => 'kjsea', 'label' => 'KJSEA'],
+            'high-school' => ['slug' => 'kcse', 'label' => 'KCSE'],
+        ];
+
+        return collect($tree)
+            ->map(function (array $levelNode) use ($assessmentsByLevel) {
+                $levelSlug = (string) ($levelNode['slug'] ?? '');
+                $assessment = $assessmentsByLevel[$levelSlug] ?? null;
+
+                if (! $assessment) {
+                    return $levelNode;
+                }
+
+                $children = $levelNode['children'] ?? [];
+                $alreadyPresent = collect($children)
+                    ->contains(fn (array $child) => ($child['slug'] ?? null) === $assessment['slug']);
+
+                if (! $alreadyPresent) {
+                    $children[] = $this->assessmentNode(
+                        $levelSlug,
+                        $assessment['slug'],
+                        $assessment['label']
+                    );
+                }
+
+                $levelNode['children'] = $children;
+
+                return $levelNode;
+            })
+            ->values()
+            ->all();
     }
 
     public function classGradesByLevel(): array
@@ -204,6 +266,7 @@ class ProductMetadataCatalogService
                 'Grade 7',
                 'Grade 8',
                 'Grade 9',
+                'KJSEA',
                 'Form 1',
                 'Form 2',
                 'Form 3',
@@ -211,12 +274,12 @@ class ProductMetadataCatalogService
                 'Form 5',
             ],
             'Pre-Primary' => ['PP1', 'PP2'],
-            'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3'],
-            'Upper Primary' => ['Grade 4', 'Grade 5', 'Grade 6'],
+            'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3', 'KPLEA'],
+            'Upper Primary' => ['Grade 4', 'Grade 5', 'Grade 6', 'KPSEA'],
             'Senior School (CBC)' => ['Grade 10', 'Grade 11', 'Grade 12'],
-            'High School' => ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5'],
+            'High School' => ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5', 'KCSE'],
             'Primary School' => ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
-            'Junior School' => ['Grade 7', 'Grade 8', 'Grade 9'],
+            'Junior School' => ['Grade 7', 'Grade 8', 'Grade 9', 'KJSEA'],
             'Senior School' => ['Grade 10', 'Grade 11', 'Grade 12'],
             'Certificate Courses' => $certificateSchoolOfGrades,
             'Diploma Courses' => $certificateSchoolOfGrades,
@@ -473,6 +536,7 @@ class ProductMetadataCatalogService
             'class_grades_by_level',
             'exam_categories',
             'subjects',
+            'subjects_by_education_level',
             'languages',
             'years',
         ]);
@@ -503,10 +567,12 @@ class ProductMetadataCatalogService
 
     public function subjectsByEducationLevel(): array
     {
-        $schoolSubjects = $this->kcseSubjects();
-
         return collect($this->educationLevelDefinitions())
-            ->mapWithKeys(fn (array $definition) => [$definition['label'] => $schoolSubjects])
+            ->mapWithKeys(function (array $definition) {
+                $subjects = $this->subjectNamesForLevel($definition['slug']);
+
+                return [$definition['label'] => $subjects ?: $this->kcseSubjects()];
+            })
             ->all();
     }
 
