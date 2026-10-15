@@ -700,69 +700,9 @@ class CatalogResourceController extends Controller
                 $kcseSubjects
             ),
         ];
-        $lowerPrimarySubjects = collect(['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4'])
-            ->map(fn (string $subject) => [
-                'name' => $subject,
-                'slug' => Str::slug($subject),
-            ])
-            ->values()
-            ->all();
-        $upperPrimarySubjects = collect(['Grade 5', 'Grade 6'])
-            ->map(fn (string $subject) => [
-                'name' => $subject,
-                'slug' => Str::slug($subject),
-            ])
-            ->values()
-            ->all();
-        $juniorSchoolSubjects = collect(['Grade 7', 'Grade 8', 'Grade 9'])
-            ->map(fn (string $subject) => [
-                'name' => $subject,
-                'slug' => Str::slug($subject),
-            ])
-            ->values()
-            ->all();
-        $kpleaNode = [
-            'id' => 'lower-primary-kplea',
-            'slug' => 'kplea',
-            'label' => 'KPLEA',
-            'children' => collect($lowerPrimarySubjects)
-                ->map(fn (array $subject) => [
-                    'id' => 'lower-primary-kplea-' . Str::slug($subject['name']),
-                    'slug' => $subject['slug'],
-                    'label' => $subject['name'],
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ];
-        $kpseaNode = [
-            'id' => 'upper-primary-kpsea',
-            'slug' => 'kpsea',
-            'label' => 'KPSEA',
-            'children' => collect($upperPrimarySubjects)
-                ->map(fn (array $subject) => [
-                    'id' => 'upper-primary-kpsea-' . Str::slug($subject['name']),
-                    'slug' => $subject['slug'],
-                    'label' => $subject['name'],
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ];
-        $kjseaNode = [
-            'id' => 'junior-school-kjsea',
-            'slug' => 'kjsea',
-            'label' => 'KJSEA',
-            'children' => collect($juniorSchoolSubjects)
-                ->map(fn (array $subject) => [
-                    'id' => 'junior-school-kjsea-' . Str::slug($subject['name']),
-                    'slug' => $subject['slug'],
-                    'label' => $subject['name'],
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ];
+        $kpleaNode = $this->metadataCatalog->assessmentNode('lower-primary', 'kplea', 'KPLEA');
+        $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
+        $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])

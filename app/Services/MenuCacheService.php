@@ -50,39 +50,10 @@ class MenuCacheService
      */
     protected function categoryMenuBlueprint(): array
     {
-        $lowerPrimarySubjects = [
-            ['slug' => 'mathematics', 'name' => 'Mathematics'],
-            ['slug' => 'english', 'name' => 'English'],
-            ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-            ['slug' => 'environmental-activities', 'name' => 'Environmental Activities'],
-            ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-            ['slug' => 'religious-education', 'name' => 'Religious Education'],
-        ];
-
-        $upperPrimarySubjects = [
-            ['slug' => 'mathematics', 'name' => 'Mathematics'],
-            ['slug' => 'english', 'name' => 'English'],
-            ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-            ['slug' => 'science-and-technology', 'name' => 'Science & Technology'],
-            ['slug' => 'social-studies', 'name' => 'Social Studies'],
-            ['slug' => 'agriculture', 'name' => 'Agriculture'],
-            ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-            ['slug' => 'religious-education', 'name' => 'Religious Education'],
-        ];
-
-        $juniorSchoolSubjects = [
-            ['slug' => 'mathematics', 'name' => 'Mathematics'],
-            ['slug' => 'english', 'name' => 'English'],
-            ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-            ['slug' => 'integrated-science', 'name' => 'Integrated Science'],
-            ['slug' => 'social-studies', 'name' => 'Social Studies'],
-            ['slug' => 'pre-technical-studies', 'name' => 'Pre-Technical Studies'],
-            ['slug' => 'agriculture', 'name' => 'Agriculture'],
-            ['slug' => 'computer-studies', 'name' => 'Computer Studies'],
-            ['slug' => 'cre-ire-hre', 'name' => 'CRE/IRE/HRE'],
-            ['slug' => 'business-studies', 'name' => 'Business Studies'],
-            ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-        ];
+        $metadataCatalog = app(ProductMetadataCatalogService::class);
+        $lowerPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('lower-primary');
+        $upperPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('upper-primary');
+        $juniorSchoolSubjects = $metadataCatalog->schoolSubjectsForLevel('junior-school');
 
         $highSchoolSubjects = [
             ['slug' => 'mathematics', 'name' => 'Mathematics'],
@@ -105,7 +76,7 @@ class MenuCacheService
             ['slug' => 'home-science', 'name' => 'Home Science'],
         ];
 
-        $kcseSubjects = app(ProductMetadataCatalogService::class)->quizSelectionOptions()['subjects'];
+        $kcseSubjects = $metadataCatalog->quizSelectionOptions()['subjects'];
         $buildAssessmentNode = function (string $slug, string $name, array $subjects): array {
             return [
                 'slug' => $slug,

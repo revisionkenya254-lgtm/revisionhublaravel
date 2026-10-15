@@ -89,6 +89,72 @@ class ProductMetadataCatalogService
         ];
     }
 
+    /**
+     * Canonical subject lists used by grade and national-assessment branches.
+     *
+     * @return array<int, array{slug: string, name: string}>
+     */
+    public function schoolSubjectsForLevel(string $levelSlug): array
+    {
+        return match ($levelSlug) {
+            'lower-primary' => [
+                ['slug' => 'mathematics', 'name' => 'Mathematics'],
+                ['slug' => 'english', 'name' => 'English'],
+                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
+                ['slug' => 'environmental-activities', 'name' => 'Environmental Activities'],
+                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
+                ['slug' => 'religious-education', 'name' => 'Religious Education'],
+            ],
+            'upper-primary' => [
+                ['slug' => 'mathematics', 'name' => 'Mathematics'],
+                ['slug' => 'english', 'name' => 'English'],
+                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
+                ['slug' => 'science-and-technology', 'name' => 'Science & Technology'],
+                ['slug' => 'social-studies', 'name' => 'Social Studies'],
+                ['slug' => 'agriculture', 'name' => 'Agriculture'],
+                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
+                ['slug' => 'religious-education', 'name' => 'Religious Education'],
+            ],
+            'junior-school' => [
+                ['slug' => 'mathematics', 'name' => 'Mathematics'],
+                ['slug' => 'english', 'name' => 'English'],
+                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
+                ['slug' => 'integrated-science', 'name' => 'Integrated Science'],
+                ['slug' => 'social-studies', 'name' => 'Social Studies'],
+                ['slug' => 'pre-technical-studies', 'name' => 'Pre-Technical Studies'],
+                ['slug' => 'agriculture', 'name' => 'Agriculture'],
+                ['slug' => 'computer-studies', 'name' => 'Computer Studies'],
+                ['slug' => 'cre-ire-hre', 'name' => 'CRE/IRE/HRE'],
+                ['slug' => 'business-studies', 'name' => 'Business Studies'],
+                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * Build a national-assessment branch using the same subjects as its level.
+     *
+     * @return array{id: string, slug: string, label: string, children: array<int, array{id: string, slug: string, label: string, children: array}>}
+     */
+    public function assessmentNode(string $levelSlug, string $assessmentSlug, string $label): array
+    {
+        return [
+            'id' => $levelSlug . '-' . $assessmentSlug,
+            'slug' => $assessmentSlug,
+            'label' => $label,
+            'children' => collect($this->schoolSubjectsForLevel($levelSlug))
+                ->map(fn (array $subject) => [
+                    'id' => $levelSlug . '-' . $assessmentSlug . '-' . $subject['slug'],
+                    'slug' => $subject['slug'],
+                    'label' => $subject['name'],
+                    'children' => [],
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
     public function classGradesByLevel(): array
     {
         $schoolOfGrades = [
