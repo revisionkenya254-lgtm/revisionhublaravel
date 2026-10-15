@@ -1,30 +1,46 @@
-name: Deploy to Contabo
+name: Deploy to CloudPanel
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          timeout: 60s
-          command_timeout: 20m
-          debug: true
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
           script: |
-            cd /home/ploi/revisionhubkenya.com
-            git config --global --add safe.directory /home/ploi/revisionhubkenya.com
+            cd /home/revisionhubkenya/htdocs/www.revisionhubkenya.com
+
+            echo "Pulling latest..."
             git pull origin main
-            composer install --no-dev --no-interaction --optimize-autoloader --no-scripts
-            php artisan migrate --force
-            php artisan optimize:clear
-            php artisan optimize
-            echo "Deployed OK!"
+
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            php artisan migrate --force || true
+            php artisan storage:link || true
+
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan config:cache
+            php artisan route:cache
+
+            chmod -R 775 storage bootstrap/cache
+
+            # Make sure no fake index.html exists
+            rm -f index.html
+            rm -f public/index.html.bak || true
+
+            # Restart PHP
+            systemctl restart php8.2-fpm || clpctl system:restart --service=php-fpm || true
+
+            echo "SUCCESS: revisionhubkenya.com deployed on CloudPanel"
