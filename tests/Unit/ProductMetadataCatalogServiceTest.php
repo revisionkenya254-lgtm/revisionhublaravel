@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Http\Controllers\Admin\CatalogResourceController;
 use App\Http\Controllers\Frontend\InstructorProductController;
+use App\Services\MenuCacheService;
 use App\Services\ProductMetadataCatalogService;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -113,5 +114,43 @@ class ProductMetadataCatalogServiceTest extends TestCase
                 $controllerClass
             );
         }
+    }
+
+    public function test_api_menu_keeps_senior_pathways_beneath_grades(): void
+    {
+        $menu = new class extends MenuCacheService {
+            public function mergeWithCanonicalHierarchy(array $overlay): array
+            {
+                $canonical = $this->categoryMenuBlueprint();
+
+                return $this->enforceCanonicalEducationHierarchy(
+                    $this->mergeCategoryTrees($canonical, $overlay),
+                    $canonical
+                );
+            }
+        };
+
+        $tree = $menu->mergeWithCanonicalHierarchy([[
+            'slug' => 'senior-school-cbc',
+            'name' => 'Senior School (CBC)',
+            'children' => [
+                ['slug' => 'stem', 'name' => 'STEM', 'children' => [
+                    ['slug' => 'grade-10', 'name' => 'Grade 10', 'children' => []],
+                ]],
+                ['slug' => 'social-sciences', 'name' => 'Social Sciences', 'children' => []],
+                ['slug' => 'arts-and-sports', 'name' => 'Arts & Sports', 'children' => []],
+            ],
+        ]]);
+
+        $seniorSchool = collect($tree)->firstWhere('slug', 'senior-school-cbc');
+
+        $this->assertSame(
+            ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
+            array_column($seniorSchool['children'], 'name')
+        );
+        $this->assertSame(
+            ['STEM', 'Social Sciences', 'Arts & Sports', 'Languages'],
+            array_column($seniorSchool['children'][0]['children'], 'name')
+        );
     }
 }

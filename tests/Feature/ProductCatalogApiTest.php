@@ -229,6 +229,26 @@ class ProductCatalogApiTest extends TestCase
         $this->assertSame(['science-technology'], collect($menuGrades['grade-2']['children'])->pluck('slug')->all());
     }
 
+    public function test_senior_school_api_hierarchy_matches_product_builders(): void
+    {
+        $seniorSchool = CourseCategory::create(['slug' => 'senior-school-cbc']);
+        $stem = CourseCategory::create(['slug' => 'stem', 'parent_id' => $seniorSchool->id]);
+        CourseCategory::create(['slug' => 'grade-10', 'parent_id' => $stem->id]);
+        CourseCategory::create(['slug' => 'social-sciences', 'parent_id' => $seniorSchool->id]);
+        CourseCategory::create(['slug' => 'arts-and-sports', 'parent_id' => $seniorSchool->id]);
+
+        $response = $this->getJson('/api/catalog/categories/senior-school-cbc/subcategories');
+
+        $response->assertOk();
+        $this->assertSame(
+            ['grade-10', 'grade-11', 'grade-12', 'kcbe'],
+            collect($response->json('data'))->pluck('slug')->all()
+        );
+        $this->assertNotContains('stem', collect($response->json('data'))->pluck('slug')->all());
+        $this->assertNotContains('social-sciences', collect($response->json('data'))->pluck('slug')->all());
+        $this->assertNotContains('arts-and-sports', collect($response->json('data'))->pluck('slug')->all());
+    }
+
     public function test_an_active_approved_product_can_be_retrieved_by_type_and_slug(): void
     {
         $instructor = User::factory()->create();

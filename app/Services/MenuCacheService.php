@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v14';
+    const CACHE_VERSION = 'v15';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -470,6 +470,32 @@ class MenuCacheService
     }
 
     /**
+     * Keep structural curriculum rules identical across browser forms and API
+     * menus. The stored Senior School tree uses pathways above grades, while
+     * product selection uses grades above pathways/subjects.
+     */
+    protected function enforceCanonicalEducationHierarchy(array $tree, array $canonicalTree): array
+    {
+        $canonicalSeniorSchool = collect($canonicalTree)
+            ->first(fn (array $node) => ($node['slug'] ?? null) === 'senior-school-cbc');
+
+        if (! $canonicalSeniorSchool) {
+            return $tree;
+        }
+
+        return collect($tree)
+            ->map(function (array $node) use ($canonicalSeniorSchool) {
+                if (($node['slug'] ?? null) === 'senior-school-cbc') {
+                    $node['children'] = $canonicalSeniorSchool['children'] ?? [];
+                }
+
+                return $node;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Remove duplicate category children within the same branch.
      *
      * We keep the first matching node and skip later nodes that share the
@@ -688,10 +714,13 @@ class MenuCacheService
         $cacheKey = "menu_category_tree_".self::CACHE_VERSION."_{$languageCode}";
 
         return $this->rememberForeverWithLock($cacheKey, function () use ($languageCode) {
+            $canonicalTree = $this->categoryMenuBlueprint();
             $databaseTree = $this->categoryMenuFromDatabase($languageCode);
             $sourceTree = !empty($databaseTree)
-                ? $this->mergeCategoryTrees($this->categoryMenuBlueprint(), $databaseTree)
-                : $this->categoryMenuBlueprint();
+                ? $this->mergeCategoryTrees($canonicalTree, $databaseTree)
+                : $canonicalTree;
+
+            $sourceTree = $this->enforceCanonicalEducationHierarchy($sourceTree, $canonicalTree);
 
             $sourceTree = $this->filterGrandchildrenWithoutContent($sourceTree, $languageCode);
 
