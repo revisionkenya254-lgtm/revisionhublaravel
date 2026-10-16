@@ -3,6 +3,7 @@
 namespace Modules\Course\app\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CourseSubCategoryRequest extends FormRequest
 {
@@ -17,7 +18,14 @@ class CourseSubCategoryRequest extends FormRequest
         if($this->isMethod('post')) {
             $rules += [
                 'parent_id' => ['required', 'exists:course_categories,id'],
-                'slug' => ['required', 'string', 'max:255', 'unique:course_categories,slug'],
+                'slug' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('course_categories', 'slug')
+                        ->where('parent_id', $this->input('parent_id'))
+                        ->whereNull('deleted_at'),
+                ],
                 'status' => ['required', 'boolean'],
             ];
         }

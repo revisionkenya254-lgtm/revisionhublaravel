@@ -15,10 +15,12 @@ class ProductMetadataCatalogServiceTest extends TestCase
     {
         $catalog = new ProductMetadataCatalogService();
 
-        $node = $catalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
+        $node = collect($catalog->schoolClassGradeNodes('junior-school'))->firstWhere('slug', 'kjsea');
+        $expectedLabel = collect($catalog->schoolClassGradeDefinitions()['junior-school'])
+            ->firstWhere('slug', 'kjsea')['label'];
         $subjectLabels = array_column($node['children'], 'label');
 
-        $this->assertSame('KJSEA', $node['label']);
+        $this->assertSame($expectedLabel, $node['label']);
         $this->assertContains('Mathematics', $subjectLabels);
         $this->assertContains('Integrated Science', $subjectLabels);
         $this->assertContains('Pre-Technical Studies', $subjectLabels);
@@ -27,15 +29,17 @@ class ProductMetadataCatalogServiceTest extends TestCase
         $this->assertNotContains('Grade 9', $subjectLabels);
     }
 
-    public function test_assessment_nodes_share_their_level_subject_source(): void
+    public function test_main_exams_share_their_sibling_grades_subject_source(): void
     {
         $catalog = new ProductMetadataCatalogService();
 
         foreach ([
-            ['upper-primary', 'kpsea', 'KPSEA'],
-            ['junior-school', 'kjsea', 'KJSEA'],
-        ] as [$level, $slug, $label]) {
-            $node = $catalog->assessmentNode($level, $slug, $label);
+            ['upper-primary', 'kpsea'],
+            ['junior-school', 'kjsea'],
+            ['senior-school-cbc', 'kcbe'],
+            ['high-school', 'kcse'],
+        ] as [$level, $slug]) {
+            $node = collect($catalog->schoolClassGradeNodes($level))->firstWhere('slug', $slug);
 
             $this->assertSame(
                 array_column($catalog->schoolSubjectsForLevel($level), 'name'),
@@ -65,17 +69,19 @@ class ProductMetadataCatalogServiceTest extends TestCase
     {
         $catalog = new ProductMetadataCatalogService();
         $expectedSubjects = $catalog->subjectNamesForLevel('junior-school');
+        $expectedKjseaLabel = collect($catalog->schoolClassGradeDefinitions()['junior-school'])
+            ->firstWhere('slug', 'kjsea')['label'];
 
         foreach ([$catalog->paperSelectionOptions(), $catalog->quizSelectionOptions()] as $options) {
             $this->assertSame($expectedSubjects, $options['subjects_by_education_level']['Junior School']);
-            $this->assertContains('KJSEA', $options['class_grades_by_level']['Junior School']);
+            $this->assertContains($expectedKjseaLabel, $options['class_grades_by_level']['Junior School']);
         }
     }
 
-    public function test_course_category_trees_receive_the_same_kjsea_branch(): void
+    public function test_course_category_trees_receive_the_canonical_junior_school_list(): void
     {
         $catalog = new ProductMetadataCatalogService();
-        $tree = $catalog->addAssessmentNodes([
+        $tree = $catalog->applyCanonicalSchoolClassGradeNodes([
             ['id' => 1, 'slug' => 'junior-school', 'label' => 'Junior School', 'children' => []],
         ]);
 

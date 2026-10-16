@@ -25,30 +25,11 @@
                 @if (Module::isEnabled('Course') && checkAdminHasPermission('course.management'))
                     @include('course::sidebar')
 
-                    <li
-                        class="nav-item dropdown {{ isRoute(['admin.course-category.*', 'admin.course-sub-category.*', 'admin.course-sub-categories.*', 'admin.course-grand-categories.*'], 'active') }}">
-                        <a href="javascript:void()" class="nav-link has-dropdown">
-                            <i class="fas fa-layer-group"></i>
-                            <span>{{ __('Manage Categories') }}</span>
+                    <li class="{{ isRoute('admin.taxonomy.*', 'active') }}">
+                        <a class="nav-link" href="{{ route('admin.taxonomy.index') }}">
+                            <i class="fas fa-sitemap"></i>
+                            <span>{{ __('Taxonomy Management') }}</span>
                         </a>
-
-                        <ul class="dropdown-menu">
-                            <li class="{{ isRoute('admin.course-category.*', 'active') }}">
-                                <a class="nav-link" href="{{ route('admin.course-category.index') }}">
-                                    {{ __('Categories') }}
-                                </a>
-                            </li>
-                            <li class="{{ isRoute('admin.course-sub-categories.*', 'active') }} {{ isRoute('admin.course-sub-category.*', 'active') }}">
-                                <a class="nav-link" href="{{ route('admin.course-sub-categories.index') }}">
-                                    {{ __('Sub Categories') }}
-                                </a>
-                            </li>
-                            <li class="{{ isRoute('admin.course-grand-categories.*', 'active') }}">
-                                <a class="nav-link" href="{{ route('admin.course-grand-categories.index') }}">
-                                    {{ __('Grand Categories') }}
-                                </a>
-                            </li>
-                        </ul>
                     </li>
 
                     <li class="{{ isRoute('admin.course-language.*', 'active') }}">

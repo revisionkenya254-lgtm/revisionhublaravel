@@ -3,6 +3,7 @@
 namespace Modules\Course\app\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CourseCategoryStoreRequest extends FormRequest
 {
@@ -13,7 +14,12 @@ class CourseCategoryStoreRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'unique:course_categories,slug'],
+            'slug' => [
+                'required',
+                Rule::unique('course_categories', 'slug')
+                    ->whereNull('parent_id')
+                    ->whereNull('deleted_at'),
+            ],
             'icon' => ['required', 'image', 'max:255','mimetypes:image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
             'status' => ['required', 'boolean'],
             'show_at_trending' => ['required', 'boolean'],

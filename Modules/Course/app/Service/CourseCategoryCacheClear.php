@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Cache;
 
 class CourseCategoryCacheClear {
     public static function clear(): void {
+        app(\App\Services\Taxonomy\TaxonomyCatalogRepository::class)->clearCache();
+
         $languages = [config('app.locale')];
 
         try {

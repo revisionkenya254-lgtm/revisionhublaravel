@@ -1417,7 +1417,11 @@ class InstructorProductController extends Controller
                 ['id' => 'undergraduate-maritime-studies', 'slug' => 'maritime-studies', 'label' => 'School of Maritime Studies', 'children' => $maritimeStudiesCourseChildren],
             ],
         ];
-        $seniorSchoolGrades = $this->metadataCatalog->seniorSchoolClassGradeNodes();
+        $schoolClassGradeNodesByLevel = collect(array_keys($this->metadataCatalog->schoolClassGradeDefinitions()))
+            ->mapWithKeys(fn (string $levelSlug) => [
+                $levelSlug => $this->metadataCatalog->schoolClassGradeNodes($levelSlug),
+            ])
+            ->all();
         $professionalCoursesCfaNode = [
             'id' => 'professional-courses-cfa',
             'slug' => 'cfa',
@@ -1430,23 +1434,6 @@ class InstructorProductController extends Controller
             'label' => 'CompTIA',
             'children' => [],
         ];
-        $kcseSubjects = $this->metadataCatalog->quizSelectionOptions()['subjects'];
-        $kcseNode = [
-            'id' => 'high-school-kcse',
-            'slug' => 'kcse',
-            'label' => 'KCSE',
-            'children' => array_map(
-                fn (string $subject) => [
-                    'id' => 'high-school-kcse-' . Str::slug($subject),
-                    'slug' => Str::slug($subject),
-                    'label' => $subject,
-                    'children' => [],
-                ],
-                $kcseSubjects
-            ),
-        ];
-        $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
-        $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
             $label = $labelOverrides[$category->slug] ?? $category->translation?->name ?? $category->name ?? $category->slug;
             $children = collect($byParent[(string) $category->id] ?? [])
@@ -1463,7 +1450,7 @@ class InstructorProductController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
+            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $ictAndComputingCourseChildren, $schoolClassGradeNodesByLevel) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -1475,29 +1462,17 @@ class InstructorProductController extends Controller
                     ->values()
                     ->all();
 
-                if ($definition['slug'] === 'senior-school-cbc') {
-                    $children = $seniorSchoolGrades;
+                if (array_key_exists($definition['slug'], $schoolClassGradeNodesByLevel)) {
+                    $children = $schoolClassGradeNodesByLevel[$definition['slug']];
                 }
 
                 if (array_key_exists($definition['slug'], $schoolOnlyNodesByLevel)) {
                     $children = $schoolOnlyNodesByLevel[$definition['slug']];
                 }
 
-                if ($definition['slug'] === 'upper-primary') {
-                    $children[] = $kpseaNode;
-                }
-
-                if ($definition['slug'] === 'junior-school') {
-                    $children[] = $kjseaNode;
-                }
-
                 if ($definition['slug'] === 'professional-courses') {
                     $children[] = $professionalCoursesCfaNode;
                     $children[] = $professionalCoursesComptiaNode;
-                }
-
-                if ($definition['slug'] === 'high-school') {
-                    $children[] = $kcseNode;
                 }
 
                 return [

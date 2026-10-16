@@ -2,18 +2,30 @@
 
 namespace App\Services;
 
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Modules\Course\app\Helper\CourseCategoryHelper;
 
 class ProductMetadataCatalogService
 {
+    private ?TaxonomyCatalogRepository $taxonomyCatalog = null;
+
+    public function __construct(?TaxonomyCatalogRepository $taxonomyCatalog = null)
+    {
+        $this->taxonomyCatalog = $taxonomyCatalog;
+    }
+
+    private function taxonomyCatalog(): TaxonomyCatalogRepository
+    {
+        return $this->taxonomyCatalog ??= app(TaxonomyCatalogRepository::class);
+    }
+
     public function courseSelectionOptions(): array
     {
         $categories = CourseCategoryHelper::getAll();
         $catalog = $this->paperSelectionOptions();
-        $tree = $this->addAssessmentNodes($this->buildCourseCategoryTree($categories));
+        $tree = $this->applyCanonicalSchoolClassGradeNodes($this->buildCourseCategoryTree($categories));
 
         return [
             'tree' => $tree,
@@ -55,40 +67,6 @@ class ProductMetadataCatalogService
             ->all();
     }
 
-    private function kcseSubjects(): array
-    {
-        return [
-            'English',
-            'Kiswahili',
-            'Mathematics',
-            'Biology',
-            'Chemistry',
-            'Physics',
-            'History and Government',
-            'Geography',
-            'Christian Religious Education (CRE)',
-            'Islamic Religious Education (IRE)',
-            'Hindu Religious Education (HRE)',
-            'Business Studies',
-            'Agriculture',
-            'Computer Studies',
-            'Home Science',
-            'Art and Design',
-            'Music',
-            'French',
-            'German',
-            'Arabic',
-            'Chinese',
-            'Kenya Sign Language',
-            'Building Construction',
-            'Power Mechanics',
-            'Electricity',
-            'Metalwork',
-            'Woodwork',
-            'Aviation Technology',
-        ];
-    }
-
     /**
      * Canonical subject lists used by grade and national-assessment branches.
      *
@@ -96,52 +74,7 @@ class ProductMetadataCatalogService
      */
     public function schoolSubjectsForLevel(string $levelSlug): array
     {
-        return match ($levelSlug) {
-            'lower-primary' => [
-                ['slug' => 'mathematics', 'name' => 'Mathematics'],
-                ['slug' => 'english', 'name' => 'English'],
-                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-                ['slug' => 'environmental-activities', 'name' => 'Environmental Activities'],
-                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-                ['slug' => 'religious-education', 'name' => 'Religious Education'],
-            ],
-            'upper-primary' => [
-                ['slug' => 'mathematics', 'name' => 'Mathematics'],
-                ['slug' => 'english', 'name' => 'English'],
-                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-                ['slug' => 'science-and-technology', 'name' => 'Science & Technology'],
-                ['slug' => 'social-studies', 'name' => 'Social Studies'],
-                ['slug' => 'agriculture', 'name' => 'Agriculture'],
-                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-                ['slug' => 'religious-education', 'name' => 'Religious Education'],
-            ],
-            'junior-school' => [
-                ['slug' => 'mathematics', 'name' => 'Mathematics'],
-                ['slug' => 'english', 'name' => 'English'],
-                ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-                ['slug' => 'integrated-science', 'name' => 'Integrated Science'],
-                ['slug' => 'social-studies', 'name' => 'Social Studies'],
-                ['slug' => 'pre-technical-studies', 'name' => 'Pre-Technical Studies'],
-                ['slug' => 'agriculture', 'name' => 'Agriculture'],
-                ['slug' => 'computer-studies', 'name' => 'Computer Studies'],
-                ['slug' => 'cre-ire-hre', 'name' => 'CRE/IRE/HRE'],
-                ['slug' => 'business-studies', 'name' => 'Business Studies'],
-                ['slug' => 'creative-arts', 'name' => 'Creative Arts'],
-            ],
-            'senior-school-cbc' => [
-                ['slug' => 'stem', 'name' => 'STEM'],
-                ['slug' => 'social-sciences', 'name' => 'Social Sciences'],
-                ['slug' => 'arts-and-sports', 'name' => 'Arts & Sports'],
-                ['slug' => 'languages', 'name' => 'Languages'],
-            ],
-            'high-school' => collect($this->kcseSubjects())
-                ->map(fn (string $subject) => [
-                    'slug' => Str::slug($subject),
-                    'name' => $subject,
-                ])
-                ->all(),
-            default => [],
-        };
+        return $this->taxonomyCatalog()->subjectsForLevel($levelSlug);
     }
 
     /**
@@ -152,27 +85,18 @@ class ProductMetadataCatalogService
         return array_column($this->schoolSubjectsForLevel($levelSlug), 'name');
     }
 
-    /**
-     * Build a national-assessment branch using the same subjects as its level.
-     *
-     * @return array{id: string, slug: string, label: string, children: array<int, array{id: string, slug: string, label: string, children: array}>}
-     */
-    public function assessmentNode(string $levelSlug, string $assessmentSlug, string $label): array
+    /** @return array<string, array<int, array{slug: string, label: string}>> */
+    public function schoolClassGradeDefinitions(): array
     {
-        return [
-            'id' => $levelSlug . '-' . $assessmentSlug,
-            'slug' => $assessmentSlug,
-            'label' => $label,
-            'children' => collect($this->schoolSubjectsForLevel($levelSlug))
-                ->map(fn (array $subject) => [
-                    'id' => $levelSlug . '-' . $assessmentSlug . '-' . $subject['slug'],
-                    'slug' => $subject['slug'],
-                    'label' => $subject['name'],
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ];
+        return $this->taxonomyCatalog()->classGradesByLevel();
+    }
+
+    /**
+     * Build every class, grade, and main exam through the same node mapper.
+     */
+    public function schoolClassGradeNodes(string $levelSlug): array
+    {
+        return $this->taxonomyCatalog()->classGradeNodes($levelSlug);
     }
 
     /**
@@ -180,76 +104,21 @@ class ProductMetadataCatalogService
      */
     public function seniorSchoolClassGradeNodes(): array
     {
-        $subjects = $this->schoolSubjectsForLevel('senior-school-cbc');
-        $grades = collect([
-            ['slug' => 'grade-10', 'label' => 'Grade 10'],
-            ['slug' => 'grade-11', 'label' => 'Grade 11'],
-            ['slug' => 'grade-12', 'label' => 'Grade 12'],
-        ])->map(fn (array $grade) => [
-            'id' => $grade['slug'],
-            'slug' => $grade['slug'],
-            'label' => $grade['label'],
-            'children' => collect($subjects)
-                ->map(fn (array $subject) => [
-                    'id' => $grade['slug'] . '-' . $subject['slug'],
-                    'slug' => $subject['slug'],
-                    'label' => $subject['name'],
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ])->values()->all();
-
-        $grades[] = $this->assessmentNode(
-            'senior-school-cbc',
-            'kcbe',
-            'KCBE – National Assessment'
-        );
-
-        return $grades;
+        return $this->schoolClassGradeNodes('senior-school-cbc');
     }
 
     /**
-     * Add national-assessment choices to a category tree without duplicating
-     * curriculum subjects in each product builder.
+     * Apply the same canonical class/grade/exam arrays to course builders.
      */
-    public function addAssessmentNodes(array $tree): array
+    public function applyCanonicalSchoolClassGradeNodes(array $tree): array
     {
-        $assessmentsByLevel = [
-            'upper-primary' => ['slug' => 'kpsea', 'label' => 'KPSEA'],
-            'junior-school' => ['slug' => 'kjsea', 'label' => 'KJSEA'],
-            'high-school' => ['slug' => 'kcse', 'label' => 'KCSE'],
-        ];
-
         return collect($tree)
-            ->map(function (array $levelNode) use ($assessmentsByLevel) {
+            ->map(function (array $levelNode) {
                 $levelSlug = (string) ($levelNode['slug'] ?? '');
 
-                if ($levelSlug === 'senior-school-cbc') {
-                    $levelNode['children'] = $this->seniorSchoolClassGradeNodes();
-
-                    return $levelNode;
+                if (array_key_exists($levelSlug, $this->schoolClassGradeDefinitions())) {
+                    $levelNode['children'] = $this->schoolClassGradeNodes($levelSlug);
                 }
-
-                $assessment = $assessmentsByLevel[$levelSlug] ?? null;
-
-                if (! $assessment) {
-                    return $levelNode;
-                }
-
-                $children = $levelNode['children'] ?? [];
-                $alreadyPresent = collect($children)
-                    ->contains(fn (array $child) => ($child['slug'] ?? null) === $assessment['slug']);
-
-                if (! $alreadyPresent) {
-                    $children[] = $this->assessmentNode(
-                        $levelSlug,
-                        $assessment['slug'],
-                        $assessment['label']
-                    );
-                }
-
-                $levelNode['children'] = $children;
 
                 return $levelNode;
             })
@@ -315,12 +184,12 @@ class ProductMetadataCatalogService
             ],
             'Pre-Primary' => ['PP1', 'PP2'],
             'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3'],
-            'Upper Primary' => ['Grade 4', 'Grade 5', 'Grade 6', 'KPSEA'],
-            'Senior School (CBC)' => ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
-            'High School' => ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5', 'KCSE'],
+            'Upper Primary' => array_column($this->schoolClassGradeDefinitions()['upper-primary'], 'label'),
+            'Senior School (CBC)' => array_column($this->schoolClassGradeDefinitions()['senior-school-cbc'], 'label'),
+            'High School' => array_column($this->schoolClassGradeDefinitions()['high-school'], 'label'),
             'Primary School' => ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
-            'Junior School' => ['Grade 7', 'Grade 8', 'Grade 9', 'KJSEA'],
-            'Senior School' => ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
+            'Junior School' => array_column($this->schoolClassGradeDefinitions()['junior-school'], 'label'),
+            'Senior School' => array_column($this->schoolClassGradeDefinitions()['senior-school-cbc'], 'label'),
             'Certificate Courses' => $certificateSchoolOfGrades,
             'Diploma Courses' => $certificateSchoolOfGrades,
             'Undergraduate' => $certificateSchoolOfGrades,
@@ -532,7 +401,7 @@ class ProductMetadataCatalogService
             'class_grades' => $this->classGradesByLevel()['default'],
             'class_grades_by_level' => $this->classGradesByLevel(),
             'exam_categories' => ['KCPE', 'KCSE', 'Mock', 'Mid-term', 'End-term'],
-            'subjects' => $this->kcseSubjects(),
+            'subjects' => $this->subjectNamesForLevel('high-school'),
             'subjects_by_education_level' => $this->subjectsByEducationLevel(),
             'languages' => ['English', 'Swahili', 'Bilingual'],
             'years' => $this->availableYears(20),
@@ -589,20 +458,7 @@ class ProductMetadataCatalogService
 
     public function educationLevelDefinitions(): array
     {
-        return [
-            ['slug' => 'pre-primary', 'label' => 'Pre-Primary', 'source_slugs' => ['pre-primary']],
-            ['slug' => 'lower-primary', 'label' => 'Lower Primary', 'source_slugs' => ['lower-primary']],
-            ['slug' => 'upper-primary', 'label' => 'Upper Primary', 'source_slugs' => ['upper-primary']],
-            ['slug' => 'junior-school', 'label' => 'Junior School', 'source_slugs' => ['junior-school']],
-            ['slug' => 'senior-school-cbc', 'label' => 'Senior School (CBC)', 'source_slugs' => ['senior-school-cbc']],
-            ['slug' => 'high-school', 'label' => 'High School', 'source_slugs' => ['high-school']],
-            ['slug' => 'tvet', 'label' => 'TVET', 'source_slugs' => ['tvet']],
-            ['slug' => 'certificate-courses', 'label' => 'Certificate Courses', 'source_slugs' => ['certificate-courses']],
-            ['slug' => 'diploma-courses', 'label' => 'Diploma Courses', 'source_slugs' => ['diploma-courses']],
-            ['slug' => 'undergraduate', 'label' => 'Undergraduate', 'source_slugs' => ['undergraduate']],
-            ['slug' => 'professional-courses', 'label' => 'Professional Courses', 'source_slugs' => ['professional-courses']],
-            ['slug' => 'teacher-resources', 'label' => 'Teacher Resources', 'source_slugs' => ['teacher-resources']],
-        ];
+        return $this->taxonomyCatalog()->educationLevels();
     }
 
     public function subjectsByEducationLevel(): array
@@ -611,7 +467,7 @@ class ProductMetadataCatalogService
             ->mapWithKeys(function (array $definition) {
                 $subjects = $this->subjectNamesForLevel($definition['slug']);
 
-                return [$definition['label'] => $subjects ?: $this->kcseSubjects()];
+                return [$definition['label'] => $subjects ?: $this->subjectNamesForLevel('high-school')];
             })
             ->all();
     }

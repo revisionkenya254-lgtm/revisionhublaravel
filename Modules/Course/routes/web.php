@@ -12,8 +12,24 @@ use Modules\Course\app\Http\Controllers\CourseLanguageController;
 use Modules\Course\app\Http\Controllers\CourseLevelController;
 use Modules\Course\app\Http\Controllers\CourseReviewController;
 use Modules\Course\app\Http\Controllers\CourseSubCategoryController;
+use Modules\Course\app\Http\Controllers\TaxonomyManagementController;
 
 Route::group(['middleware' => ['auth:admin', 'translation'], 'prefix' => 'admin', 'as' => 'admin.'], function () {
+    Route::prefix('taxonomy')->name('taxonomy.')->controller(TaxonomyManagementController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/nodes/create', 'createNode')->name('nodes.create');
+        Route::post('/nodes', 'storeNode')->name('nodes.store');
+        Route::get('/nodes/{node}/edit', 'editNode')->name('nodes.edit');
+        Route::put('/nodes/{node}', 'updateNode')->name('nodes.update');
+        Route::delete('/nodes/{node}', 'archiveNode')->name('nodes.archive');
+        Route::post('/nodes/{node}/restore', 'restoreNode')->name('nodes.restore');
+        Route::get('/levels/{educationLevel}/shared/create', 'createShared')->name('shared.create');
+        Route::post('/levels/{educationLevel}/shared', 'storeShared')->name('shared.store');
+        Route::get('/levels/{educationLevel}/shared/{slug}/edit', 'editShared')->name('shared.edit');
+        Route::put('/levels/{educationLevel}/shared/{slug}', 'updateShared')->name('shared.update');
+        Route::delete('/levels/{educationLevel}/shared/{slug}', 'archiveShared')->name('shared.archive');
+    });
+
     Route::resource('course', CourseController::class)->names('course');
 
     /** Course category routes */

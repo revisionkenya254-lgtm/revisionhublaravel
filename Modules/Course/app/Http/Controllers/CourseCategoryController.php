@@ -4,11 +4,9 @@ namespace Modules\Course\app\Http\Controllers;
 
 use App\Enums\RedirectType;
 use App\Http\Controllers\Controller;
-use App\Models\Course;
 use App\Traits\RedirectHelperTrait;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Modules\Course\app\Helper\CourseCategoryHelper;
 use Modules\Course\app\Http\Requests\CourseCategoryStoreRequest;
 use Modules\Course\app\Http\Requests\CourseCategoryUpdateRequest;
@@ -127,16 +125,13 @@ class CourseCategoryController extends Controller
     public function destroy($id)
     {
         $category = CourseCategory::findOrFail($id);
-        if(CourseCategory::where('parent_id', $id)->exists()){
-            return redirect()->route('admin.course-category.index')->with(['messege' => 'Category can not be deleted because it has sub categories', 'alert-type' => 'error']);
+        if ($category->hasDependents()) {
+            return redirect()->route('admin.course-category.index')->with([
+                'messege' => __('Category cannot be archived because it has child categories, courses, or products.'),
+                'alert-type' => 'error',
+            ]);
         }
-        
-        if ($category->icon) {
-            if (\File::exists(public_path($category->icon))) {
-                unlink(public_path($category->icon));
-            }
-        }
-        $category->translations()->delete();
+
         $category->delete();
 
         return $this->redirectWithMessage(RedirectType::DELETE->value, 'admin.course-category.index');

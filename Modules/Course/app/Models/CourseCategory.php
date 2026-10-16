@@ -3,14 +3,40 @@
 namespace Modules\Course\app\Models;
 
 use App\Models\Course;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Course\app\Service\CourseCategoryCacheClear;
 
 class CourseCategory extends Model {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    public const TYPE_EDUCATION_LEVEL = 'education_level';
+    public const TYPE_GRADE = 'grade';
+    public const TYPE_FORM = 'form';
+    public const TYPE_NATIONAL_EXAM = 'national_exam';
+    public const TYPE_PATHWAY = 'pathway';
+    public const TYPE_SUBJECT = 'subject';
+    public const TYPE_SCHOOL = 'school';
+    public const TYPE_COURSE = 'course';
+    public const TYPE_RESOURCE = 'resource';
+    public const TYPE_LEGACY = 'legacy';
+
+    public const NODE_TYPES = [
+        self::TYPE_EDUCATION_LEVEL,
+        self::TYPE_GRADE,
+        self::TYPE_FORM,
+        self::TYPE_NATIONAL_EXAM,
+        self::TYPE_PATHWAY,
+        self::TYPE_SUBJECT,
+        self::TYPE_SCHOOL,
+        self::TYPE_COURSE,
+        self::TYPE_RESOURCE,
+        self::TYPE_LEGACY,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -21,10 +47,21 @@ class CourseCategory extends Model {
         'status',
         'order',
         'parent_id',
+        'node_type',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
+        'show_at_trending' => 'boolean',
+        'order' => 'integer',
     ];
 
     function scopeActive() {
         return $this->where(['status' => 1]);
+    }
+
+    public function scopeOfType($query, string $type) {
+        return $query->where('node_type', $type);
     }
     public function getNameAttribute(): ?string {
         if (!empty($this->translation_name)) {
@@ -66,6 +103,16 @@ class CourseCategory extends Model {
 
     public function courses() {
         return $this->hasMany(Course::class, 'category_id');
+    }
+
+    public function products() {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+
+    public function hasDependents(): bool {
+        return $this->subCategories()->exists()
+            || $this->courses()->exists()
+            || $this->products()->exists();
     }
 
     public function allCourses() {

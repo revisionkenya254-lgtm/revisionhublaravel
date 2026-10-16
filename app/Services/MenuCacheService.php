@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v17';
+    const CACHE_VERSION = 'v19';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -54,62 +54,10 @@ class MenuCacheService
     protected function categoryMenuBlueprint(): array
     {
         $metadataCatalog = app(ProductMetadataCatalogService::class);
-        $lowerPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('lower-primary');
-        $upperPrimarySubjects = $metadataCatalog->schoolSubjectsForLevel('upper-primary');
-        $juniorSchoolSubjects = $metadataCatalog->schoolSubjectsForLevel('junior-school');
-        $seniorSchoolSubjects = $metadataCatalog->schoolSubjectsForLevel('senior-school-cbc');
-
-        $highSchoolSubjects = [
-            ['slug' => 'mathematics', 'name' => 'Mathematics'],
-            ['slug' => 'english', 'name' => 'English'],
-            ['slug' => 'kiswahili', 'name' => 'Kiswahili'],
-            ['slug' => 'biology', 'name' => 'Biology'],
-            ['slug' => 'chemistry', 'name' => 'Chemistry'],
-            ['slug' => 'physics', 'name' => 'Physics'],
-            ['slug' => 'geography', 'name' => 'Geography'],
-            ['slug' => 'history', 'name' => 'History'],
-            ['slug' => 'cre', 'name' => 'CRE'],
-            ['slug' => 'ire', 'name' => 'IRE'],
-            ['slug' => 'hre', 'name' => 'HRE'],
-            ['slug' => 'agriculture', 'name' => 'Agriculture'],
-            ['slug' => 'business-studies', 'name' => 'Business Studies'],
-            ['slug' => 'computer-studies', 'name' => 'Computer Studies'],
-            ['slug' => 'french', 'name' => 'French'],
-            ['slug' => 'german', 'name' => 'German'],
-            ['slug' => 'music', 'name' => 'Music'],
-            ['slug' => 'home-science', 'name' => 'Home Science'],
-        ];
-
-        $kcseSubjects = $metadataCatalog->quizSelectionOptions()['subjects'];
-        $buildAssessmentNode = function (string $slug, string $name, array $subjects): array {
-            return [
-                'slug' => $slug,
-                'name' => $name,
-                'children' => collect($subjects)
-                    ->map(fn (array $subject) => [
-                        'slug' => $subject['slug'],
-                        'name' => $subject['name'],
-                        'children' => [],
-                    ])
-                    ->values()
-                    ->all(),
-            ];
-        };
-        $kcseNode = [
-            'slug' => 'kcse',
-            'name' => 'KCSE',
-            'children' => collect($kcseSubjects)
-                ->map(fn (string $subject) => [
-                    'slug' => Str::slug($subject),
-                    'name' => $subject,
-                    'children' => [],
-                ])
-                ->values()
-                ->all(),
-        ];
-        $kpseaNode = $buildAssessmentNode('kpsea', 'KPSEA', $upperPrimarySubjects);
-        $kjseaNode = $buildAssessmentNode('kjsea', 'KJSEA', $juniorSchoolSubjects);
-        $kcbeNode = $buildAssessmentNode('kcbe', 'KCBE – National Assessment', $seniorSchoolSubjects);
+        $educationLevelLabels = collect($metadataCatalog->educationLevelDefinitions())
+            ->pluck('label', 'slug');
+        $levelName = fn (string $slug, string $fallback): string =>
+            (string) ($educationLevelLabels[$slug] ?? $fallback);
         $buildGradeTree = function (array $grades, array $subjects): array {
             return collect($grades)
                 ->map(function (array $grade) use ($subjects) {
@@ -130,30 +78,15 @@ class MenuCacheService
                 ->all();
         };
 
-        $buildPathwayTree = function (array $pathways): array {
-            $grades = [
-                ['slug' => 'grade-10', 'name' => 'Grade 10'],
-                ['slug' => 'grade-11', 'name' => 'Grade 11'],
-                ['slug' => 'grade-12', 'name' => 'Grade 12'],
-            ];
-
-            return collect($pathways)
-                ->map(function (array $pathway) use ($grades) {
-                    return [
-                        'slug' => $pathway['slug'],
-                        'name' => $pathway['name'],
-                        'children' => collect($grades)
-                            ->map(fn (array $grade) => [
-                                'slug' => $grade['slug'],
-                                'name' => $grade['name'],
-                                'children' => [],
-                            ])
-                            ->values()
-                            ->all(),
-                    ];
-                })
-                ->values()
+        $buildCanonicalSchoolTree = function (string $levelSlug) use ($metadataCatalog, $buildGradeTree): array {
+            $nodes = collect($metadataCatalog->schoolClassGradeDefinitions()[$levelSlug] ?? [])
+                ->map(fn (array $node) => [
+                    'slug' => $node['slug'],
+                    'name' => $node['label'],
+                ])
                 ->all();
+
+            return $buildGradeTree($nodes, $metadataCatalog->schoolSubjectsForLevel($levelSlug));
         };
 
         $buildSchoolTree = function (string $level): array {
@@ -185,55 +118,33 @@ class MenuCacheService
         return [
             [
                 'slug' => 'pre-primary',
-                'name' => 'Pre-Primary',
-                'children' => [
-                    ['slug' => 'pp1', 'name' => 'PP1', 'children' => []],
-                    ['slug' => 'pp2', 'name' => 'PP2', 'children' => []],
-                ],
+                'name' => $levelName('pre-primary', 'Pre-Primary'),
+                'children' => $buildCanonicalSchoolTree('pre-primary'),
             ],
             [
                 'slug' => 'lower-primary',
-                'name' => 'Lower Primary',
-                'children' => $buildGradeTree([
-                    ['slug' => 'grade-1', 'name' => 'Grade 1'],
-                    ['slug' => 'grade-2', 'name' => 'Grade 2'],
-                    ['slug' => 'grade-3', 'name' => 'Grade 3'],
-                ], $lowerPrimarySubjects),
+                'name' => $levelName('lower-primary', 'Lower Primary'),
+                'children' => $buildCanonicalSchoolTree('lower-primary'),
             ],
             [
                 'slug' => 'upper-primary',
-                'name' => 'Upper Primary',
-                'children' => array_merge($buildGradeTree([
-                    ['slug' => 'grade-4', 'name' => 'Grade 4'],
-                    ['slug' => 'grade-5', 'name' => 'Grade 5'],
-                    ['slug' => 'grade-6', 'name' => 'Grade 6'],
-                ], $upperPrimarySubjects), [$kpseaNode]),
+                'name' => $levelName('upper-primary', 'Upper Primary'),
+                'children' => $buildCanonicalSchoolTree('upper-primary'),
             ],
             [
                 'slug' => 'junior-school',
-                'name' => 'Junior School',
-                'children' => array_merge($buildGradeTree([
-                    ['slug' => 'grade-7', 'name' => 'Grade 7'],
-                    ['slug' => 'grade-8', 'name' => 'Grade 8'],
-                    ['slug' => 'grade-9', 'name' => 'Grade 9'],
-                ], $juniorSchoolSubjects), [$kjseaNode]),
+                'name' => $levelName('junior-school', 'Junior School'),
+                'children' => $buildCanonicalSchoolTree('junior-school'),
             ],
             [
                 'slug' => 'senior-school-cbc',
-                'name' => 'Senior School (CBC)',
-                'children' => array_merge($buildGradeTree([
-                    ['slug' => 'grade-10', 'name' => 'Grade 10'],
-                    ['slug' => 'grade-11', 'name' => 'Grade 11'],
-                    ['slug' => 'grade-12', 'name' => 'Grade 12'],
-                ], $seniorSchoolSubjects), [$kcbeNode]),
+                'name' => $levelName('senior-school-cbc', 'Senior School (CBC)'),
+                'children' => $buildCanonicalSchoolTree('senior-school-cbc'),
             ],
             [
                 'slug' => 'high-school',
-                'name' => 'High School',
-                'children' => array_merge([$kcseNode], $buildGradeTree([
-                    ['slug' => 'form-3', 'name' => 'Form 3'],
-                    ['slug' => 'form-4', 'name' => 'Form 4'],
-                ], $highSchoolSubjects)),
+                'name' => $levelName('high-school', 'High School'),
+                'children' => $buildCanonicalSchoolTree('high-school'),
             ],
             [
                 'slug' => 'tvet',

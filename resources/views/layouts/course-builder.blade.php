@@ -46,8 +46,8 @@
                 @if(!$creatorIsAdmin && Route::has('instructor.lesson-questions.index'))
                     <a href="{{ route('instructor.lesson-questions.index') }}"><span class="rh-nav-icon">?</span><span>{{ __('Lesson Q&A') }}</span></a>
                 @endif
-                @if($creatorIsAdmin && Route::has('admin.course-category.index'))
-                    <a href="{{ route('admin.course-category.index') }}"><span class="rh-nav-icon">◇</span><span>{{ __('Categories') }}</span></a>
+                @if($creatorIsAdmin && Route::has('admin.taxonomy.index'))
+                    <a href="{{ route('admin.taxonomy.index') }}"><span class="rh-nav-icon">◇</span><span>{{ __('Taxonomy') }}</span></a>
                 @endif
                 @if($creatorIsAdmin && Route::has('admin.course-review.index'))
                     <a href="{{ route('admin.course-review.index') }}"><span class="rh-nav-icon">★</span><span>{{ __('Reviews') }}</span></a>
