@@ -189,6 +189,7 @@ class ProductCatalogApiTest extends TestCase
         $gradeOneEnglish = CourseCategory::create(['slug' => 'english', 'parent_id' => $gradeOne->id]);
         $gradeOneNumeracy = CourseCategory::create(['slug' => 'numeracy', 'parent_id' => $gradeOne->id]);
         $gradeTwoMathematics = CourseCategory::create(['slug' => 'mathematics', 'parent_id' => $gradeTwo->id]);
+        CourseCategory::create(['slug' => 'kplea', 'parent_id' => $root->id]);
 
         $mathematics = $this->createProduct($instructor, Product::TYPE_NOTE, 'active-grade-one-mathematics', 'active', $gradeOneMathematics->id);
         $mathematics->update(['metadata' => ['subject' => 'English']]);

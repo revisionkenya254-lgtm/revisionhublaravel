@@ -111,7 +111,7 @@ class CacheService
     public function getSubCategories($parentSlug, $languageCode = 'en', $limit = -1)
     {
         $catalogVersion = CatalogCacheClear::version();
-        $cacheKey = "sub_categories_v4_{$catalogVersion}_{$parentSlug}_{$languageCode}_{$limit}";
+        $cacheKey = "sub_categories_v5_{$catalogVersion}_{$parentSlug}_{$languageCode}_{$limit}";
         
         return Cache::remember($cacheKey, self::TTL_CATEGORIES, function () use ($parentSlug, $languageCode, $limit) {
             $categories = collect(app(\App\Services\MenuCacheService::class)->getSubCategoriesForMenu($parentSlug, $languageCode))

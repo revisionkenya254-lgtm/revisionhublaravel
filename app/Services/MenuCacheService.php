@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v16';
+    const CACHE_VERSION = 'v17';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -33,6 +33,9 @@ class MenuCacheService
         'professional-courses',
         'teacher-resources',
     ];
+
+    /** @var array<int, string> */
+    protected array $deprecatedCategorySlugs = ['kplea'];
 
     protected array $metadataEducationLevelByRootSlug = [
         'tvet' => 'TVET',
@@ -495,6 +498,27 @@ class MenuCacheService
     }
 
     /**
+     * Prevent removed taxonomy entries from being restored by legacy database
+     * rows when the canonical and stored category trees are merged.
+     */
+    protected function removeDeprecatedCategoryNodes(array $nodes): array
+    {
+        return collect($nodes)
+            ->reject(fn (array $node) => in_array(
+                Str::lower(trim((string) ($node['slug'] ?? ''))),
+                $this->deprecatedCategorySlugs,
+                true
+            ))
+            ->map(function (array $node) {
+                $node['children'] = $this->removeDeprecatedCategoryNodes($node['children'] ?? []);
+
+                return $node;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Remove duplicate category children within the same branch.
      *
      * We keep the first matching node and skip later nodes that share the
@@ -719,6 +743,7 @@ class MenuCacheService
                 ? $this->mergeCategoryTrees($canonicalTree, $databaseTree)
                 : $canonicalTree;
 
+            $sourceTree = $this->removeDeprecatedCategoryNodes($sourceTree);
             $sourceTree = $this->enforceCanonicalEducationHierarchy($sourceTree, $canonicalTree);
 
             $sourceTree = $this->filterGrandchildrenWithoutContent($sourceTree, $languageCode);
