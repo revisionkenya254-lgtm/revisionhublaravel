@@ -45,6 +45,11 @@ use App\Http\Controllers\AccountDeletionController;
 use App\Models\AiChatConversation;
 use App\Models\StandaloneAiChatConversation;
 
+
+Route::get('/version.json', function () {
+    return response()->file(public_path('version.json'));
+});
+
 Route::group(['middleware' => 'maintenance.mode'], function () {
 
     /**

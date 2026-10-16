@@ -29,6 +29,11 @@ jobs:
             
             rm -f index.html public/index.html
             
+            # --- WRITE VERSION FILE (Single Source of Truth) ---
+            echo "{\"commit\":\"${{ github.sha }}\",\"short\":\"$(echo ${{ github.sha }} | cut -c1-7)\",\"date\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"branch\":\"${{ github.ref_name }}\"}" > public/version.json
+            echo "${{ github.sha }}" > storage/app/version.txt
+            echo "Version written: ${{ github.sha }}"
+            
             composer install --no-dev --optimize-autoloader --no-interaction || true
             php artisan migrate --force || true
             php artisan storage:link || true
@@ -36,6 +41,31 @@ jobs:
             php artisan optimize:clear || true
             
             chmod -R 775 storage bootstrap/cache || true
-            chown -R revisionhubkenya:revisionhubkenya storage bootstrap/cache || true
+            chown -R revisionhubkenya:revisionhubkenya storage bootstrap/cache public/version.json storage/app/version.txt || true
             
-            echo "SUCCESS - $(date)"
+            echo "SUCCESS - $(date) - Commit ${{ github.sha }}"
+
+      - name: Verify live equals GitHub
+        run: |
+          echo "Waiting for live to settle..."
+          sleep 15
+          LIVE_URL="https://www.revisionhubkenya.com/version.json"
+          echo "Checking $LIVE_URL"
+          
+          # Try 5 times
+          for i in 1 2 3 4 5; do
+            LIVE_JSON=$(curl -s --max-time 10 $LIVE_URL || echo "")
+            echo "Attempt $i: $LIVE_JSON"
+            LIVE_SHA=$(echo $LIVE_JSON | grep -o '"commit":"[^"]*"' | cut -d'"' -f4 | cut -c1-7)
+            EXPECTED=$(echo "${{ github.sha }}" | cut -c1-7)
+            
+            if [ "$LIVE_SHA" = "$EXPECTED" ] && [ ! -z "$LIVE_SHA" ]; then
+              echo "✅ VERIFIED: Live ($LIVE_SHA) = GitHub ($EXPECTED)"
+              exit 0
+            fi
+            sleep 5
+          done
+          
+          echo "❌ MISMATCH: Live shows $LIVE_SHA but GitHub is $EXPECTED"
+          echo "Check https://www.revisionhubkenya.com/version.json manually"
+          exit 1
