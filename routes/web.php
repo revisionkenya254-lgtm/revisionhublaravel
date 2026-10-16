@@ -50,7 +50,7 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
     /**
      * ============================================================================
      * Global Routes
-     * It will be available for all users, including guests and authenticated users.
+     * It will be available for all users, guests and authenticated users.
      * ============================================================================
      */
 
