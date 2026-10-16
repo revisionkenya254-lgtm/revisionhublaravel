@@ -18,22 +18,33 @@ jobs:
           script: |
             cd /home/revisionhubkenya/htdocs/www.revisionhubkenya.com
             echo "Pulling latest.."
-            git pull origin main
+            
+            # Force clean update - fixes the Oct 14 stuck date issue
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+            
+            # Remove CloudPanel dummy file
+            rm -f index.html public/index.html public/index.html.bak
+            
             composer install --no-dev --optimize-autoloader --no-interaction
+            
             php artisan migrate --force || true
             php artisan storage:link || true
+            
+            # Clear all caches
+            php artisan cache:clear
             php artisan config:clear
             php artisan route:clear
             php artisan view:clear
-            php artisan config:cache
-            php artisan route:cache
-            chmod -R 775 storage bootstrap/cache
-            rm -f index.html public/index.html public/index.html.bak || true
             
-            php artisan cache:clear || true
-            php artisan config:clear || true
-            php artisan view:clear || true
-            php artisan route:clear || true
-            php artisan optimize || true
-            git checkout HEAD -- public/index.php || true
-            echo "SUCCESS"
+            php artisan optimize
+            
+            chmod -R 775 storage bootstrap/cache
+            
+            # Varnish purge if enabled
+            rm -rf .varnish-cache/* || true
+            rm -rf storage/framework/cache/* || true
+            rm -rf storage/framework/views/* || true
+            
+            echo "SUCCESS - Deployed $(git rev-parse --short HEAD)"
