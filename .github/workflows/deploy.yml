@@ -17,34 +17,25 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd /home/revisionhubkenya/htdocs/www.revisionhubkenya.com
-            echo "Pulling latest.."
             
-            # Force clean update - fixes the Oct 14 stuck date issue
+            # FIX ownership error
+            git config --global --add safe.directory /home/revisionhubkenya/htdocs/www.revisionhubkenya.com
+            
+            echo "Before: $(git rev-parse --short HEAD)"
             git fetch origin main
             git reset --hard origin/main
             git clean -fd
+            echo "After: $(git rev-parse --short HEAD)"
             
-            # Remove CloudPanel dummy file
-            rm -f index.html public/index.html public/index.html.bak
+            rm -f index.html public/index.html
             
-            composer install --no-dev --optimize-autoloader --no-interaction
-            
+            composer install --no-dev --optimize-autoloader --no-interaction || true
             php artisan migrate --force || true
             php artisan storage:link || true
             
-            # Clear all caches
-            php artisan cache:clear
-            php artisan config:clear
-            php artisan route:clear
-            php artisan view:clear
+            php artisan optimize:clear || true
             
-            php artisan optimize
+            chmod -R 775 storage bootstrap/cache || true
+            chown -R revisionhubkenya:revisionhubkenya storage bootstrap/cache || true
             
-            chmod -R 775 storage bootstrap/cache
-            
-            # Varnish purge if enabled
-            rm -rf .varnish-cache/* || true
-            rm -rf storage/framework/cache/* || true
-            rm -rf storage/framework/views/* || true
-            
-            echo "SUCCESS - Deployed $(git rev-parse --short HEAD)"
+            echo "SUCCESS - $(date)"
