@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v15';
+    const CACHE_VERSION = 'v16';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -105,7 +105,6 @@ class MenuCacheService
                 ->all(),
         ];
         $kpseaNode = $buildAssessmentNode('kpsea', 'KPSEA', $upperPrimarySubjects);
-        $kpleaNode = $buildAssessmentNode('kplea', 'KPLEA', $lowerPrimarySubjects);
         $kjseaNode = $buildAssessmentNode('kjsea', 'KJSEA', $juniorSchoolSubjects);
         $kcbeNode = $buildAssessmentNode('kcbe', 'KCBE – National Assessment', $seniorSchoolSubjects);
         $buildGradeTree = function (array $grades, array $subjects): array {
@@ -192,11 +191,11 @@ class MenuCacheService
             [
                 'slug' => 'lower-primary',
                 'name' => 'Lower Primary',
-                'children' => array_merge($buildGradeTree([
+                'children' => $buildGradeTree([
                     ['slug' => 'grade-1', 'name' => 'Grade 1'],
                     ['slug' => 'grade-2', 'name' => 'Grade 2'],
                     ['slug' => 'grade-3', 'name' => 'Grade 3'],
-                ], $lowerPrimarySubjects), [$kpleaNode]),
+                ], $lowerPrimarySubjects),
             ],
             [
                 'slug' => 'upper-primary',

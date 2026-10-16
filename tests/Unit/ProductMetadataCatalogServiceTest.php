@@ -32,7 +32,6 @@ class ProductMetadataCatalogServiceTest extends TestCase
         $catalog = new ProductMetadataCatalogService();
 
         foreach ([
-            ['lower-primary', 'kplea', 'KPLEA'],
             ['upper-primary', 'kpsea', 'KPSEA'],
             ['junior-school', 'kjsea', 'KJSEA'],
         ] as [$level, $slug, $label]) {

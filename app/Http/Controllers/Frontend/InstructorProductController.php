@@ -1445,7 +1445,6 @@ class InstructorProductController extends Controller
                 $kcseSubjects
             ),
         ];
-        $kpleaNode = $this->metadataCatalog->assessmentNode('lower-primary', 'kplea', 'KPLEA');
         $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
         $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
         $buildNode = function ($category) use (&$buildNode, $byParent, $labelOverrides) {
@@ -1464,7 +1463,7 @@ class InstructorProductController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
+            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $professionalCoursesCfaNode, $professionalCoursesComptiaNode, $kcseNode, $kpseaNode, $kjseaNode, $ictAndComputingCourseChildren, $seniorSchoolGrades) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -1484,8 +1483,7 @@ class InstructorProductController extends Controller
                     $children = $schoolOnlyNodesByLevel[$definition['slug']];
                 }
 
-                if ($definition['slug'] === 'primary') {
-                    $children[] = $kpleaNode;
+                if ($definition['slug'] === 'upper-primary') {
                     $children[] = $kpseaNode;
                 }
 

@@ -207,6 +207,11 @@ class ProductCatalogApiTest extends TestCase
         $response->assertOk();
         $grades = collect($response->json('data'))->keyBy('slug');
 
+        $this->assertSame(
+            ['grade-1', 'grade-2', 'grade-3'],
+            collect($response->json('data'))->pluck('slug')->all()
+        );
+
         $this->assertSame(['mathematics', 'numeracy'], collect($grades['grade-1']['children'])->pluck('slug')->all());
         $this->assertSame(['science-technology'], collect($grades['grade-2']['children'])->pluck('slug')->all());
 

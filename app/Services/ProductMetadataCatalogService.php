@@ -216,7 +216,6 @@ class ProductMetadataCatalogService
     public function addAssessmentNodes(array $tree): array
     {
         $assessmentsByLevel = [
-            'lower-primary' => ['slug' => 'kplea', 'label' => 'KPLEA'],
             'upper-primary' => ['slug' => 'kpsea', 'label' => 'KPSEA'],
             'junior-school' => ['slug' => 'kjsea', 'label' => 'KJSEA'],
             'high-school' => ['slug' => 'kcse', 'label' => 'KCSE'],
@@ -315,7 +314,7 @@ class ProductMetadataCatalogService
                 'Form 5',
             ],
             'Pre-Primary' => ['PP1', 'PP2'],
-            'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3', 'KPLEA'],
+            'Lower Primary' => ['Grade 1', 'Grade 2', 'Grade 3'],
             'Upper Primary' => ['Grade 4', 'Grade 5', 'Grade 6', 'KPSEA'],
             'Senior School (CBC)' => ['Grade 10', 'Grade 11', 'Grade 12', 'KCBE – National Assessment'],
             'High School' => ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5', 'KCSE'],

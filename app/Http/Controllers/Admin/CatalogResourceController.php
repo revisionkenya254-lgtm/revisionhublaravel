@@ -694,7 +694,6 @@ class CatalogResourceController extends Controller
                 $kcseSubjects
             ),
         ];
-        $kpleaNode = $this->metadataCatalog->assessmentNode('lower-primary', 'kplea', 'KPLEA');
         $kpseaNode = $this->metadataCatalog->assessmentNode('upper-primary', 'kpsea', 'KPSEA');
         $kjseaNode = $this->metadataCatalog->assessmentNode('junior-school', 'kjsea', 'KJSEA');
         $seniorSchoolGrades = $this->metadataCatalog->seniorSchoolClassGradeNodes();
@@ -714,7 +713,7 @@ class CatalogResourceController extends Controller
         };
 
         return collect($rootDefinitions)
-            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $kcseNode, $kpleaNode, $kpseaNode, $kjseaNode, $seniorSchoolGrades) {
+            ->map(function (array $definition) use ($categories, $buildNode, $schoolOnlyNodesByLevel, $kcseNode, $kpseaNode, $kjseaNode, $seniorSchoolGrades) {
                 $sourceSlugs = $definition['source_slugs'];
                 $rootNodes = $categories
                     ->filter(fn ($category) => blank($category->parent_id) && in_array($category->slug, $sourceSlugs, true))
@@ -734,8 +733,7 @@ class CatalogResourceController extends Controller
                     $children = $schoolOnlyNodesByLevel[$definition['slug']];
                 }
 
-                if ($definition['slug'] === 'primary') {
-                    $children[] = $kpleaNode;
+                if ($definition['slug'] === 'upper-primary') {
                     $children[] = $kpseaNode;
                 }
 
