@@ -29,7 +29,13 @@ class CourseCategoryTranslation extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn () => CourseCategoryCacheClear::clear());
-        static::deleted(fn () => CourseCategoryCacheClear::clear());
+        static::saved(function () {
+            app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->touch();
+            CourseCategoryCacheClear::clear();
+        });
+        static::deleted(function () {
+            app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->touch();
+            CourseCategoryCacheClear::clear();
+        });
     }
 }

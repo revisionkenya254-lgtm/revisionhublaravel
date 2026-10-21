@@ -21,6 +21,10 @@ class TaxonomyManagementService
         CourseCategory::TYPE_PATHWAY,
     ];
 
+    public function __construct(private readonly TaxonomyAuditService $audit)
+    {
+    }
+
     public function allowedChildTypes(?CourseCategory $parent): array
     {
         if (! $parent) {
@@ -58,6 +62,9 @@ class TaxonomyManagementService
                 $this->cloneSharedLeavesIntoClass($parent, $node);
             }
 
+            $this->audit->record('node_created', $node->id, null, $this->nodeSnapshot($node), [
+                'parent_id' => $parentId,
+            ]);
             CourseCategoryCacheClear::clear();
 
             return $node;
@@ -68,6 +75,7 @@ class TaxonomyManagementService
     {
         return DB::transaction(function () use ($node, $data) {
             $node = CourseCategory::lockForUpdate()->findOrFail($node->id);
+            $before = $this->nodeSnapshot($node);
             $parent = $node->parent_id ? CourseCategory::findOrFail($node->parent_id) : null;
             $this->assertAllowedType($parent, $data['node_type']);
             $this->assertSiblingSlugAvailable($node->parent_id, $data['slug'], $node->id);
@@ -79,6 +87,8 @@ class TaxonomyManagementService
                 'status' => true,
             ])->saveQuietly();
             $this->upsertTranslation($node->id, $data['name']);
+            $node->setAttribute('translation_name', $data['name']);
+            $this->audit->record('node_updated', $node->id, $before, $this->nodeSnapshot($node));
             CourseCategoryCacheClear::clear();
 
             return $node->refresh();
@@ -114,6 +124,7 @@ class TaxonomyManagementService
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('parent_id');
+            $before = $existing->map(fn (CourseCategory $node) => $this->nodeSnapshot($node))->values()->all();
 
             if ($originalSlug && $existing->isEmpty()) {
                 throw ValidationException::withMessages(['slug' => __('The shared subject no longer exists.')]);
@@ -149,6 +160,17 @@ class TaxonomyManagementService
                 $ids[] = $leaf->id;
             }
 
+            $after = CourseCategory::whereIn('id', $ids)
+                ->get()
+                ->map(fn (CourseCategory $node) => $this->nodeSnapshot($node))
+                ->all();
+            $this->audit->record(
+                $originalSlug ? 'shared_leaf_updated' : 'shared_leaf_created',
+                $ids[0] ?? null,
+                $before,
+                $after,
+                ['education_level_id' => $level->id, 'copies' => count($ids)]
+            );
             CourseCategoryCacheClear::clear();
 
             return $ids;
@@ -173,8 +195,14 @@ class TaxonomyManagementService
                 throw ValidationException::withMessages(['slug' => __('The shared subject was not found.')]);
             }
 
+            $before = CourseCategory::whereIn('id', $ids)->get()
+                ->map(fn (CourseCategory $node) => $this->nodeSnapshot($node))->all();
             $this->assertNoExternalReferences($ids);
             $archived = $this->archiveIds($ids);
+            $this->audit->record('shared_leaf_archived', $ids[0], $before, null, [
+                'education_level_id' => $level->id,
+                'copies' => count($ids),
+            ]);
             CourseCategoryCacheClear::clear();
 
             return $archived;
@@ -186,8 +214,13 @@ class TaxonomyManagementService
         return DB::transaction(function () use ($node) {
             $node = CourseCategory::lockForUpdate()->findOrFail($node->id);
             $ids = $this->subtreeIds($node->id);
+            $before = CourseCategory::whereIn('id', $ids)->get()
+                ->map(fn (CourseCategory $row) => $this->nodeSnapshot($row))->all();
             $this->assertNoExternalReferences($ids);
             $archived = $this->archiveIds(array_reverse($ids));
+            $this->audit->record('branch_archived', $node->id, $before, null, [
+                'nodes' => count($ids),
+            ]);
             CourseCategoryCacheClear::clear();
 
             return $archived;
@@ -198,6 +231,7 @@ class TaxonomyManagementService
     {
         return DB::transaction(function () use ($nodeId) {
             $node = CourseCategory::withTrashed()->lockForUpdate()->findOrFail($nodeId);
+            $before = $this->nodeSnapshot($node);
 
             if ($node->parent_id) {
                 $parent = CourseCategory::find($node->parent_id);
@@ -232,6 +266,10 @@ class TaxonomyManagementService
                 'deleted_at' => null,
                 'status' => 1,
                 'updated_at' => now(),
+            ]);
+            $this->audit->record('branch_restored', $node->id, $before, [
+                'ids' => $ids,
+                'restored' => $restored,
             ]);
             CourseCategoryCacheClear::clear();
 
@@ -431,5 +469,18 @@ class TaxonomyManagementService
         return function_exists('getSessionLanguage')
             ? getSessionLanguage()
             : config('app.locale', 'en');
+    }
+
+    private function nodeSnapshot(CourseCategory $node): array
+    {
+        return [
+            'id' => (int) $node->id,
+            'parent_id' => $node->parent_id ? (int) $node->parent_id : null,
+            'slug' => (string) $node->slug,
+            'name' => (string) ($node->getAttribute('translation_name') ?: $node->name),
+            'node_type' => (string) $node->node_type,
+            'order' => (int) $node->order,
+            'status' => (bool) $node->status,
+        ];
     }
 }

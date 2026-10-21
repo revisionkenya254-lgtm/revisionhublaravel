@@ -857,6 +857,7 @@ class MenuCacheService
                 'categories' => $this->getCategoryTree($languageCode),
                 'languages' => $this->getMenuLanguages(),
                 'levels' => $this->getMenuLevels($languageCode),
+                'taxonomy_revision' => app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->current(),
                 'generated_at' => now()->toIso8601String(),
             ];
         });
@@ -934,6 +935,7 @@ class MenuCacheService
             return [
                 'categories' => $mainCategories,
                 'version' => '1.0',
+                'taxonomy_revision' => app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->current(),
             ];
         });
     }

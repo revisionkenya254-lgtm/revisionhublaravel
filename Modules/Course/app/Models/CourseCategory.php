@@ -128,10 +128,17 @@ class CourseCategory extends Model {
 
     protected static function booted() {
         static::saved(function ($model) {
+            app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->touch();
             CourseCategoryCacheClear::clear();
         });
 
         static::deleted(function ($model) {
+            app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->touch();
+            CourseCategoryCacheClear::clear();
+        });
+
+        static::restored(function ($model) {
+            app(\App\Services\Taxonomy\TaxonomyRevisionService::class)->touch();
             CourseCategoryCacheClear::clear();
         });
     }

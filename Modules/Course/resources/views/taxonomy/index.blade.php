@@ -174,6 +174,28 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="card">
+                    <div class="card-header"><h4>{{ __('Recent Taxonomy Changes') }}</h4></div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-sm">
+                            <thead><tr><th>{{ __('When') }}</th><th>{{ __('Action') }}</th><th>{{ __('Administrator') }}</th><th>{{ __('Category ID') }}</th><th>{{ __('Batch') }}</th></tr></thead>
+                            <tbody>
+                                @forelse ($recentChanges as $change)
+                                    <tr>
+                                        <td>{{ $change->created_at?->diffForHumans() }}</td>
+                                        <td><span class="badge badge-info">{{ str_replace('_', ' ', $change->action) }}</span></td>
+                                        <td>{{ $change->admin?->name ?? __('System') }}</td>
+                                        <td>{{ $change->category_id ?? '-' }}</td>
+                                        <td><code>{{ substr($change->batch_uuid, 0, 8) }}</code></td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="text-center text-muted">{{ __('No audited taxonomy changes yet.') }}</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
     </div>

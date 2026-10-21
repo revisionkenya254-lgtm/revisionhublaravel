@@ -22,6 +22,7 @@ use App\Models\CourseReview;
 use App\Models\Product;
 use App\Services\CacheService;
 use App\Services\ProductIdentityService;
+use App\Services\Taxonomy\TaxonomyRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -43,7 +44,8 @@ class FrontendController extends Controller {
     public function __construct(
         protected CacheService $cacheService,
         protected \App\Services\MenuCacheService $menuCacheService,
-        protected ProductIdentityService $productIdentityService
+        protected ProductIdentityService $productIdentityService,
+        protected TaxonomyRevisionService $taxonomyRevisionService
     ) {}
 
     public function settings(): JsonResponse {
@@ -70,7 +72,11 @@ class FrontendController extends Controller {
         $categories = $this->cacheService->getMainCategories($code, $limit);
 
         if (! empty($categories)) {
-            return response()->json(['status' => 'success', 'data' => $categories], 200);
+            return response()->json([
+                'status' => 'success',
+                'data' => $categories,
+                'taxonomy_revision' => $this->taxonomyRevisionService->current(),
+            ], 200)->header('X-Taxonomy-Revision', (string) $this->taxonomyRevisionService->current());
         }
 
         return response()->json(['status' => 'error', 'message' => 'Not Found!'], 404);
@@ -130,7 +136,11 @@ class FrontendController extends Controller {
         $categories = $this->cacheService->getSubCategories($slug, $code, $limit);
 
         if (!empty($categories)) {
-            return response()->json(['status' => 'success', 'data' => $categories], 200);
+            return response()->json([
+                'status' => 'success',
+                'data' => $categories,
+                'taxonomy_revision' => $this->taxonomyRevisionService->current(),
+            ], 200)->header('X-Taxonomy-Revision', (string) $this->taxonomyRevisionService->current());
         }
         return response()->json(['status' => 'error', 'message' => 'Not Found!'], 404);
     }
@@ -715,7 +725,7 @@ class FrontendController extends Controller {
             'status' => 'success',
             'data' => $menuData,
             'cache_info' => $this->menuCacheService->getMenuCacheInfo(),
-        ], 200);
+        ], 200)->header('X-Taxonomy-Revision', (string) $menuData['taxonomy_revision']);
     }
 
     /**
@@ -730,6 +740,6 @@ class FrontendController extends Controller {
         return response()->json([
             'status' => 'success',
             'data' => $menuData,
-        ], 200);
+        ], 200)->header('X-Taxonomy-Revision', (string) $menuData['taxonomy_revision']);
     }
 }

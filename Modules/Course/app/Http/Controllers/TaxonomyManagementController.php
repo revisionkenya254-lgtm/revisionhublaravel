@@ -3,9 +3,11 @@
 namespace Modules\Course\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\TaxonomyChangeLog;
 use App\Services\Taxonomy\TaxonomyManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Modules\Course\app\Models\CourseCategory;
 
@@ -87,7 +89,11 @@ class TaxonomyManagementController extends Controller
             ->take(50)
             ->values();
 
-        return view('course::taxonomy.index', compact('levels', 'sharedLeaves', 'archivedNodes'));
+        $recentChanges = Schema::hasTable('taxonomy_change_logs')
+            ? TaxonomyChangeLog::with('admin')->latest()->limit(20)->get()
+            : collect();
+
+        return view('course::taxonomy.index', compact('levels', 'sharedLeaves', 'archivedNodes', 'recentChanges'));
     }
 
     public function createNode(Request $request): View|RedirectResponse

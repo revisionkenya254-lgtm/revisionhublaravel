@@ -4,6 +4,10 @@
     </IfModule>
 
     RewriteEngine On
+
+    # Canonical production host: always use the non-www HTTPS domain.
+    RewriteCond %{HTTP_HOST} ^www\.revisionhubkenya\.com(?::\d+)?$ [NC]
+    RewriteRule ^ https://revisionhubkenya.com%{REQUEST_URI} [R=301,L,NE]
     
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
