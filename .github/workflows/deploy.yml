@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd /home/revisionhub/htdocs/revisionhubkenya.com
+
+            echo "Pulling latest..."
+            git pull origin main
+
+            echo "Installing PHP deps..."
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            echo "Building frontend..."
+            npm install
+            npm run build
+
+            echo "Laravel optimize..."
+            php artisan migrate --force
+            php artisan storage:link || true
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            php artisan optimize
+
+            chmod -R 775 storage bootstrap/cache
+            echo "DEPLOYED OK"
