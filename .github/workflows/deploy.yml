@@ -19,7 +19,21 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd /home/revisionhub/htdocs/revisionhubkenya.com
+            CORE_PATH="/home/revisionhub/htdocs/revisionhubkenya.com"
+            
+            echo "=== Deploying to $CORE_PATH ==="
+            cd $CORE_PATH
+
+            # First time setup if not a git repo
+            if [ ! -d ".git" ]; then
+              echo "Initializing git..."
+              git init
+              git remote add origin https://github.com/revisionkenya254-lgtm/revisionhublaravel.git || true
+              git fetch origin main
+              git reset --hard origin/main
+              git branch -M main
+              git branch --set-upstream-to=origin/main main || true
+            fi
 
             echo "Pulling latest..."
             git pull origin main
@@ -31,8 +45,8 @@ jobs:
             npm install
             npm run build
 
-            echo "Laravel optimize..."
-            php artisan migrate --force
+            echo "Laravel tasks..."
+            php artisan migrate --force || true
             php artisan storage:link || true
             php artisan config:clear
             php artisan cache:clear
@@ -40,4 +54,5 @@ jobs:
             php artisan optimize
 
             chmod -R 775 storage bootstrap/cache
+
             echo "DEPLOYED OK"
