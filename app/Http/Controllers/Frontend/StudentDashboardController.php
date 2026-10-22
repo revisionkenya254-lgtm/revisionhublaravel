@@ -129,6 +129,53 @@ class StudentDashboardController extends Controller {
         ));
     }
 
+    public function subscription(): View
+    {
+        $user = userAuth();
+        $isActive = hasActiveSubscription($user);
+        $plan = filled($user->subscription_plan_id)
+            ? revisionHubSubscriptionPlan((string) $user->subscription_plan_id)
+            : null;
+        $startedAt = $user->subscription_started_at;
+        $expiresAt = $user->subscription_expires_at;
+        $remainingDays = 0;
+        $remainingPercentage = 0;
+
+        if ($isActive && $expiresAt) {
+            $remainingSeconds = max(0, now()->diffInSeconds($expiresAt, false));
+            $remainingDays = max(1, (int) ceil($remainingSeconds / 86400));
+
+            if ($startedAt) {
+                $durationSeconds = max(1, $startedAt->diffInSeconds($expiresAt, false));
+                $remainingPercentage = min(100, max(0, (int) round(($remainingSeconds / $durationSeconds) * 100)));
+            }
+        }
+
+        $upgradePlans = collect(revisionHubSubscriptionPlans())
+            ->filter(fn (array $candidate) => $isActive && $plan
+                ? (int) $candidate['months'] > (int) $plan['months']
+                : true)
+            ->values();
+
+        $subscriptionOrders = Order::query()
+            ->where('buyer_id', $user->id)
+            ->where('order_type', Order::ORDER_TYPE_SUBSCRIPTION)
+            ->latest('id')
+            ->paginate(10);
+
+        return view('frontend.student-dashboard.subscription.index', compact(
+            'user',
+            'isActive',
+            'plan',
+            'startedAt',
+            'expiresAt',
+            'remainingDays',
+            'remainingPercentage',
+            'upgradePlans',
+            'subscriptionOrders'
+        ));
+    }
+
     function enrolledCourses() {
         $courses = $this->accessibleCourses();
         $enrolls = $this->paginateCollection($courses, 10);

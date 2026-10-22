@@ -170,6 +170,7 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
 
     Route::group(['middleware' => ['auth', 'verified', 'role:student'], 'prefix' => 'student', 'as' => 'student.'], function () {
         Route::get('dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
+        Route::get('subscription', [StudentDashboardController::class, 'subscription'])->name('subscription');
         // Profile setting routes
         Route::get('setting', [StudentProfileSettingController::class, 'index'])->name('setting.index');
         Route::put('setting/profile', [StudentProfileSettingController::class, 'updateProfile'])->name('setting.profile.update');

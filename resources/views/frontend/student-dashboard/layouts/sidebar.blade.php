@@ -18,6 +18,12 @@
                     {{ __('Order History') }}
                 </a>
             </li>
+            <li class="{{ Route::is('student.subscription') ? 'active' : '' }}">
+                <a href="{{ route('student.subscription') }}">
+                    <i class="fas fa-crown"></i>
+                    {{ __('My Subscription') }}
+                </a>
+            </li>
             <li class="{{ Route::is('refund-request.index') ? 'active' : '' }}">
                 <a href="{{ route('refund-request.index') }}">
                     <img src="{{ asset('uploads/website-images/refund.svg') }}">

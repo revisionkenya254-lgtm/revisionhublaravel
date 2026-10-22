@@ -47,11 +47,11 @@
                     </div>
                     <div class="dashboard__instructor-info-right">
                         @if ($hasActiveSubscription)
-                            <span class="dashboard__subscription-badge" title="{{ __('Expires on') }} {{ $subscriptionExpiryLabel }}">
+                            <a href="{{ route('student.subscription') }}" class="dashboard__subscription-badge" title="{{ __('Expires on') }} {{ $subscriptionExpiryLabel }}">
                                 <i class="fas fa-crown"></i>
                                 <span>{{ __('Subscription active') }}</span>
                                 <small>{{ __('until') }} {{ $subscriptionExpiryLabel }}</small>
-                            </span>
+                            </a>
                         @endif
                         @if (isInstructorAccount())
                         <a href="{{ route('instructor.dashboard') }}" class="btn btn-two arrow-btn">{{ __('Instructor Dashboard') }} <img
@@ -110,6 +110,7 @@
             font-size: 13px;
             font-weight: 700;
             white-space: nowrap;
+            text-decoration: none;
         }
 
         .dashboard__subscription-badge i {
