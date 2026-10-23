@@ -11,23 +11,25 @@ use App\Models\CourseReview;
 use App\Models\Product;
 use App\Models\ProductNoteProgress;
 use App\Models\ProductQuizAttempt;
-use App\Services\ProductMetadataCatalogService;
 use App\Models\QuizResult;
+use App\Services\Ai\AiCreditLedgerService;
+use App\Services\ProductMetadataCatalogService;
 use Dompdf\Dompdf;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Modules\CertificateBuilder\app\Models\CertificateBuilder;
 use Modules\CertificateBuilder\app\Models\CertificateBuilderItem;
 use Modules\Order\app\Models\Enrollment;
 use Modules\Order\app\Models\Order;
 use Modules\Order\app\Models\OrderItem;
-use App\Services\Ai\AiCreditLedgerService;
 
-class StudentDashboardController extends Controller {
-    public function index(): View {
+class StudentDashboardController extends Controller
+{
+    public function index(): View
+    {
         $user = userAuth();
         $accessibleCourses = $this->accessibleCourses();
         $accessibleProducts = $this->accessibleProducts();
@@ -112,6 +114,7 @@ class StudentDashboardController extends Controller {
                 'tone' => 'blue',
             ],
         ];
+
         return view('frontend.student-dashboard.index', compact(
             'accessibleCourses',
             'accessibleProducts',
@@ -176,13 +179,16 @@ class StudentDashboardController extends Controller {
         ));
     }
 
-    function enrolledCourses() {
+    public function enrolledCourses()
+    {
         $courses = $this->accessibleCourses();
         $enrolls = $this->paginateCollection($courses, 10);
+
         return view('frontend.student-dashboard.enrolled-courses.index', compact('enrolls'));
     }
 
-    function library(ProductMetadataCatalogService $metadataCatalog) {
+    public function library(ProductMetadataCatalogService $metadataCatalog)
+    {
         $items = $this->accessibleProducts();
         $requestedType = request()->string('type')->toString();
         $allowedTypes = [
@@ -229,7 +235,8 @@ class StudentDashboardController extends Controller {
         ));
     }
 
-    function quizAttempts() {
+    public function quizAttempts()
+    {
         Session::forget('course_slug');
         $quizAttempts = QuizResult::with(['quiz'])->where('user_id', userAuth()->id)->orderByDesc('id')->paginate(10, ['*'], 'course_page');
         $productQuizAttempts = ProductQuizAttempt::with(['product', 'quiz'])
@@ -240,7 +247,8 @@ class StudentDashboardController extends Controller {
         return view('frontend.student-dashboard.quiz-attempts.index', compact('quizAttempts', 'productQuizAttempts'));
     }
 
-    function downloadCertificate(string $id) {
+    public function downloadCertificate(string $id)
+    {
         $certificate = CertificateBuilder::first();
         $certificateItems = CertificateBuilderItem::get();
         $course = Course::withTrashed()->find($id);
@@ -272,14 +280,15 @@ class StudentDashboardController extends Controller {
         $html = str_replace('[instructor_name]', $course->instructor->name, $html);
 
         // Initialize Dompdf
-        $dompdf = new Dompdf(array('enable_remote' => true));
+        $dompdf = new Dompdf(['enable_remote' => true]);
 
         // Load HTML content
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
 
         $dompdf->render();
-        $dompdf->stream("certificate.pdf");
+        $dompdf->stream('certificate.pdf');
+
         return redirect()->back();
     }
 
@@ -298,7 +307,7 @@ class StudentDashboardController extends Controller {
             }
         });
 
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             Course::active()->withTrashed()->with(['category.translation', 'instructor'])
                 ->get()
                 ->each(function ($course) use (&$courseMap) {
@@ -314,7 +323,7 @@ class StudentDashboardController extends Controller {
     private function accessibleProducts(): Collection
     {
         $user = userAuth();
-        $subscriptionActive = hasActiveSubscription($user);
+        $subscriptionActive = hasFullCatalogAccess($user);
 
         $purchasedOrderItems = OrderItem::with(['order:id,buyer_id,payment_status,created_at', 'product.category.translation', 'product.course'])
             ->where('item_type', 'product')
@@ -374,7 +383,7 @@ class StudentDashboardController extends Controller {
 
     private function accessibleCourseCount(): int
     {
-        if (hasActiveSubscription(userAuth())) {
+        if (hasFullCatalogAccess(userAuth())) {
             return Course::active()->count();
         }
 
@@ -503,7 +512,7 @@ class StudentDashboardController extends Controller {
         $courseItems = $accessibleCourses->map(function (object $enrollment) {
             $course = $enrollment->course;
 
-            if (!$course) {
+            if (! $course) {
                 return null;
             }
 
@@ -528,7 +537,7 @@ class StudentDashboardController extends Controller {
                 'meta' => [
                     [
                         'label' => __('Progress'),
-                        'value' => number_format($courseCompletedPercent, 1) . '%',
+                        'value' => number_format($courseCompletedPercent, 1).'%',
                     ],
                     [
                         'label' => __('Lectures'),
@@ -536,7 +545,7 @@ class StudentDashboardController extends Controller {
                     ],
                 ],
                 'progress_percent' => $courseCompletedPercent,
-                'progress_label' => number_format($courseCompletedPercent, 1) . '% ' . __('complete'),
+                'progress_label' => number_format($courseCompletedPercent, 1).'% '.__('complete'),
                 'last_activity_at' => $course->updated_at ?? $course->created_at,
             ];
         })->filter();
@@ -599,10 +608,10 @@ class StudentDashboardController extends Controller {
     {
         return match ($product->type) {
             Product::TYPE_NOTE => $noteProgress?->completion_percent !== null
-                ? number_format((float) $noteProgress->completion_percent, 1) . '% ' . __('read')
+                ? number_format((float) $noteProgress->completion_percent, 1).'% '.__('read')
                 : __('Ready to read'),
             Product::TYPE_QUIZ => $quizAttempt?->percentage !== null
-                ? number_format((float) $quizAttempt->percentage, 1) . '% ' . __('score')
+                ? number_format((float) $quizAttempt->percentage, 1).'% '.__('score')
                 : __('Ready to start'),
             Product::TYPE_PAST_PAPER, Product::TYPE_PREDICTION => __('Ready to read'),
             Product::TYPE_COURSE => __('Ready to open'),

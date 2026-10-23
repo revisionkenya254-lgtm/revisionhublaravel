@@ -1,50 +1,52 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Frontend\QnaController;
+use App\Http\Controllers\AccountDeletionController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Frontend\AboutPageController;
+use App\Http\Controllers\Frontend\AiChatController;
+use App\Http\Controllers\Frontend\BecomeInstructorController;
 use App\Http\Controllers\Frontend\BlogController;
 use App\Http\Controllers\Frontend\CartController;
-use App\Http\Controllers\GoogleCalendarController;
-use App\Http\Controllers\LessonBuilderController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Frontend\DeviceController;
-use App\Http\Controllers\Frontend\ContactController;
-use App\Http\Controllers\Frontend\CheckOutController;
-use App\Http\Controllers\Frontend\FavoriteController;
-use App\Http\Controllers\Frontend\HomePageController;
-use App\Http\Controllers\Frontend\LearningController;
-use App\Http\Controllers\Frontend\AboutPageController;
-use App\Http\Controllers\Frontend\CoursePageController;
 use App\Http\Controllers\Frontend\CatalogController;
-use App\Http\Controllers\Frontend\ProductPageController;
-use App\Http\Controllers\Global\CloudStorageController;
-use App\Http\Controllers\Frontend\StudentOrderController;
-use App\Http\Controllers\Frontend\AiChatController;
-use App\Http\Controllers\Frontend\StudentAiChatController;
+use App\Http\Controllers\Frontend\CheckOutController;
+use App\Http\Controllers\Frontend\ContactController;
 use App\Http\Controllers\Frontend\CourseContentController;
-use App\Http\Controllers\Frontend\StudentReviewController;
-use App\Http\Controllers\Frontend\BecomeInstructorController;
+use App\Http\Controllers\Frontend\CoursePageController;
+use App\Http\Controllers\Frontend\DeviceController;
+use App\Http\Controllers\Frontend\FavoriteController;
+use App\Http\Controllers\Frontend\HeaderNotificationController;
+use App\Http\Controllers\Frontend\HomePageController;
+use App\Http\Controllers\Frontend\InstructorAiDocumentController;
+use App\Http\Controllers\Frontend\InstructorAnnouncementController;
 use App\Http\Controllers\Frontend\InstructorCourseController;
-use App\Http\Controllers\Frontend\InstructorPayoutController;
-use App\Http\Controllers\Frontend\QuizImportExportController;
-use App\Http\Controllers\Frontend\StudentDashboardController;
-use App\Http\Controllers\Frontend\TinymceImageUploadController;
 use App\Http\Controllers\Frontend\InstructorDashboardController;
 use App\Http\Controllers\Frontend\InstructorLessonQnaController;
-use App\Http\Controllers\Frontend\StudentProfileSettingController;
-use App\Http\Controllers\Frontend\InstructorAnnouncementController;
 use App\Http\Controllers\Frontend\InstructorLiveCredentialController;
-use App\Http\Controllers\Frontend\InstructorProductController;
-use App\Http\Controllers\Frontend\InstructorAiDocumentController;
 use App\Http\Controllers\Frontend\InstructorNotificationController;
-use App\Http\Controllers\Frontend\HeaderNotificationController;
+use App\Http\Controllers\Frontend\InstructorPayoutController;
+use App\Http\Controllers\Frontend\InstructorProductController;
 use App\Http\Controllers\Frontend\InstructorProductQuizController;
 use App\Http\Controllers\Frontend\InstructorProfileSettingController;
+use App\Http\Controllers\Frontend\LearningController;
+use App\Http\Controllers\Frontend\ProductPageController;
 use App\Http\Controllers\Frontend\ProductQuizController;
-use App\Http\Controllers\AccountDeletionController;
+use App\Http\Controllers\Frontend\QnaController;
+use App\Http\Controllers\Frontend\QuizImportExportController;
+use App\Http\Controllers\Frontend\StudentAiChatController;
+use App\Http\Controllers\Frontend\StudentDashboardController;
+use App\Http\Controllers\Frontend\StudentOrderController;
+use App\Http\Controllers\Frontend\StudentProfileSettingController;
+use App\Http\Controllers\Frontend\StudentReviewController;
+use App\Http\Controllers\Frontend\TinymceImageUploadController;
+use App\Http\Controllers\Global\CloudStorageController;
+use App\Http\Controllers\GoogleCalendarController;
+use App\Http\Controllers\LessonBuilderController;
+use App\Http\Controllers\SecureLinkPreviewController;
 use App\Models\AiChatConversation;
 use App\Models\StandaloneAiChatConversation;
-
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+use UniSharp\LaravelFilemanager\Lfm;
 
 Route::get('/version.json', function () {
     return response()->file(public_path('version.json'));
@@ -58,7 +60,6 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
      * It will be available for all users, guests and authenticated users.
      * ============================================================================
      */
-
     Route::get('set-language', [DashboardController::class, 'setLanguage'])->name('set-language');
     Route::get('set-currency', [HomePageController::class, 'setCurrency'])->name('set-currency');
 
@@ -117,7 +118,8 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
     Route::get('product/{product_type}/{product_id}/download', [ProductPageController::class, 'downloadFile'])
         ->whereIn('product_type', ['course', 'past_paper', 'prediction', 'note', 'quiz'])
         ->whereNumber('product_id')
-        ->name('product.download');
+        ->name('product.download')
+        ->middleware('auth');
     Route::get('product/{slug}/start-quiz', [ProductQuizController::class, 'launch'])->name('product.start-quiz')->middleware('auth');
     Route::get('product/{slug}/take-quiz', [ProductQuizController::class, 'attempt'])->name('product.quiz.attempt')->middleware('auth');
     Route::post('product/{slug}/submit-quiz', [ProductQuizController::class, 'submit'])->name('product.quiz.submit')->middleware('auth');
@@ -154,10 +156,10 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
 
     /** other routes */
     Route::group(['prefix' => 'laravel-filemanager', 'middleware' => ['auth:admin'], 'as' => 'admin.'], function () {
-        \UniSharp\LaravelFilemanager\Lfm::routes();
+        Lfm::routes();
     });
     Route::group(['prefix' => 'frontend-filemanager', 'middleware' => ['web'], 'as' => 'frontend.'], function () {
-        \UniSharp\LaravelFilemanager\Lfm::routes();
+        Lfm::routes();
     });
 
     Route::get('change-theme/{name}', [HomePageController::class, 'changeTheme'])->name('change-theme');
@@ -167,7 +169,6 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
      * Student Dashboard Routes
      * ============================================================================
      */
-
     Route::group(['middleware' => ['auth', 'verified', 'role:student'], 'prefix' => 'student', 'as' => 'student.'], function () {
         Route::get('dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
         Route::get('subscription', [StudentDashboardController::class, 'subscription'])->name('subscription');
@@ -261,7 +262,6 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
      * Instructor Dashboard Routes
      * ============================================================================
      */
-
     Route::group(['middleware' => ['auth', 'verified', 'approved.instructor', 'role:instructor'], 'prefix' => 'instructor', 'as' => 'instructor.'], function () {
         Route::get('dashboard', [InstructorDashboardController::class, 'index'])->name('dashboard');
         // Profile setting routes
@@ -398,7 +398,7 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
 
     /** secure-video route */
     Route::group(['middleware' => ['auth', 'verified']], function () {
-        Route::get('secure-video/{hash}', App\Http\Controllers\SecureLinkPreviewController::class)->name('secure.video')->middleware('signed');
+        Route::get('secure-video/{hash}', SecureLinkPreviewController::class)->name('secure.video')->middleware('signed');
     });
 
     Route::group(['middleware' => ['auth', 'verified']], function () {
@@ -423,16 +423,16 @@ Route::post('account-deletion/request', [AccountDeletionController::class, 'requ
     ->middleware(['auth', 'throttle:5,1'])
     ->name('account-deletion.request.authenticated');
 
-//maintenance mode route
+// maintenance mode route
 Route::get('/maintenance-mode', function () {
-    $setting = Illuminate\Support\Facades\Cache::get('setting', null);
-    if (!$setting?->maintenance_mode) {
+    $setting = Cache::get('setting', null);
+    if (! $setting?->maintenance_mode) {
         return redirect()->route('home');
     }
 
     return view('global.maintenance');
 })->name('maintenance.mode');
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
-require __DIR__ . '/admin.php';
+require __DIR__.'/admin.php';

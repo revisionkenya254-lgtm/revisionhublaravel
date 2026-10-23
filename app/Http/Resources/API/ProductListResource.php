@@ -17,7 +17,7 @@ class ProductListResource extends JsonResource
     {
         $identity = app(ProductIdentityService::class)->identityForProduct($this->resource);
         $user = auth('sanctum')->user();
-        $subscriptionActive = $user && hasActiveSubscription($user);
+        $subscriptionActive = $user && hasFullCatalogAccess($user);
         $purchased = (bool) ($this->getAttribute('is_purchased') ?? false);
         $free = (float) $this->effective_price === 0.0;
         $accessSource = $subscriptionActive ? 'subscription' : ($purchased ? 'purchase' : ($free ? 'free' : null));

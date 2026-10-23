@@ -4,27 +4,27 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\AiDocument;
-use App\Models\AiDocumentQuestion;
 use App\Models\AiDocumentQuestionRegion;
+use App\Models\AiRequest;
 use App\Models\Product;
 use App\Models\ProductNoteTopic;
 use App\Models\ProductReview;
-use App\Services\Ai\AiDocumentRetrievalService;
 use App\Services\Ai\AiCreditLedgerService;
-use App\Models\AiRequest;
+use App\Services\Ai\AiDocumentQuestionAiService;
+use App\Services\Ai\AiDocumentRetrievalService;
 use App\Services\Ai\AiProviderRouterService;
 use App\Services\Ai\OpenAiChatProvider;
-use App\Services\ProductNoteService;
 use App\Services\Ai\PdfTextExtractionService;
-use App\Services\Ai\AiDocumentQuestionAiService;
 use App\Services\Ai\WordTextExtractionService;
+use App\Services\CatalogAccessService;
+use App\Services\ProductNoteService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Modules\Order\app\Models\OrderItem;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -41,9 +41,7 @@ class ProductPageController extends Controller
         private readonly OpenAiChatProvider $openAiProvider,
         private readonly PdfTextExtractionService $pdfTextExtractionService,
         private readonly WordTextExtractionService $wordTextExtractionService
-    )
-    {
-    }
+    ) {}
 
     public function show(string $slug): View|RedirectResponse
     {
@@ -164,7 +162,7 @@ class ProductPageController extends Controller
             'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
             'Pragma' => 'no-cache',
             'Expires' => '0',
-            'Content-Disposition' => 'inline; filename="' . $source['filename'] . '"',
+            'Content-Disposition' => 'inline; filename="'.$source['filename'].'"',
             'X-Content-Type-Options' => 'nosniff',
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',
         ]);
@@ -362,20 +360,20 @@ class ProductPageController extends Controller
         $selectedRegionLabel = ! empty($selectedRegion)
             ? implode(' | ', array_filter([
                 $selectedRegion['question_label'] !== '' ? $selectedRegion['question_label'] : null,
-                isset($selectedRegion['question_number']) ? 'Question ' . $selectedRegion['question_number'] : null,
-                isset($selectedRegion['page_number']) ? 'Page ' . $selectedRegion['page_number'] : null,
+                isset($selectedRegion['question_number']) ? 'Question '.$selectedRegion['question_number'] : null,
+                isset($selectedRegion['page_number']) ? 'Page '.$selectedRegion['page_number'] : null,
             ]))
             : '';
 
         $userPromptLines = array_filter([
-            'Document title: ' . $product->title,
-            'Assistant mode: ' . $this->documentAssistantModeLabel($mode),
-            $selectedRegionLabel !== '' ? 'Selected region: ' . $selectedRegionLabel : null,
-            ! empty($selectedRegion['content']) ? 'Selected region content: ' . $selectedRegion['content'] : null,
-            ! empty($resolvedQuestion['content']) ? 'Matched question text: ' . $resolvedQuestion['content'] : null,
-            'Student question: ' . $prompt,
+            'Document title: '.$product->title,
+            'Assistant mode: '.$this->documentAssistantModeLabel($mode),
+            $selectedRegionLabel !== '' ? 'Selected region: '.$selectedRegionLabel : null,
+            ! empty($selectedRegion['content']) ? 'Selected region content: '.$selectedRegion['content'] : null,
+            ! empty($resolvedQuestion['content']) ? 'Matched question text: '.$resolvedQuestion['content'] : null,
+            'Student question: '.$prompt,
             $context !== ''
-                ? "Relevant document context:\n" . $context
+                ? "Relevant document context:\n".$context
                 : 'Relevant document context: none available.',
         ]);
 
@@ -660,7 +658,13 @@ class ProductPageController extends Controller
             ->whereKey($productId)
             ->firstOrFail();
 
-        abort_unless($this->hasAccess($product), 403);
+        $access = app(CatalogAccessService::class)->product(userAuth(), $product);
+        abort_unless($access['allowed'], 403);
+        abort_if(
+            $access['source'] === 'sabbath',
+            403,
+            __('Browser downloads are unavailable with Sabbath access. Use the Android app for temporary offline access.')
+        );
 
         $source = $this->resolveDocumentSource($product);
         abort_unless($source !== null, 404);
@@ -670,7 +674,7 @@ class ProductPageController extends Controller
         }
 
         $extension = strtolower((string) pathinfo($source['path'], PATHINFO_EXTENSION));
-        $filename = Str::slug($product->title) . ($extension !== '' ? '.' . $extension : '');
+        $filename = Str::slug($product->title).($extension !== '' ? '.'.$extension : '');
 
         return response()->download($source['path'], $filename);
     }
@@ -717,11 +721,11 @@ class ProductPageController extends Controller
 
     private function hasAccess(Product $product): bool
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return false;
         }
 
-        if (hasActiveSubscription()) {
+        if (hasFullCatalogAccess()) {
             return true;
         }
 
@@ -1032,7 +1036,7 @@ class ProductPageController extends Controller
             if ($storageCdnUrl !== '' && Str::startsWith($filePath, ['instructors/', 'admins/'])) {
                 return [
                     'kind' => 'remote',
-                    'url' => $storageCdnUrl . '/' . ltrim($filePath, '/'),
+                    'url' => $storageCdnUrl.'/'.ltrim($filePath, '/'),
                 ];
             }
 
@@ -1169,8 +1173,8 @@ class ProductPageController extends Controller
             ? $data
             : json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        return 'event: ' . $event . "\n"
-            . 'data: ' . $payload . "\n\n";
+        return 'event: '.$event."\n"
+            .'data: '.$payload."\n\n";
     }
 
     private function documentAssistantModeLabel(string $mode): string

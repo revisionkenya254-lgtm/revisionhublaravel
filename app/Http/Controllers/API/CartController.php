@@ -10,17 +10,19 @@ use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-class CartController extends Controller {
-    public function index(): JsonResponse {
+class CartController extends Controller
+{
+    public function index(): JsonResponse
+    {
         $user = auth()->user();
         $currency = strtoupper(request()->query('currency'));
         $cartItems = $user->carts()->with(['course.instructor', 'product.instructor'])->get();
-        $subscriptionActive = hasActiveSubscription($user);
+        $subscriptionActive = hasFullCatalogAccess($user);
         $data = [
-            'total_qty'    => (int) $user->cartCount,
+            'total_qty' => (int) $user->cartCount,
             'total_amount' => (string) apiCurrency($subscriptionActive ? 0 : $user->cartTotal, $currency),
             'subscription_active' => $subscriptionActive,
-            'cart_items'   => $cartItems->map(fn (Cart $cart) => $this->cartItem($cart, $currency, $subscriptionActive))->values(),
+            'cart_items' => $cartItems->map(fn (Cart $cart) => $this->cartItem($cart, $currency, $subscriptionActive))->values(),
         ];
 
         $courses = $cartItems->where('item_type', '!=', 'product')->pluck('course')->filter();
@@ -51,16 +53,17 @@ class CartController extends Controller {
         return response()->json(['status' => 'success', 'data' => $data], 200);
     }
 
-    public function add_to_cart(string $slug): JsonResponse {
+    public function add_to_cart(string $slug): JsonResponse
+    {
         $user = auth()->user();
         $course = Course::select('id', 'instructor_id')->whereSlug($slug)->active()->first();
         $product = Product::select('id', 'instructor_id')->whereSlug($slug)->active()->first();
 
-        if (!$course && !$product) {
+        if (! $course && ! $product) {
             return response()->json(['status' => 'error', 'message' => 'Not Found!'], 404);
         }
 
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             return response()->json([
                 'status' => 'success',
                 'state' => 'access_granted',
@@ -96,7 +99,8 @@ class CartController extends Controller {
         return response()->json(['status' => 'success', 'message' => 'Added to cart successfully!', 'cart_count' => $user->cartCount], 200);
     }
 
-    public function remove_from_cart(string $slug): JsonResponse {
+    public function remove_from_cart(string $slug): JsonResponse
+    {
         $user = auth()->user();
 
         $product = Product::select('id')->whereSlug($slug)->first();
@@ -105,11 +109,12 @@ class CartController extends Controller {
             ? $user->carts()->where('item_type', 'product')->where('product_id', $product->id)
             : ($course ? $user->carts()->where('item_type', 'course')->where('course_id', $course->id) : null);
 
-        if (!$cart || !$cart->exists()) {
+        if (! $cart || ! $cart->exists()) {
             return response()->json(['status' => 'error', 'message' => 'Not Found!'], 404);
         }
 
         $cart->delete();
+
         return response()->json(['status' => 'success', 'message' => 'Item removed from cart!'], 200);
     }
 

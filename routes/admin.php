@@ -1,21 +1,21 @@
 <?php
 
 use App\Http\Controllers\Admin\AddonsController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\Auth\AdminOtpController;
+use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\CatalogResourceController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ManualEnrollmentController;
 use App\Http\Controllers\Admin\ProductQuizController;
 use App\Http\Controllers\Admin\ProductReviewController;
-use App\Http\Controllers\Admin\RolesController;
-use App\Http\Controllers\Admin\AiSettingsController;
-use App\Http\Controllers\Admin\SettingController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Global\CloudStorageController;
-use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Admin\Auth\AdminOtpController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
-
+use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\Admin\SabbathPlanController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Global\CloudStorageController;
+use Illuminate\Support\Facades\Route;
 
 Route::group(['as' => 'admin.', 'prefix' => 'admin'], function () {
     /* Start admin auth route */
@@ -30,6 +30,7 @@ Route::group(['as' => 'admin.', 'prefix' => 'admin'], function () {
     Route::middleware(['auth:admin'])->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
         Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('sabbath-plan', [SabbathPlanController::class, 'index'])->name('sabbath-plan.index');
 
         Route::controller(AdminProfileController::class)->group(function () {
             Route::get('edit-profile', 'edit_profile')->name('edit-profile');
@@ -155,10 +156,10 @@ Route::group(['as' => 'admin.', 'prefix' => 'admin'], function () {
     Route::resource('admin', AdminController::class)->except('show');
     Route::put('admin-status/{id}', [AdminController::class, 'changeStatus'])->name('admin.status');
     // Settings routes
-        Route::get('settings', [SettingController::class, 'settings'])->name('settings');
-        Route::get('ai-settings', [AiSettingsController::class, 'index'])->name('ai-settings.index');
-        Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
-        Route::get('ai-settings/health-check', [AiSettingsController::class, 'healthCheck'])->name('ai-settings.health-check');
-        Route::post('cloud/store', [CloudStorageController::class, 'store'])->name('cloud.store');
-        Route::get('sync-modules', [AddonsController::class, 'syncModules'])->name('addons.sync');
-    });
+    Route::get('settings', [SettingController::class, 'settings'])->name('settings');
+    Route::get('ai-settings', [AiSettingsController::class, 'index'])->name('ai-settings.index');
+    Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
+    Route::get('ai-settings/health-check', [AiSettingsController::class, 'healthCheck'])->name('ai-settings.health-check');
+    Route::post('cloud/store', [CloudStorageController::class, 'store'])->name('cloud.store');
+    Route::get('sync-modules', [AddonsController::class, 'syncModules'])->name('addons.sync');
+});

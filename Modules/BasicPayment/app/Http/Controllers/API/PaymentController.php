@@ -3,12 +3,12 @@
 namespace Modules\BasicPayment\app\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Services\Ai\AiCreditLedgerService;
-use App\Services\Ai\AiCreditPurchaseService;
 use App\Jobs\DefaultMailJob;
 use App\Mail\DefaultMail;
 use App\Models\Course;
 use App\Models\Product;
+use App\Services\Ai\AiCreditLedgerService;
+use App\Services\Ai\AiCreditPurchaseService;
 use App\Traits\GetGlobalInformationTrait;
 use App\Traits\MailSenderTrait;
 use Exception;
@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
-use Modules\BasicPayment\app\Services\MpesaStkPushService;
 use Modules\BasicPayment\app\Http\Controllers\PaymentController as WebPaymentController;
+use Modules\BasicPayment\app\Services\MpesaStkPushService;
+use Modules\BasicPayment\app\Services\PaymentMethodService;
 use Modules\GlobalSetting\app\Models\EmailTemplate;
 use Modules\Order\app\Models\Enrollment;
 use Modules\Order\app\Models\Order;
@@ -32,12 +33,14 @@ class PaymentController extends Controller
     use GetGlobalInformationTrait, MailSenderTrait;
 
     private $paymentService;
+
     private AiCreditLedgerService $aiCreditLedgerService;
+
     private AiCreditPurchaseService $aiCreditPurchaseService;
 
     public function __construct()
     {
-        $this->paymentService = app(\Modules\BasicPayment\app\Services\PaymentMethodService::class);
+        $this->paymentService = app(PaymentMethodService::class);
         $this->aiCreditLedgerService = app(AiCreditLedgerService::class);
         $this->aiCreditPurchaseService = app(AiCreditPurchaseService::class);
     }
@@ -99,7 +102,7 @@ class PaymentController extends Controller
             return $this->createClientMpesaBuyNowOrder($request, (int) $validated['product_id']);
         }
 
-        if (!$this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
+        if (! $this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'failed',
@@ -109,7 +112,7 @@ class PaymentController extends Controller
 
         $user = $request->user();
 
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             $user->carts()->delete();
 
             return $this->subscriptionAccessResponse();
@@ -150,7 +153,7 @@ class PaymentController extends Controller
 
                 foreach ($cartItems as $item) {
                     $purchasable = $item->purchasable();
-                    if (!$purchasable) {
+                    if (! $purchasable) {
                         throw new Exception('A cart item is no longer available.');
                     }
 
@@ -219,7 +222,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'failed',
@@ -237,12 +240,12 @@ class PaymentController extends Controller
 
     /**
      * Creates a one-item order without changing the user's cart. Product and
-        * price are resolved on the server; the app only identifies the product
-        * by its database ID at checkout time.
+     * price are resolved on the server; the app only identifies the product
+     * by its database ID at checkout time.
      */
-        public function createClientMpesaBuyNowOrder(Request $request, int $productId): JsonResponse
+    public function createClientMpesaBuyNowOrder(Request $request, int $productId): JsonResponse
     {
-        if (!$this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
+        if (! $this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'failed',
@@ -252,7 +255,7 @@ class PaymentController extends Controller
 
         $user = $request->user();
 
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             return $this->subscriptionAccessResponse();
         }
 
@@ -260,7 +263,7 @@ class PaymentController extends Controller
             $order = DB::transaction(function () use ($user, $productId) {
                 $product = Product::active()->whereKey($productId)->lockForUpdate()->first();
 
-                if (!$product) {
+                if (! $product) {
                     return null;
                 }
 
@@ -347,7 +350,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'not_found',
@@ -374,14 +377,14 @@ class PaymentController extends Controller
         ]);
 
         $phoneNumber = normalizeMpesaPhoneNumber($validated['phone_number']);
-        if (!$phoneNumber) {
+        if (! $phoneNumber) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Use a valid Safaricom number like 07XXXXXXXX or 2547XXXXXXXX.',
             ], 422);
         }
 
-        if (!$this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
+        if (! $this->paymentService->isActive($this->paymentService::MPESA_STK_PUSH)) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'failed',
@@ -395,7 +398,7 @@ class PaymentController extends Controller
             ->withCount('orderItems')
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'not_found',
@@ -411,7 +414,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        if (!in_array($order->payment_status, ['pending', 'unpaid'], true)) {
+        if (! in_array($order->payment_status, ['pending', 'unpaid'], true)) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'failed',
@@ -503,7 +506,7 @@ class PaymentController extends Controller
             ->where('payment_method', $this->paymentService::MPESA_STK_PUSH)
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => 'error',
                 'state' => 'not_found',
@@ -628,7 +631,7 @@ class PaymentController extends Controller
             $result = $stkPushService->initiate(
                 phoneNumber: $normalizedMsisdn,
                 amount: (float) session()->get('paid_amount'),
-                accountReference: (string) ($order?->invoice_id ?? ('INV' . now()->timestamp)),
+                accountReference: (string) ($order?->invoice_id ?? ('INV'.now()->timestamp)),
                 description: 'Course enrollment payment'
             );
 
@@ -688,7 +691,7 @@ class PaymentController extends Controller
     {
         $order = $this->resolveTokenOrder($request);
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => 'not_found',
                 'message' => __('We could not find this M-Pesa order.'),
@@ -757,17 +760,17 @@ class PaymentController extends Controller
     public function placeOrder(Request $request, string $paymentMethod)
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['status' => 'error', 'message' => 'UnAuthenticated'], 401);
         }
 
         $activeGateways = array_keys($this->paymentService->getActiveGatewaysWithDetails());
-        if (!in_array($paymentMethod, $activeGateways, true)) {
+        if (! in_array($paymentMethod, $activeGateways, true)) {
             return response()->json(['status' => 'error', 'message' => 'The selected payment method is now inactive.'], 400);
         }
 
         $payable_currency = strtoupper($request->query('currency', 'KES'));
-        if (!$this->paymentService->isCurrencySupported($paymentMethod, $payable_currency)) {
+        if (! $this->paymentService->isCurrencySupported($paymentMethod, $payable_currency)) {
             $supportedCurrencies = $this->paymentService->getSupportedCurrencies($paymentMethod);
 
             return response()->json([
@@ -832,7 +835,7 @@ class PaymentController extends Controller
         if (Session::has('ai_credit_purchase')) {
             $aiCreditPurchase = (array) Session::get('ai_credit_purchase', []);
 
-            if (!filled(data_get($aiCreditPurchase, 'amount'))) {
+            if (! filled(data_get($aiCreditPurchase, 'amount'))) {
                 return response()->json(['status' => 'error', 'message' => 'Please choose a valid AI credit package.'], 400);
             }
 
@@ -905,7 +908,7 @@ class PaymentController extends Controller
 
         // AI credits are handled above. Everything below is catalogue checkout
         // and must be bypassed for an active all-products subscription.
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             $user->carts()->delete();
 
             return $this->subscriptionAccessResponse();
@@ -985,14 +988,14 @@ class PaymentController extends Controller
                     'email' => $user->email,
                     'name' => $user->name,
                     'order_id' => $order->invoice_id,
-                    'paid_amount' => $order->paid_amount . ' ' . $order->payable_currency,
+                    'paid_amount' => $order->paid_amount.' '.$order->payable_currency,
                     'payment_method' => $order->payment_method,
                 ]);
 
                 if (cache()->get('setting')?->sms_order_completed) {
                     $message = SMSTemplate('order_completed', [
                         'order_id' => $order->invoice_id,
-                        'paid_amount' => $order->paid_amount . ' ' . $order->payable_currency,
+                        'paid_amount' => $order->paid_amount.' '.$order->payable_currency,
                         'payment_method' => $order->payment_method,
                     ]);
                     sendSMS($user->phone, $message);
@@ -1013,7 +1016,7 @@ class PaymentController extends Controller
     public function pay_via_free_gateway()
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['status' => 'error', 'message' => 'UnAuthenticated'], 401);
         }
         if ($user->cart_total != 0) {
@@ -1068,19 +1071,19 @@ class PaymentController extends Controller
     {
         $token = $request?->token ?? null;
         $order_id = $request?->order_id ?? null;
-        $request->headers->set('Authorization', 'Bearer ' . $token);
+        $request->headers->set('Authorization', 'Bearer '.$token);
         $user = auth('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             abort(401);
         }
 
         $order = $user?->orders()->where('invoice_id', $order_id)->where('status', 'pending')->first();
-        if (!$order) {
+        if (! $order) {
             abort(404);
         }
 
         $paymentMethod = $order->payment_method;
-        if (!$this->paymentService->isActive($paymentMethod)) {
+        if (! $this->paymentService->isActive($paymentMethod)) {
             return response()->json(['status' => 'error', 'message' => 'The selected payment method is now inactive.'], 400);
         }
 
@@ -1099,7 +1102,7 @@ class PaymentController extends Controller
     public function payment_success()
     {
         $order = session()->get('order');
-        if (!$order) {
+        if (! $order) {
             abort(404);
         }
 
@@ -1115,7 +1118,7 @@ class PaymentController extends Controller
             $order->payment_details = $pendingMpesaStkPush ? $payment_details : json_encode($payment_details);
             $order->save();
 
-            if (!$pendingMpesaStkPush) {
+            if (! $pendingMpesaStkPush) {
                 if ($order->isAiCreditsOrder()) {
                     $this->grantAiCreditPurchase($order, $user);
                 } elseif ($order->isSubscriptionOrder()) {
@@ -1141,7 +1144,7 @@ class PaymentController extends Controller
                 'email' => $user->email,
                 'name' => $user->name,
                 'order_id' => $order->invoice_id,
-                'paid_amount' => $order->paid_amount . ' ' . $order->payable_currency,
+                'paid_amount' => $order->paid_amount.' '.$order->payable_currency,
                 'payment_status' => $order->payment_status,
                 'subscription_bonus_credits' => $subscriptionBonusCredits,
             ]);
@@ -1219,7 +1222,7 @@ class PaymentController extends Controller
             'email' => $user->email,
             'name' => $user->name,
             'order_id' => $order->invoice_id,
-            'paid_amount' => $order->paid_amount . ' ' . $order->payable_currency,
+            'paid_amount' => $order->paid_amount.' '.$order->payable_currency,
             'payment_status' => $order->payment_status,
         ]);
 
@@ -1242,7 +1245,7 @@ class PaymentController extends Controller
 
     private function resolveAiCreditPurchase(Request $request): ?array
     {
-        if ($request->string('purchase_type')->toString() !== 'ai_credits' && !$request->filled('ai_credit_amount')) {
+        if ($request->string('purchase_type')->toString() !== 'ai_credits' && ! $request->filled('ai_credit_amount')) {
             return Session::has('ai_credit_purchase') ? (array) Session::get('ai_credit_purchase') : null;
         }
 
@@ -1268,7 +1271,7 @@ class PaymentController extends Controller
             $message = str_replace('{{payment_method}}', $mailData['payment_method'], $message);
             $message = str_replace('{{subscription_bonus_line}}', $this->buildSubscriptionBonusLine($bonusCredits), $message);
 
-            if (!str_contains($template->message, '{{subscription_bonus_line}}') && $bonusCredits > 0) {
+            if (! str_contains($template->message, '{{subscription_bonus_line}}') && $bonusCredits > 0) {
                 $message .= $this->buildSubscriptionBonusLine($bonusCredits);
             }
 
@@ -1288,7 +1291,7 @@ class PaymentController extends Controller
             return '';
         }
 
-        return '<p><strong>' . __('You get :credits bonus AI credits.', ['credits' => number_format($credits)]) . '</strong></p>';
+        return '<p><strong>'.__('You get :credits bonus AI credits.', ['credits' => number_format($credits)]).'</strong></p>';
     }
 
     public function sendingPaymentStatusMail(array $mailData)
@@ -1335,12 +1338,12 @@ class PaymentController extends Controller
         $orderId = (string) ($request->order_id ?? '');
 
         if ($token !== '') {
-            $request->headers->set('Authorization', 'Bearer ' . $token);
+            $request->headers->set('Authorization', 'Bearer '.$token);
         }
 
         $user = auth('sanctum')->user();
 
-        if (!$user || $orderId === '') {
+        if (! $user || $orderId === '') {
             return null;
         }
 
@@ -1373,7 +1376,7 @@ class PaymentController extends Controller
     {
         $expiresAt = $order->updated_at?->copy()->addSeconds(WebPaymentController::MPESA_STK_PUSH_TIMEOUT_SECONDS);
 
-        if (!$expiresAt) {
+        if (! $expiresAt) {
             return 0;
         }
 

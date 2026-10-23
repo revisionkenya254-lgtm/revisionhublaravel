@@ -32,7 +32,11 @@ class CatalogAccessService
                 ->where('status', 'completed'))
             ->exists();
 
-        return $purchased ? $this->grant('purchase') : $this->deny();
+        if ($purchased) {
+            return $this->grant('purchase');
+        }
+
+        return hasSabbathAccess($user) ? $this->grant('sabbath') : $this->deny();
     }
 
     public function course(User $user, Course $course): array
@@ -46,7 +50,11 @@ class CatalogAccessService
             ->where('has_access', 1)
             ->exists();
 
-        return $purchased ? $this->grant('purchase') : $this->deny();
+        if ($purchased) {
+            return $this->grant('purchase');
+        }
+
+        return hasSabbathAccess($user) ? $this->grant('sabbath') : $this->deny();
     }
 
     private function grant(string $source): array

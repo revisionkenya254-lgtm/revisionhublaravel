@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Enums\UserStatus;
-use App\Models\AiCreditLedger;
-use App\Models\JitsiSetting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -77,6 +75,7 @@ class User extends Authenticatable
         'subscription_expires_at' => 'datetime',
         'password' => 'hashed',
     ];
+
     public function favoriteCourses()
     {
         return $this->belongsToMany(Course::class, 'favorite_course_user')->withTimestamps();
@@ -96,6 +95,7 @@ class User extends Authenticatable
     {
         return $query->whereNotNull('email_verified_at');
     }
+
     public function scopeStudent($query)
     {
         return $query->where('role', 'student');
@@ -126,6 +126,11 @@ class User extends Authenticatable
         return hasActiveSubscription($this);
     }
 
+    public function hasFullCatalogAccess(): bool
+    {
+        return hasFullCatalogAccess($this);
+    }
+
     public function scopeInstructor($query)
     {
         return $query->where('role', 'instructor');
@@ -136,7 +141,7 @@ class User extends Authenticatable
         return $this->hasMany(SocialiteCredential::class, 'user_id');
     }
 
-    function instructorInfo(): HasOne
+    public function instructorInfo(): HasOne
     {
         return $this->hasOne(InstructorRequest::class, 'user_id', 'id');
     }
@@ -150,33 +155,38 @@ class User extends Authenticatable
     {
         return $this->hasMany(Product::class, 'instructor_id');
     }
-    function enrollments(): HasMany
+
+    public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class, 'user_id', 'id');
     }
 
-    function country(): BelongsTo
+    public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class, 'country_id');
     }
-    function orders(): HasMany
+
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'buyer_id', 'id');
     }
-    function zoom_credential(): HasOne
+
+    public function zoom_credential(): HasOne
     {
         return $this->hasOne(ZoomCredential::class, 'instructor_id', 'id');
     }
-    function jitsi_credential(): HasOne
+
+    public function jitsi_credential(): HasOne
     {
         return $this->hasOne(JitsiSetting::class, 'instructor_id', 'id');
     }
+
     public function carts()
     {
         return $this->hasMany(Cart::class, 'user_id', 'id')
             ->where(function ($query) {
                 $query->where(function ($query) {
-                    $query->where(fn($query) => $query->where('item_type', 'course')->orWhereNull('item_type'))
+                    $query->where(fn ($query) => $query->where('item_type', 'course')->orWhereNull('item_type'))
                         ->whereHas('course', function ($query) {
                             $query->where(['is_approved' => 'approved', 'status' => 'active']);
                         });
@@ -188,6 +198,7 @@ class User extends Authenticatable
                 });
             });
     }
+
     public function instructorEarningsHolds()
     {
         return $this->hasMany(InstructorEarningsHold::class, 'instructor_id', 'id');
@@ -196,7 +207,7 @@ class User extends Authenticatable
     // Accessor for cart count
     public function getCartCountAttribute()
     {
-        if (!Schema::hasTable('carts') || !Schema::hasTable('courses') || !Schema::hasTable('products')) {
+        if (! Schema::hasTable('carts') || ! Schema::hasTable('courses') || ! Schema::hasTable('products')) {
             return 0;
         }
 
@@ -206,9 +217,10 @@ class User extends Authenticatable
             return 0;
         }
     }
+
     public function getCartTotalAttribute()
     {
-        if (!Schema::hasTable('carts') || !Schema::hasTable('courses') || !Schema::hasTable('products')) {
+        if (! Schema::hasTable('carts') || ! Schema::hasTable('courses') || ! Schema::hasTable('products')) {
             return 0;
         }
 
@@ -229,6 +241,7 @@ class User extends Authenticatable
             return 0;
         }
     }
+
     public function devices(): HasMany
     {
         return $this->hasMany(UserDevice::class);

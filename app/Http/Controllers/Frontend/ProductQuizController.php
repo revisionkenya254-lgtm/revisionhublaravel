@@ -13,9 +13,7 @@ use Modules\Order\app\Models\OrderItem;
 
 class ProductQuizController extends Controller
 {
-    public function __construct(private readonly ProductQuizAttemptService $attemptService)
-    {
-    }
+    public function __construct(private readonly ProductQuizAttemptService $attemptService) {}
 
     public function launch(string $slug): View
     {
@@ -83,11 +81,11 @@ class ProductQuizController extends Controller
 
     private function hasAccess(Product $product): bool
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return false;
         }
 
-        if (hasActiveSubscription()) {
+        if (hasFullCatalogAccess()) {
             return true;
         }
 

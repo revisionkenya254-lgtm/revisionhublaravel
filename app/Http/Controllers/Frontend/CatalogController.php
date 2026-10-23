@@ -10,21 +10,18 @@ use App\Services\MenuCacheService;
 use App\Services\ProductIdentityService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Modules\Course\app\Models\CourseCategory;
 use Modules\Order\app\Models\OrderItem;
 
 class CatalogController extends Controller
 {
-    public function __construct(private readonly ProductIdentityService $identityService)
-    {
-    }
+    public function __construct(private readonly ProductIdentityService $identityService) {}
 
     public function index(Request $request, MenuCacheService $menuCacheService): View|RedirectResponse
     {
@@ -103,7 +100,7 @@ class CatalogController extends Controller
                 'label' => $currentCategoryTitle,
                 'url' => route('catalog', ['main_category' => $currentMainCategory['slug'] ?? '']),
             ];
-            if (!empty(data_get($selectedCurriculumLevel, 'name'))) {
+            if (! empty(data_get($selectedCurriculumLevel, 'name'))) {
                 $catalogBreadcrumbs[] = [
                     'label' => data_get($selectedCurriculumLevel, 'name'),
                     'url' => route('catalog', [
@@ -111,7 +108,7 @@ class CatalogController extends Controller
                         'category' => data_get($selectedCurriculumLevel, 'slug'),
                     ]),
                 ];
-            } elseif (!empty($currentMainCategory['slug'])) {
+            } elseif (! empty($currentMainCategory['slug'])) {
                 $catalogBreadcrumbs[] = [
                     'label' => __('All'),
                     'url' => route('catalog', [
@@ -119,7 +116,7 @@ class CatalogController extends Controller
                     ]),
                 ];
             }
-            if (!empty(data_get($selectedFocus, 'is_subject')) && !empty(data_get($selectedSubject, 'name'))) {
+            if (! empty(data_get($selectedFocus, 'is_subject')) && ! empty(data_get($selectedSubject, 'name'))) {
                 $catalogBreadcrumbs[] = [
                     'label' => data_get($selectedSubject, 'name'),
                     'url' => '',
@@ -217,11 +214,11 @@ class CatalogController extends Controller
         $type = $this->normalizeCatalogType($request->type);
         $items = collect();
 
-        if (!$type || $type === Product::TYPE_COURSE) {
+        if (! $type || $type === Product::TYPE_COURSE) {
             $items = $items->merge($this->courseItems($request));
         }
 
-        if (!$type) {
+        if (! $type) {
             $items = $items->merge($this->productItems($request));
         } elseif (in_array($type, [Product::TYPE_PAST_PAPER, Product::TYPE_PREDICTION, Product::TYPE_NOTE, Product::TYPE_QUIZ], true)) {
             $items = $items->merge($this->productItems($request));
@@ -240,7 +237,7 @@ class CatalogController extends Controller
             ->whereHas('category.parentCategory', fn ($q) => $q->where('status', 1))
             ->whereHas('category', fn ($q) => $q->where('status', 1));
 
-        $query->when($request->search, fn ($q) => $q->where('title', 'like', '%' . $request->search . '%'));
+        $query->when($request->search, fn ($q) => $q->where('title', 'like', '%'.$request->search.'%'));
         $query->when($request->main_category, function ($q) use ($request) {
             $q->whereHas('category.parentCategory', fn ($q) => $q->where('slug', $request->main_category));
         });
@@ -296,7 +293,7 @@ class CatalogController extends Controller
                     'url' => route('course.show', $course->slug),
                     'cart_id' => $course->id,
                     'cart_type' => 'course',
-                    'meta' => __('By') . ' ' . ($course->instructor?->name ?? __('Instructor')),
+                    'meta' => __('By').' '.($course->instructor?->name ?? __('Instructor')),
                     'badges' => [],
                     'rating' => number_format($course->reviews_avg_rating ?? 0, 1),
                     'is_purchased' => false,
@@ -333,15 +330,15 @@ class CatalogController extends Controller
                 'file_type',
             ]);
 
-        $query->when($request->search, fn ($q) => $q->where('title', 'like', '%' . $request->search . '%'));
+        $query->when($request->search, fn ($q) => $q->where('title', 'like', '%'.$request->search.'%'));
         $query->when($type, fn ($q) => $q->where('type', $type));
-        $hasActiveSubscription = auth('web')->check() && hasActiveSubscription();
+        $hasActiveSubscription = auth('web')->check() && hasFullCatalogAccess();
         $purchasedProductIds = $hasActiveSubscription ? [] : $this->purchasedProductIds();
 
         return $query
             ->get()
             ->filter(fn (Product $product) => $this->catalogProductMatchesSelection($product, $request))
-            ->map(function (Product $product) use ($purchasedProductIds, $hasActiveSubscription) {
+            ->map(function (Product $product) {
                 $metadata = $product->metadata ?? [];
 
                 return (object) [
@@ -399,11 +396,11 @@ class CatalogController extends Controller
             ])->filter()->implode($separator),
             Product::TYPE_NOTE => collect([
                 $metadata['subject'] ?? null,
-                $metadata['estimated_read_minutes'] ?? null ? $metadata['estimated_read_minutes'] . ' ' . __('min read') : null,
+                $metadata['estimated_read_minutes'] ?? null ? $metadata['estimated_read_minutes'].' '.__('min read') : null,
             ])->filter()->implode($separator),
             Product::TYPE_QUIZ => collect([
-                $metadata['question_count'] ?? null ? $metadata['question_count'] . ' ' . __('questions') : null,
-                $metadata['duration'] ?? null ? $metadata['duration'] . ' ' . __('min') : null,
+                $metadata['question_count'] ?? null ? $metadata['question_count'].' '.__('questions') : null,
+                $metadata['duration'] ?? null ? $metadata['duration'].' '.__('min') : null,
             ])->filter()->implode($separator),
             default => '',
         };
@@ -411,11 +408,11 @@ class CatalogController extends Controller
 
     private function purchasedProductIds(): array
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return [];
         }
 
-        if (hasActiveSubscription()) {
+        if (hasFullCatalogAccess()) {
             return Product::approved()->pluck('id')->filter()->unique()->values()->all();
         }
 
@@ -489,7 +486,7 @@ class CatalogController extends Controller
             ->unique()
             ->values()
             ->all();
-        $hasActiveSubscription = auth('web')->check() && hasActiveSubscription();
+        $hasActiveSubscription = auth('web')->check() && hasFullCatalogAccess();
         $purchasedProductIds = $hasActiveSubscription ? [] : $this->purchasedProductIds();
 
         return $items->map(function ($item) use ($sessionEnrollments, $purchasedProductIds, $hasActiveSubscription) {
@@ -518,7 +515,7 @@ class CatalogController extends Controller
             'subject' => (string) $request->input('subject', ''),
         ];
 
-        return 'catalog:v6:' . sha1(json_encode($filters));
+        return 'catalog:v6:'.sha1(json_encode($filters));
     }
 
     private function catalogCacheTtl()
@@ -567,7 +564,7 @@ class CatalogController extends Controller
                 'label' => $currentCategoryTitle,
                 'url' => route('catalog', ['main_category' => $currentMainCategory['slug'] ?? '']),
             ];
-            if (!empty(data_get($selectedCurriculumLevel, 'name'))) {
+            if (! empty(data_get($selectedCurriculumLevel, 'name'))) {
                 $catalogBreadcrumbs[] = [
                     'label' => data_get($selectedCurriculumLevel, 'name'),
                     'url' => route('catalog', [
@@ -575,7 +572,7 @@ class CatalogController extends Controller
                         'category' => data_get($selectedCurriculumLevel, 'slug'),
                     ]),
                 ];
-            } elseif (!empty($currentMainCategory['slug'])) {
+            } elseif (! empty($currentMainCategory['slug'])) {
                 $catalogBreadcrumbs[] = [
                     'label' => __('All'),
                     'url' => route('catalog', [
@@ -583,7 +580,7 @@ class CatalogController extends Controller
                     ]),
                 ];
             }
-            if (!empty(data_get($selectedFocus, 'is_subject')) && !empty(data_get($selectedSubject, 'name'))) {
+            if (! empty(data_get($selectedFocus, 'is_subject')) && ! empty(data_get($selectedSubject, 'name'))) {
                 $catalogBreadcrumbs[] = [
                     'label' => data_get($selectedSubject, 'name'),
                     'url' => '',
@@ -592,7 +589,7 @@ class CatalogController extends Controller
         }
 
         return [
-            'pageTitle' => (string) data_get($selectedFocus, 'label', trim($currentCategoryTitle . ' - ' . __('All'), ' -')),
+            'pageTitle' => (string) data_get($selectedFocus, 'label', trim($currentCategoryTitle.' - '.__('All'), ' -')),
             'focusName' => (string) data_get($selectedFocus, 'name', __('All')),
             'currentCategoryTitle' => $currentCategoryTitle,
             'selectedLevelName' => (string) data_get($selectedCurriculumLevel, 'name', __('All')),
@@ -775,7 +772,7 @@ class CatalogController extends Controller
 
         if ($subjectName !== '') {
             return [
-                'label' => trim($levelName . ' - ' . $subjectName, ' -'),
+                'label' => trim($levelName.' - '.$subjectName, ' -'),
                 'name' => $subjectName,
                 'slug' => $subjectSlug,
                 'is_subject' => true,
@@ -784,7 +781,7 @@ class CatalogController extends Controller
 
         if ($levelName !== '') {
             return [
-                'label' => trim($currentCategoryTitle . ' - ' . $levelName, ' -'),
+                'label' => trim($currentCategoryTitle.' - '.$levelName, ' -'),
                 'name' => $levelName,
                 'slug' => $levelSlug,
                 'is_subject' => false,
@@ -792,7 +789,7 @@ class CatalogController extends Controller
         }
 
         return [
-            'label' => trim($currentCategoryTitle . ' - ' . __('All'), ' -'),
+            'label' => trim($currentCategoryTitle.' - '.__('All'), ' -'),
             'name' => __('All'),
             'slug' => (string) data_get($currentMainCategory, 'slug', ''),
             'is_subject' => false,

@@ -1,10 +1,14 @@
 <?php
 
 use App\Enums\ThemeList;
+use App\Enums\UserStatus;
 use App\Exceptions\AccessPermissionDeniedException;
+use App\Factories\SMSFactory;
 use App\Models\Course;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Ai\AiCreditPurchaseService;
+use App\Services\SabbathPlanService;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,20 +41,20 @@ use Modules\Order\app\Models\Enrollment;
 use Modules\Order\app\Models\Order;
 use Modules\Order\app\Models\OrderItem;
 use Modules\SiteAppearance\app\Models\SectionSetting;
+use Modules\SocialLink\app\Models\SocialLink;
 use Modules\Testimonial\app\Models\Testimonial;
-use App\Services\Ai\AiCreditPurchaseService;
 use Nwidart\Modules\Facades\Module;
 use Spatie\LaravelImageOptimizer\Facades\ImageOptimizer;
 
-function file_upload(UploadedFile $file, string $path = 'uploads/custom-images/', string|null $oldFile = '', bool $optimize = false)
+function file_upload(UploadedFile $file, string $path = 'uploads/custom-images/', ?string $oldFile = '', bool $optimize = false)
 {
     $extention = $file->getClientOriginalExtension();
-    $file_name = 'revisionhubkenya-img' . date('-Y-m-d-h-i-s-') . rand(999, 9999) . '.' . $extention;
-    $file_name = $path . $file_name;
+    $file_name = 'revisionhubkenya-img'.date('-Y-m-d-h-i-s-').rand(999, 9999).'.'.$extention;
+    $file_name = $path.$file_name;
     $file->move(public_path($path), $file_name);
 
     try {
-        if ($oldFile && !str($oldFile)->contains('uploads/website-images') && File::exists(public_path($oldFile))) {
+        if ($oldFile && ! str($oldFile)->contains('uploads/website-images') && File::exists(public_path($oldFile))) {
             File::delete(public_path($oldFile));
         }
 
@@ -64,14 +68,14 @@ function file_upload(UploadedFile $file, string $path = 'uploads/custom-images/'
     return $file_name;
 }
 // file upload method
-if (!function_exists('allLanguages')) {
+if (! function_exists('allLanguages')) {
     function allLanguages()
     {
         $allLanguages = Cache::rememberForever('allLanguages', function () {
             return Language::select('code', 'name', 'direction', 'status')->get();
         });
 
-        if (!$allLanguages) {
+        if (! $allLanguages) {
             $allLanguages = Language::select('code', 'name', 'direction', 'status')->get();
         }
 
@@ -79,21 +83,21 @@ if (!function_exists('allLanguages')) {
     }
 }
 
-if (!function_exists('allCurrencies')) {
+if (! function_exists('allCurrencies')) {
     function allCurrencies()
     {
         $allCurrencies = Cache::rememberForever('allCurrencies', function () {
             return MultiCurrency::get();
         });
 
-        if (!$allCurrencies) {
+        if (! $allCurrencies) {
             $allCurrencies = MultiCurrency::get();
         }
 
         return $allCurrencies;
     }
 }
-if (!function_exists('brands')) {
+if (! function_exists('brands')) {
     function brands()
     {
         return Cache::rememberForever('brands', function () {
@@ -101,7 +105,7 @@ if (!function_exists('brands')) {
         });
     }
 }
-if (!function_exists('SectionSetting')) {
+if (! function_exists('SectionSetting')) {
     function SectionSetting()
     {
         return Cache::rememberForever('section_settings', function () {
@@ -109,7 +113,7 @@ if (!function_exists('SectionSetting')) {
         });
     }
 }
-if (!function_exists('FooterSetting')) {
+if (! function_exists('FooterSetting')) {
     function FooterSetting()
     {
         return Cache::rememberForever('footer_settings', function () {
@@ -118,10 +122,10 @@ if (!function_exists('FooterSetting')) {
     }
 }
 
-if (!function_exists('getSessionLanguage')) {
+if (! function_exists('getSessionLanguage')) {
     function getSessionLanguage(): string
     {
-        if (!session()->has('lang')) {
+        if (! session()->has('lang')) {
             session()->put('lang', config('app.locale'));
             session()->forget('text_direction');
             session()->put('text_direction', 'ltr');
@@ -133,10 +137,10 @@ if (!function_exists('getSessionLanguage')) {
     }
 }
 
-if (!function_exists('getSessionCurrency')) {
+if (! function_exists('getSessionCurrency')) {
     function getSessionCurrency(): string
     {
-        if (!session()->has('currency_code') || !session()->has('currency_rate') || !session()->has('currency_position')) {
+        if (! session()->has('currency_code') || ! session()->has('currency_rate') || ! session()->has('currency_position')) {
             $currency = allCurrencies()->where('is_default', 'yes')->first();
             session()->put('currency_code', $currency->currency_code);
             session()->forget('currency_position');
@@ -155,11 +159,11 @@ function admin_lang()
 {
     return Session::get('admin_lang');
 }
-if (!function_exists('getSocialLinks')) {
+if (! function_exists('getSocialLinks')) {
     function getSocialLinks()
     {
         return Cache::rememberForever('getSocialLinks', function () {
-            return \Modules\SocialLink\app\Models\SocialLink::select('link', 'icon')->get();
+            return SocialLink::select('link', 'icon')->get();
         });
     }
 }
@@ -176,21 +180,21 @@ function currency($price)
     $price = number_format($price, 2, '.', ',');
 
     if ($currency_position == 'before_price') {
-        $price = $currency_icon . $price;
+        $price = $currency_icon.$price;
     } elseif ($currency_position == 'before_price_with_space') {
-        $price = $currency_icon . ' ' . $price;
+        $price = $currency_icon.' '.$price;
     } elseif ($currency_position == 'after_price') {
-        $price = $price . $currency_icon;
+        $price = $price.$currency_icon;
     } elseif ($currency_position == 'after_price_with_space') {
-        $price = $price . ' ' . $currency_icon;
+        $price = $price.' '.$currency_icon;
     } else {
-        $price = $currency_icon . $price;
+        $price = $currency_icon.$price;
     }
 
     return $price;
 }
 
-if (!function_exists('formatCurrencyValue')) {
+if (! function_exists('formatCurrencyValue')) {
     function formatCurrencyValue($price, $currency)
     {
         $currency_rate = $currency?->currency_rate ?? 1;
@@ -201,20 +205,20 @@ if (!function_exists('formatCurrencyValue')) {
         $price = number_format($price, 2, '.', ',');
 
         if ($currency_position == 'before_price') {
-            return $currency_icon . $price;
+            return $currency_icon.$price;
         } elseif ($currency_position == 'before_price_with_space') {
-            return $currency_icon . ' ' . $price;
+            return $currency_icon.' '.$price;
         } elseif ($currency_position == 'after_price') {
-            return $price . $currency_icon;
+            return $price.$currency_icon;
         } elseif ($currency_position == 'after_price_with_space') {
-            return $price . ' ' . $currency_icon;
+            return $price.' '.$currency_icon;
         }
 
-        return $currency_icon . $price;
+        return $currency_icon.$price;
     }
 }
 
-if (!function_exists('defaultCurrency')) {
+if (! function_exists('defaultCurrency')) {
     function defaultCurrency($price)
     {
         $currency = allCurrencies()->where('is_default', 'yes')->first() ?? allCurrencies()->first();
@@ -223,7 +227,7 @@ if (!function_exists('defaultCurrency')) {
     }
 }
 
-if (!function_exists('convert_amount_to_base_currency')) {
+if (! function_exists('convert_amount_to_base_currency')) {
     /**
      * Convert amount to base currency using currencies table.
      */
@@ -239,7 +243,7 @@ if (!function_exists('convert_amount_to_base_currency')) {
 }
 
 // calculate currency without icon
-if (!function_exists('currencyWithoutIcon')) {
+if (! function_exists('currencyWithoutIcon')) {
     function currencyWithoutIcon($price, $currency_code = null)
     {
         // Get the currency code from parameter or session
@@ -249,21 +253,22 @@ if (!function_exists('currencyWithoutIcon')) {
         $currency = allCurrencies()->where('currency_code', $code)->first();
 
         // Fallback to default currency if not found
-        if (!$currency) {
+        if (! $currency) {
             $currency = allCurrencies()->where('is_default', 'yes')->first();
         }
 
         $convertedPrice = $price * $currency->currency_rate;
+
         return number_format($convertedPrice, 2, '.', '');
     }
 }
-if (!function_exists('userAuth')) {
+if (! function_exists('userAuth')) {
     function userAuth()
     {
         return Auth::guard('web')->user();
     }
 }
-if (!function_exists('adminAuth')) {
+if (! function_exists('adminAuth')) {
     function adminAuth()
     {
         return Auth::guard('admin')->user();
@@ -278,7 +283,7 @@ function html_decode($text)
     return $after_decode;
 }
 
-if (!function_exists('checkAdminHasPermission')) {
+if (! function_exists('checkAdminHasPermission')) {
     function checkAdminHasPermission($permission): bool
     {
         $admin = Auth::guard('admin')->user();
@@ -291,21 +296,21 @@ if (!function_exists('checkAdminHasPermission')) {
     }
 }
 
-if (!function_exists('checkAdminHasPermissionAndThrowException')) {
+if (! function_exists('checkAdminHasPermissionAndThrowException')) {
     function checkAdminHasPermissionAndThrowException($permission)
     {
-        if (!checkAdminHasPermission($permission)) {
-            throw new AccessPermissionDeniedException();
+        if (! checkAdminHasPermission($permission)) {
+            throw new AccessPermissionDeniedException;
         }
     }
 }
 
-if (!function_exists('getSettingStatus')) {
+if (! function_exists('getSettingStatus')) {
     function getSettingStatus($key)
     {
         if (Cache::has('setting')) {
             $setting = Cache::get('setting');
-            if (!is_null($key)) {
+            if (! is_null($key)) {
                 return $setting->$key == 'active' ? true : false;
             }
         } else {
@@ -323,7 +328,7 @@ if (!function_exists('getSettingStatus')) {
         return false;
     }
 }
-if (!function_exists('checkCrentials')) {
+if (! function_exists('checkCrentials')) {
     function checkCrentials()
     {
         if (Cache::has('setting') && $settings = Cache::get('setting')) {
@@ -460,7 +465,7 @@ if (!function_exists('checkCrentials')) {
             }
         }
 
-        if (!Cache::has('basic_payment') && Module::isEnabled('BasicPayment')) {
+        if (! Cache::has('basic_payment') && Module::isEnabled('BasicPayment')) {
             Cache::rememberForever('basic_payment', function () {
                 $payment_info = BasicPayment::get();
                 $basic_payment = [];
@@ -493,7 +498,7 @@ if (!function_exists('checkCrentials')) {
                 $resolveCredential = function (string $settingKey, array $configSource, string $configKey, mixed $default = '') use ($basicPaymentValue) {
                     $configuredValue = data_get($configSource, $configKey, '');
 
-                    if (!blank($configuredValue)) {
+                    if (! blank($configuredValue)) {
                         return $configuredValue;
                     }
 
@@ -529,8 +534,8 @@ if (!function_exists('checkCrentials')) {
     }
 }
 
-if (!function_exists('isRoute')) {
-    function isRoute(string|array $route, string|null $returnValue = null)
+if (! function_exists('isRoute')) {
+    function isRoute(string|array $route, ?string $returnValue = null)
     {
         if (is_array($route)) {
             foreach ($route as $value) {
@@ -538,6 +543,7 @@ if (!function_exists('isRoute')) {
                     return is_null($returnValue) ? true : $returnValue;
                 }
             }
+
             return false;
         }
 
@@ -549,15 +555,16 @@ if (!function_exists('isRoute')) {
     }
 }
 // get default language
-if (!function_exists('getDefaultLanguage')) {
+if (! function_exists('getDefaultLanguage')) {
     function getDefaultLanguage(): string
     {
         // cache default language
         $defaultLanguage = Cache::rememberForever('defaultLanguage', function () {
             try {
                 return Language::where('is_default', 1)->first()->code;
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 info($e->getMessage());
+
                 return 'en';
             }
         });
@@ -569,12 +576,11 @@ if (!function_exists('getDefaultLanguage')) {
 /**
  * Set the tab step for the form
  *
- * @param string $name name of the tab session
- * @param string $step current step of the tab
- *
+ * @param  string  $name  name of the tab session
+ * @param  string  $step  current step of the tab
  * @return void
  */
-if (!function_exists('setFormTabStep')) {
+if (! function_exists('setFormTabStep')) {
     function setFormTabStep(string $name, string $step): void
     {
         session()->flash($name, $step);
@@ -586,7 +592,7 @@ if (!function_exists('setFormTabStep')) {
  *
  * @return Collection all countries
  */
-if (!function_exists('countries')) {
+if (! function_exists('countries')) {
     function countries()
     {
         $countries = Cache::get('countries');
@@ -606,7 +612,7 @@ if (!function_exists('countries')) {
     }
 }
 
-if (!function_exists('countriesWithDialCodes')) {
+if (! function_exists('countriesWithDialCodes')) {
     function countriesWithDialCodes()
     {
         $countryDialCodes = AllCountriesDetailsEnum::getAll()
@@ -621,7 +627,7 @@ if (!function_exists('countriesWithDialCodes')) {
                 return (object) [
                     'id' => $country->id,
                     'name' => $country->name,
-                    'dial_code' => $dialCode ? '+' . $dialCode : null,
+                    'dial_code' => $dialCode ? '+'.$dialCode : null,
                 ];
             })
             ->sortBy('name')
@@ -629,14 +635,14 @@ if (!function_exists('countriesWithDialCodes')) {
     }
 }
 
-if (!function_exists('normalizeRegistrationPhone')) {
+if (! function_exists('normalizeRegistrationPhone')) {
     function normalizeRegistrationPhone(?string $phone = null, ?string $countryCode = null, ?string $localPhone = null): string
     {
         return preg_replace('/\s+/', '', trim((string) $phone));
     }
 }
 
-if (!function_exists('normalizeMpesaPhoneNumber')) {
+if (! function_exists('normalizeMpesaPhoneNumber')) {
     function normalizeMpesaPhoneNumber(?string $phone = null): ?string
     {
         $digits = preg_replace('/\D+/', '', trim((string) $phone));
@@ -646,61 +652,61 @@ if (!function_exists('normalizeMpesaPhoneNumber')) {
         }
 
         if (str_starts_with($digits, '2540')) {
-            $digits = '254' . substr($digits, 4);
+            $digits = '254'.substr($digits, 4);
         } elseif (str_starts_with($digits, '0')) {
-            $digits = '254' . substr($digits, 1);
+            $digits = '254'.substr($digits, 1);
         } elseif (str_starts_with($digits, '7') && strlen($digits) === 9) {
-            $digits = '254' . $digits;
+            $digits = '254'.$digits;
         }
 
         return preg_match('/^2547\d{8}$/', $digits) ? $digits : null;
     }
 }
 
-if (!function_exists('instructorStatus')) {
+if (! function_exists('instructorStatus')) {
     function instructorStatus()
     {
         return auth('web')->user()?->instructorInfo?->status;
     }
 }
 
-if (!function_exists('isInstructorAccount')) {
+if (! function_exists('isInstructorAccount')) {
     function isInstructorAccount(): bool
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return false;
         }
 
         $user = auth('web')->user();
 
-        return $user?->role === 'instructor' || instructorStatus() === \App\Enums\UserStatus::APPROVED->value;
+        return $user?->role === 'instructor' || instructorStatus() === UserStatus::APPROVED->value;
     }
 }
 
-if (!function_exists('instructorEntryRouteName')) {
+if (! function_exists('instructorEntryRouteName')) {
     function instructorEntryRouteName(): string
     {
         return isInstructorAccount() ? 'instructor.dashboard' : 'become-instructor';
     }
 }
 
-if (!function_exists('canSeeBecomeInstructorLink')) {
+if (! function_exists('canSeeBecomeInstructorLink')) {
     function canSeeBecomeInstructorLink(): bool
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return false;
         }
 
         return auth('web')->user()?->role === 'student'
-            && !isInstructorAccount()
-            && instructorStatus() !== \App\Enums\UserStatus::PENDING->value;
+            && ! isInstructorAccount()
+            && instructorStatus() !== UserStatus::PENDING->value;
     }
 }
 
-if (!function_exists('userAccountBadgeState')) {
+if (! function_exists('userAccountBadgeState')) {
     function userAccountBadgeState(): string
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return 'guest';
         }
 
@@ -708,7 +714,7 @@ if (!function_exists('userAccountBadgeState')) {
             return 'instructor';
         }
 
-        if (instructorStatus() === \App\Enums\UserStatus::PENDING->value) {
+        if (instructorStatus() === UserStatus::PENDING->value) {
             return 'pending-instructor';
         }
 
@@ -716,7 +722,7 @@ if (!function_exists('userAccountBadgeState')) {
     }
 }
 
-if (!function_exists('userAccountBadgeLabel')) {
+if (! function_exists('userAccountBadgeLabel')) {
     function userAccountBadgeLabel(): string
     {
         return match (userAccountBadgeState()) {
@@ -728,7 +734,7 @@ if (!function_exists('userAccountBadgeLabel')) {
     }
 }
 
-if (!function_exists('userAccountBadgeIcon')) {
+if (! function_exists('userAccountBadgeIcon')) {
     function userAccountBadgeIcon(): string
     {
         return match (userAccountBadgeState()) {
@@ -740,7 +746,7 @@ if (!function_exists('userAccountBadgeIcon')) {
     }
 }
 
-if (!function_exists('userAccountBadgeClass')) {
+if (! function_exists('userAccountBadgeClass')) {
     function userAccountBadgeClass(): string
     {
         return match (userAccountBadgeState()) {
@@ -752,23 +758,23 @@ if (!function_exists('userAccountBadgeClass')) {
     }
 }
 
-if (!function_exists('instructorRequestBadgeState')) {
+if (! function_exists('instructorRequestBadgeState')) {
     function instructorRequestBadgeState(): string
     {
-        if (!auth('web')->check()) {
+        if (! auth('web')->check()) {
             return 'guest';
         }
 
         return match (instructorStatus()) {
-            \App\Enums\UserStatus::APPROVED->value => 'instructor',
-            \App\Enums\UserStatus::PENDING->value => 'pending-instructor',
-            \App\Enums\UserStatus::REJECTED->value => 'rejected-instructor',
+            UserStatus::APPROVED->value => 'instructor',
+            UserStatus::PENDING->value => 'pending-instructor',
+            UserStatus::REJECTED->value => 'rejected-instructor',
             default => auth('web')->user()?->role === 'student' ? 'student' : 'student',
         };
     }
 }
 
-if (!function_exists('instructorRequestBadgeLabel')) {
+if (! function_exists('instructorRequestBadgeLabel')) {
     function instructorRequestBadgeLabel(): string
     {
         return match (instructorRequestBadgeState()) {
@@ -781,7 +787,7 @@ if (!function_exists('instructorRequestBadgeLabel')) {
     }
 }
 
-if (!function_exists('instructorRequestBadgeIcon')) {
+if (! function_exists('instructorRequestBadgeIcon')) {
     function instructorRequestBadgeIcon(): string
     {
         return match (instructorRequestBadgeState()) {
@@ -794,7 +800,7 @@ if (!function_exists('instructorRequestBadgeIcon')) {
     }
 }
 
-if (!function_exists('instructorRequestBadgeClass')) {
+if (! function_exists('instructorRequestBadgeClass')) {
     function instructorRequestBadgeClass(): string
     {
         return match (instructorRequestBadgeState()) {
@@ -806,7 +812,7 @@ if (!function_exists('instructorRequestBadgeClass')) {
         };
     }
 }
-if (!function_exists('customCode')) {
+if (! function_exists('customCode')) {
     function customCode()
     {
         return Cache::rememberForever('customCode', function () {
@@ -816,39 +822,40 @@ if (!function_exists('customCode')) {
 }
 
 /** Truncate string function */
-if (!function_exists('truncate')) {
+if (! function_exists('truncate')) {
     function truncate($text, $limit = 60)
     {
         $text = $text ?? '';
         if (mb_strlen($text) > $limit) {
-            return mb_substr($text, 0, $limit) . '...';
+            return mb_substr($text, 0, $limit).'...';
         }
+
         return $text;
     }
 }
 
 /** Format date function */
-if (!function_exists('formatDate')) {
+if (! function_exists('formatDate')) {
     function formatDate($date, $format = 'd M, Y')
     {
         return Carbon::parse($date)->format($format);
     }
 }
-if (!function_exists('formatTime')) {
+if (! function_exists('formatTime')) {
     function formatTime($date, $format = 'h:i a')
     {
         return Carbon::parse($date)->format($format);
     }
 }
-if (!function_exists('formattedDateTime')) {
+if (! function_exists('formattedDateTime')) {
     function formattedDateTime($datetime)
     {
-        return formatDate($datetime) . ' - ' . formatTime($datetime);
+        return formatDate($datetime).' - '.formatTime($datetime);
     }
 }
 
 /** Format minutes to hours */
-if (!function_exists('minutesToHours')) {
+if (! function_exists('minutesToHours')) {
     function minutesToHours($minutesToHours)
     {
         if ($minutesToHours === 0 || $minutesToHours === null) {
@@ -857,11 +864,12 @@ if (!function_exists('minutesToHours')) {
 
         $hours = floor($minutesToHours / 60);
         $minutes = $minutesToHours % 60;
-        return $hours . 'h ' . ($minutes ? $minutes . 'm' : '');
+
+        return $hours.'h '.($minutes ? $minutes.'m' : '');
     }
 }
 
-if (!function_exists('revisionHubSubscriptionPlans')) {
+if (! function_exists('revisionHubSubscriptionPlans')) {
     function revisionHubSubscriptionPlans(): array
     {
         return [
@@ -905,7 +913,7 @@ if (!function_exists('revisionHubSubscriptionPlans')) {
     }
 }
 
-if (!function_exists('revisionHubSubscriptionPlan')) {
+if (! function_exists('revisionHubSubscriptionPlan')) {
     function revisionHubSubscriptionPlan(string $planId): ?array
     {
         return collect(revisionHubSubscriptionPlans())->firstWhere('id', $planId);
@@ -917,7 +925,7 @@ if (!function_exists('revisionHubSubscriptionPlan')) {
  * converted to a credit against a longer plan; downgrades are not allowed
  * while a subscription is active.
  */
-if (!function_exists('revisionHubSubscriptionUpgradeQuote')) {
+if (! function_exists('revisionHubSubscriptionUpgradeQuote')) {
     function revisionHubSubscriptionUpgradeQuote(User $user, array $targetPlan): array
     {
         // Controllers may provide presentation-only plan arrays; pricing and
@@ -925,7 +933,7 @@ if (!function_exists('revisionHubSubscriptionUpgradeQuote')) {
         $targetPlan = revisionHubSubscriptionPlan((string) ($targetPlan['id'] ?? '')) ?? $targetPlan;
         $baseAmount = (int) $targetPlan['amount'];
 
-        if (!hasActiveSubscription($user)) {
+        if (! hasActiveSubscription($user)) {
             return [
                 'allowed' => true,
                 'kind' => 'new',
@@ -937,7 +945,7 @@ if (!function_exists('revisionHubSubscriptionUpgradeQuote')) {
         }
 
         $currentPlan = revisionHubSubscriptionPlan((string) $user->subscription_plan_id);
-        if (!$currentPlan) {
+        if (! $currentPlan) {
             return [
                 'allowed' => true,
                 'kind' => 'new',
@@ -976,14 +984,14 @@ if (!function_exists('revisionHubSubscriptionUpgradeQuote')) {
     }
 }
 
-if (!function_exists('revisionHubSubscriptionBonusFraction')) {
+if (! function_exists('revisionHubSubscriptionBonusFraction')) {
     function revisionHubSubscriptionBonusFraction(): float
     {
         return max(0, (float) config('ai.purchase.subscription_bonus_fraction', 0.2));
     }
 }
 
-if (!function_exists('revisionHubSubscriptionBonusCredits')) {
+if (! function_exists('revisionHubSubscriptionBonusCredits')) {
     function revisionHubSubscriptionBonusCredits(int $amount): int
     {
         $purchaseService = app(AiCreditPurchaseService::class);
@@ -993,7 +1001,7 @@ if (!function_exists('revisionHubSubscriptionBonusCredits')) {
     }
 }
 
-if (!function_exists('revisionHubSubscriptionExpiry')) {
+if (! function_exists('revisionHubSubscriptionExpiry')) {
     function revisionHubSubscriptionExpiry(string $planId, ?Carbon $startAt = null): Carbon
     {
         $plan = revisionHubSubscriptionPlan($planId);
@@ -1006,12 +1014,12 @@ if (!function_exists('revisionHubSubscriptionExpiry')) {
     }
 }
 
-if (!function_exists('hasActiveSubscription')) {
+if (! function_exists('hasActiveSubscription')) {
     function hasActiveSubscription($user = null): bool
     {
         $user = $user instanceof User ? $user : userAuth();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -1023,12 +1031,30 @@ if (!function_exists('hasActiveSubscription')) {
     }
 }
 
-if (!function_exists('activateSubscriptionPlanForUser')) {
+if (! function_exists('hasSabbathAccess')) {
+    function hasSabbathAccess($user = null): bool
+    {
+        $user = $user instanceof User ? $user : userAuth();
+
+        return app(SabbathPlanService::class)->isActiveFor($user);
+    }
+}
+
+if (! function_exists('hasFullCatalogAccess')) {
+    function hasFullCatalogAccess($user = null): bool
+    {
+        $user = $user instanceof User ? $user : userAuth();
+
+        return hasActiveSubscription($user) || hasSabbathAccess($user);
+    }
+}
+
+if (! function_exists('activateSubscriptionPlanForUser')) {
     function activateSubscriptionPlanForUser(User $user, string $planId, ?Order $order = null): void
     {
         $plan = revisionHubSubscriptionPlan($planId);
 
-        if (!$plan) {
+        if (! $plan) {
             return;
         }
 
@@ -1043,19 +1069,19 @@ if (!function_exists('activateSubscriptionPlanForUser')) {
 }
 
 /** Set enrollment ids in session */
-
-if (!function_exists('setEnrollmentIdsInSession')) {
+if (! function_exists('setEnrollmentIdsInSession')) {
     function setEnrollmentIdsInSession()
     {
         if (auth('web')->check()) {
             $enrollmentsIds = Enrollment::where('user_id', userAuth()->id)->pluck('course_id')->toArray();
 
-            if (hasActiveSubscription()) {
+            if (hasFullCatalogAccess()) {
                 $subscriptionCourseIds = Course::active()->pluck('id')->toArray();
                 $enrollmentsIds = array_values(array_unique(array_merge($enrollmentsIds, $subscriptionCourseIds)));
             }
 
             session()->put('enrollments', $enrollmentsIds);
+
             return;
         }
 
@@ -1063,13 +1089,13 @@ if (!function_exists('setEnrollmentIdsInSession')) {
     }
 }
 /** Set instructor course ids in session */
-
-if (!function_exists('setInstructorCourseIdsInSession')) {
+if (! function_exists('setInstructorCourseIdsInSession')) {
     function setInstructorCourseIdsInSession()
     {
         if (auth('web')->check() && userAuth()->role == 'instructor') {
             $enrollmentsIds = Course::where('instructor_id', userAuth()->id)->pluck('id')->toArray();
             session()->put('instructor_courses', $enrollmentsIds);
+
             return;
         }
 
@@ -1077,7 +1103,7 @@ if (!function_exists('setInstructorCourseIdsInSession')) {
     }
 }
 
-if (!function_exists('processText')) {
+if (! function_exists('processText')) {
     function processText($text)
     {
         // Replace text within square brackets with a <span> tag
@@ -1113,34 +1139,37 @@ function calculateReadingTime($content)
     return $readingTime;
 }
 
-if (!function_exists('getTags')) {
+if (! function_exists('getTags')) {
     function getTags($jsonTag = [])
     {
         $tags = $jsonTag;
         $tags_string = '';
         foreach ($tags as $tag) {
-            $tags_string .= $tag->value . ',';
+            $tags_string .= $tag->value.',';
         }
+
         return $tags_string = rtrim($tags_string, ',');
     }
 }
-if (!function_exists('extractGoogleDriveVideoId')) {
+if (! function_exists('extractGoogleDriveVideoId')) {
     function extractGoogleDriveVideoId($url)
     {
         $googleDriveRegex = '/(?:https?:\/\/)?(?:www\.)?(?:drive\.google\.com\/(?:uc\?id=|file\/d\/|open\?id=)|youtu\.be\/)([\w-]{25,})[?=&#]*/';
         if (preg_match($googleDriveRegex, $url, $matches)) {
             return $matches[1];
         }
+
         return null;
     }
 }
 
-if (!function_exists('extractAndFilterImageSrc')) {
+if (! function_exists('extractAndFilterImageSrc')) {
     function extractAndFilterImageSrc($string)
     {
         preg_match_all('/<img[^>]+src="([^">]+)"/i', $string, $matches);
         foreach (array_filter(array_map(function ($src) {
             $path = preg_replace('/^.*\/(uploads\/.*)$/', '$1', $src);
+
             return preg_match('/^uploads\/forum-images\/[^\/]+\.[a-zA-Z]{3,4}$/', $path) ? $path : null;
         }, $matches[1])) as $image) {
             $fullPath = public_path($image);
@@ -1151,7 +1180,7 @@ if (!function_exists('extractAndFilterImageSrc')) {
         }
     }
 }
-if (!function_exists('replaceImageSources')) {
+if (! function_exists('replaceImageSources')) {
     function replaceImageSources($html)
     {
         $baseUrl = url('uploads/forum-images/');
@@ -1159,14 +1188,16 @@ if (!function_exists('replaceImageSources')) {
 
         $replacement = function ($matches) use ($baseUrl) {
             $existingSrc = $matches[1];
-            $newSrc = $baseUrl . '/' . basename($existingSrc);
+            $newSrc = $baseUrl.'/'.basename($existingSrc);
+
             return str_replace($existingSrc, $newSrc, $matches[0]);
         };
         $newHtml = preg_replace_callback($pattern, $replacement, $html);
+
         return $newHtml;
     }
 }
-if (!function_exists('adminSearchRouteList')) {
+if (! function_exists('adminSearchRouteList')) {
     function adminSearchRouteList(): object
     {
         $route_list = [
@@ -1273,7 +1304,7 @@ if (!function_exists('adminSearchRouteList')) {
             (object) ['name' => __('Manual Enrollment'), 'route' => route('admin.manual-enrollment.index'), 'permission' => 'enrollment.manual.view'],
         ];
 
-        if (DEFAULT_HOMEPAGE == ThemeList::BUSINESS->value) {
+        if (ThemeList::BUSINESS->value == DEFAULT_HOMEPAGE) {
             $route_list[] = (object) ['name' => __('Slider Section'), 'route' => route('admin.slider-section.index', ['code' => 'en']), 'permission' => 'section.management'];
         } else {
             $route_list[] = (object) ['name' => __('Hero Section'), 'route' => route('admin.hero-section.index', ['code' => 'en']), 'permission' => 'section.management'];
@@ -1292,8 +1323,8 @@ if (!function_exists('adminSearchRouteList')) {
         return (object) $route_list;
     }
 }
-//wasabi config setup
-if (!function_exists('set_wasabi_config')) {
+// wasabi config setup
+if (! function_exists('set_wasabi_config')) {
     function set_wasabi_config()
     {
         $wasabi_setting = Cache::get('setting');
@@ -1303,7 +1334,7 @@ if (!function_exists('set_wasabi_config')) {
         config(['filesystems.disks.wasabi.region' => data_get($wasabi_setting, 'wasabi_region')]);
     }
 }
-if (!function_exists('set_bunny_config')) {
+if (! function_exists('set_bunny_config')) {
     function set_bunny_config()
     {
         $bunny_setting = Cache::get('setting');
@@ -1323,7 +1354,7 @@ if (!function_exists('set_bunny_config')) {
         config(['bunny.stream_status' => data_get($bunny_setting, 'bunny_stream_status')]);
     }
 }
-if (!function_exists('set_aws_config')) {
+if (! function_exists('set_aws_config')) {
     function set_aws_config()
     {
         $aws_setting = Cache::get('setting');
@@ -1335,13 +1366,13 @@ if (!function_exists('set_aws_config')) {
         config(['filesystems.disks.aws.url' => $awsBucket ? "https://{$awsBucket}.s3.amazonaws.com/" : null]);
     }
 }
-if (!function_exists('generateUniqueSlug')) {
+if (! function_exists('generateUniqueSlug')) {
     /**
      * Generate a unique slug for a model based on an initial base slug.
      *
-     * @param string $model The model class to check for existing slugs (e.g., Course::class).
-     * @param string $title The title to convert to a base slug.
-     * @param int|null $ignoreId Optional model id to exclude when checking for collisions.
+     * @param  string  $model  The model class to check for existing slugs (e.g., Course::class).
+     * @param  string  $title  The title to convert to a base slug.
+     * @param  int|null  $ignoreId  Optional model id to exclude when checking for collisions.
      * @return string A unique slug string that can be safely used in the model.
      */
     function generateUniqueSlug($model, $title, ?int $ignoreId = null): string
@@ -1358,28 +1389,29 @@ if (!function_exists('generateUniqueSlug')) {
                 ->when($ignoreId !== null, fn ($query) => $query->where('id', '!=', $ignoreId))
                 ->exists()
         ) {
-            $slug = $baseSlug . '-' . $counter++;
+            $slug = $baseSlug.'-'.$counter++;
         }
+
         return $slug;
     }
 }
-if (!function_exists('convertMinutesToHoursAndMinutes')) {
+if (! function_exists('convertMinutesToHoursAndMinutes')) {
     function convertMinutesToHoursAndMinutes($minutes)
     {
         if ($minutes <= 0) {
-            return "0m";
+            return '0m';
         }
-        return $minutes < 60 ? "{$minutes}m" : floor($minutes / 60) . "h" . ($minutes % 60 ? " " . $minutes % 60 . "m" : "");
+
+        return $minutes < 60 ? "{$minutes}m" : floor($minutes / 60).'h'.($minutes % 60 ? ' '.$minutes % 60 .'m' : '');
     }
 }
-if (!function_exists('generateVideoEmbedUrl')) {
+if (! function_exists('generateVideoEmbedUrl')) {
     /**
      * Generates an embed URL for video platforms.
      *
-     * @param string $storage The storage platform ('upload','bunny_stream','youtube','vimeo','external_link','google_drive','iframe','wasabi','aws').
-     * @param string $file_type The type of file (video','audio','pdf','txt','docx','iframe','image','file','other).
-     * @param string $url The video URL.
-     *
+     * @param  string  $storage  The storage platform ('upload','bunny_stream','youtube','vimeo','external_link','google_drive','iframe','wasabi','aws').
+     * @param  string  $file_type  The type of file (video','audio','pdf','txt','docx','iframe','image','file','other).
+     * @param  string  $url  The video URL.
      * @return string|null The embed URL or null if not found.
      */
     function generateVideoEmbedUrl($url, $storage, $file_type = 'video')
@@ -1389,20 +1421,23 @@ if (!function_exists('generateVideoEmbedUrl')) {
         }
         if ($storage == 'google_drive') {
             if (preg_match('/(?:https?:\/\/)?(?:www\.)?(?:drive\.google\.com\/(?:uc\?id=|file\/d\/|open\?id=)|youtu\.be\/)([\w-]{25,})[?=&#]*/', $url, $match)) {
-                return "https://drive.google.com/file/d/" . $match[1] . "/preview";
+                return 'https://drive.google.com/file/d/'.$match[1].'/preview';
             }
+
             return null;
         }
         if ($storage == 'youtube') {
             if (preg_match('/(?:youtube(?:-nocookie)?\.com\/(?:.*[?&]v=|embed\/|shorts\/|v\/)|youtu\.be\/)([\w-]{11})/i', $url, $match)) {
-                return "https://www.youtube.com/embed/" . $match[1] . "?rel=0";
+                return 'https://www.youtube.com/embed/'.$match[1].'?rel=0';
             }
+
             return null;
         }
         if ($storage == 'vimeo') {
             if (preg_match('/(?:vimeo\.com\/)(\d{8,})/', $url, $match)) {
-                return "https://player.vimeo.com/video/" . $match[1];
+                return 'https://player.vimeo.com/video/'.$match[1];
             }
+
             return null;
         }
         if ($storage == 'bunny_stream') {
@@ -1417,25 +1452,26 @@ if (!function_exists('generateVideoEmbedUrl')) {
                 $playerHost = 'player.mediadelivery.net';
             }
 
-            if (!Str::startsWith($playerHost, ['http://', 'https://'])) {
-                $playerHost = 'https://' . ltrim($playerHost, '/');
+            if (! Str::startsWith($playerHost, ['http://', 'https://'])) {
+                $playerHost = 'https://'.ltrim($playerHost, '/');
             }
 
-            return rtrim($playerHost, '/') . '/embed/' . rawurlencode($libraryId) . '/' . rawurlencode($url);
+            return rtrim($playerHost, '/').'/embed/'.rawurlencode($libraryId).'/'.rawurlencode($url);
         }
         if (in_array($storage, ['wasabi', 'aws'])) {
             return Storage::disk($storage)->temporaryUrl($url, now()->addSeconds(30));
         }
+
         return asset($url);
     }
 
 }
-if (!function_exists('apiCurrency')) {
+if (! function_exists('apiCurrency')) {
     // calculate currency
     function apiCurrency($price, $currency_code = null)
     {
         $currency = allCurrencies()->where('currency_code', $currency_code)->first();
-        if (!$currency) {
+        if (! $currency) {
             $currency = allCurrencies()->where('is_default', 'yes')->first();
         }
 
@@ -1447,27 +1483,26 @@ if (!function_exists('apiCurrency')) {
         $price = number_format($price, 2, '.', ',');
 
         if ($currency_position == 'before_price') {
-            $price = $currency_icon . $price;
+            $price = $currency_icon.$price;
         } elseif ($currency_position == 'before_price_with_space') {
-            $price = $currency_icon . ' ' . $price;
+            $price = $currency_icon.' '.$price;
         } elseif ($currency_position == 'after_price') {
-            $price = $price . $currency_icon;
+            $price = $price.$currency_icon;
         } elseif ($currency_position == 'after_price_with_space') {
-            $price = $price . ' ' . $currency_icon;
+            $price = $price.' '.$currency_icon;
         } else {
-            $price = $currency_icon . $price;
+            $price = $currency_icon.$price;
         }
 
         return $price;
     }
 }
 
-if (!function_exists('sessionCartToDatabase')) {
+if (! function_exists('sessionCartToDatabase')) {
     /**
      * Transfers items from the session cart to the authenticated user's database cart.
      *
-     * @param \App\Models\User $user The authenticated user.
-     * @return void
+     * @param  User  $user  The authenticated user.
      */
     function sessionCartToDatabase(): void
     {
@@ -1477,13 +1512,13 @@ if (!function_exists('sessionCartToDatabase')) {
             foreach ($carts as $item) {
                 $itemType = $item->options['item_type'] ?? 'course';
                 if ($itemType === 'product') {
-                    $product = \App\Models\Product::active()->find($item->options['product_id'] ?? null);
-                    if ($product && !hasProductInPurchased($user, $product) && !hasProductInCart($user, $product)) {
+                    $product = Product::active()->find($item->options['product_id'] ?? null);
+                    if ($product && ! hasProductInPurchased($user, $product) && ! hasProductInCart($user, $product)) {
                         $user->carts()->create(['item_type' => 'product', 'product_id' => $product->id]);
                     }
                 } else {
                     $course = Course::active()->find($item->id);
-                    if ($course && !isOwnCourse($user, $course) && !hasCourseInPurchased($user, $course) && !hasCourseInCart($user, $course)) {
+                    if ($course && ! isOwnCourse($user, $course) && ! hasCourseInPurchased($user, $course) && ! hasCourseInCart($user, $course)) {
                         $user->carts()->create(['item_type' => 'course', 'course_id' => $item->id]);
                     }
                 }
@@ -1492,48 +1527,48 @@ if (!function_exists('sessionCartToDatabase')) {
         }
     }
 }
-if (!function_exists('isOwnCourse')) {
+if (! function_exists('isOwnCourse')) {
     function isOwnCourse($user, $course)
     {
         return $course->instructor_id == $user->id;
     }
 }
-if (!function_exists('hasCourseInPurchased')) {
+if (! function_exists('hasCourseInPurchased')) {
     function hasCourseInPurchased($user, $course)
     {
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             return true;
         }
 
         return $user->enrollments()->where('course_id', $course->id)->exists();
     }
 }
-if (!function_exists('hasCourseInCart')) {
+if (! function_exists('hasCourseInCart')) {
     function hasCourseInCart($user, $course)
     {
         return $user->carts()->where('course_id', $course->id)->exists();
     }
 }
-if (!function_exists('hasProductInPurchased')) {
+if (! function_exists('hasProductInPurchased')) {
     function hasProductInPurchased($user, $product)
     {
-        if (hasActiveSubscription($user)) {
+        if (hasFullCatalogAccess($user)) {
             return true;
         }
 
         return OrderItem::where('item_type', 'product')
             ->where('product_id', $product->id)
-            ->whereHas('order', fn($q) => $q->where('buyer_id', $user->id)->where('payment_status', 'paid'))
+            ->whereHas('order', fn ($q) => $q->where('buyer_id', $user->id)->where('payment_status', 'paid'))
             ->exists();
     }
 }
-if (!function_exists('hasProductInCart')) {
+if (! function_exists('hasProductInCart')) {
     function hasProductInCart($user, $product)
     {
         return $user->carts()->where('product_id', $product->id)->exists();
     }
 }
-if (!function_exists('SMSTemplate')) {
+if (! function_exists('SMSTemplate')) {
     function SMSTemplate($templateName, $str_replace = [])
     {
         // Fetch the template by name
@@ -1541,17 +1576,17 @@ if (!function_exists('SMSTemplate')) {
         $message = $template->message;
 
         // Check if the $str_replace array exists and is not empty
-        if (!empty($str_replace)) {
+        if (! empty($str_replace)) {
             // Replace placeholders with actual values
             foreach ($str_replace as $key => $value) {
-                $message = str_replace(["{{" . $key . "}}", "{{ " . $key . " }}"], $value, $message);
+                $message = str_replace(['{{'.$key.'}}', '{{ '.$key.' }}'], $value, $message);
             }
         }
 
         return $message;
     }
 }
-if (!function_exists('sendSMS')) {
+if (! function_exists('sendSMS')) {
     function sendSMS(?string $to, ?string $message): bool
     {
         if (empty($to) || empty($message)) {
@@ -1572,35 +1607,38 @@ if (!function_exists('sendSMS')) {
             $escapedCode = preg_quote($countryCode, '/');
             $regex = "/^{$escapedCode}\d{9,15}$/";
 
-            if (!preg_match($regex, $normalizedPhone)) {
-                info('Invalid phone number format: ' . $to);
+            if (! preg_match($regex, $normalizedPhone)) {
+                info('Invalid phone number format: '.$to);
+
                 return false;
             }
         }
 
         try {
-            $smsService = App\Factories\SMSFactory::make($driver);
+            $smsService = SMSFactory::make($driver);
+
             return $smsService->send($normalizedPhone, $message);
         } catch (Exception $e) {
             info("SMS sending failed: {$e->getMessage()}");
+
             return false;
         }
     }
 }
-if (!function_exists('getCategories')) {
+if (! function_exists('getCategories')) {
     function getCategories(): array|Collection
     {
         return CourseCategoryHelper::getTrendingCategoriesWithCounts();
     }
 }
-if (!function_exists('getFeaturedCourse')) {
-    function getFeaturedCourse(): object|null
+if (! function_exists('getFeaturedCourse')) {
+    function getFeaturedCourse(): ?object
     {
         return FeaturedCourseSection::first();
     }
 }
-if (!function_exists('getFeaturedBlogs')) {
-    function getFeaturedBlogs(int $total = 4): object|null
+if (! function_exists('getFeaturedBlogs')) {
+    function getFeaturedBlogs(int $total = 4): ?object
     {
         return Blog::with(['translation', 'author'])
             ->whereHas('category', function ($q) {
@@ -1609,8 +1647,8 @@ if (!function_exists('getFeaturedBlogs')) {
             ->where(['show_homepage' => 1, 'status' => 1])->orderBy('created_at', 'desc')->limit($total)->get();
     }
 }
-if (!function_exists('getSelectedInstructors')) {
-    function getSelectedInstructors(): object|null
+if (! function_exists('getSelectedInstructors')) {
+    function getSelectedInstructors(): ?object
     {
         $featuredInstructorSection = FeaturedInstructor::first();
         $instructorIds = json_decode($featuredInstructorSection->instructor_ids ?? '[]');
@@ -1621,78 +1659,99 @@ if (!function_exists('getSelectedInstructors')) {
                     $query->withCount([
                         'reviews as avg_rating' => function ($query) {
                             $query->select(DB::raw('coalesce(avg(rating),0)'));
-                        }
+                        },
                     ]);
-                }
+                },
             ])
             ->get();
 
         return $selectedInstructors;
     }
 }
-if (!function_exists('getTestimonials')) {
-    function getTestimonials(int $total = 4): object|null
+if (! function_exists('getTestimonials')) {
+    function getTestimonials(int $total = 4): ?object
     {
         return Testimonial::active()->orderBy('created_at', 'desc')->limit($total)->get();
     }
 }
-if (!function_exists('getBrowserName')) {
+if (! function_exists('getBrowserName')) {
     function getBrowserName($userAgent)
     {
         $userAgent = strtolower($userAgent ?? '');
 
         // ✅ API Clients
-        if (strpos($userAgent, 'postman') !== false)
+        if (strpos($userAgent, 'postman') !== false) {
             return 'Postman';
-        if (strpos($userAgent, 'thunder client') !== false)
+        }
+        if (strpos($userAgent, 'thunder client') !== false) {
             return 'Thunder Client';
-        if (strpos($userAgent, 'insomnia') !== false)
+        }
+        if (strpos($userAgent, 'insomnia') !== false) {
             return 'Insomnia';
-        if (strpos($userAgent, 'curl') !== false)
+        }
+        if (strpos($userAgent, 'curl') !== false) {
             return 'cURL';
-        if (strpos($userAgent, 'httpclient') !== false)
+        }
+        if (strpos($userAgent, 'httpclient') !== false) {
             return 'HTTP Client';
-        if (strpos($userAgent, 'okhttp') !== false)
+        }
+        if (strpos($userAgent, 'okhttp') !== false) {
             return 'OkHttp (Android)';
-        if (strpos($userAgent, 'axios') !== false)
+        }
+        if (strpos($userAgent, 'axios') !== false) {
             return 'Axios';
-        if (strpos($userAgent, 'python-requests') !== false)
+        }
+        if (strpos($userAgent, 'python-requests') !== false) {
             return 'Python Requests';
-        if (strpos($userAgent, 'java') !== false)
+        }
+        if (strpos($userAgent, 'java') !== false) {
             return 'Java Client';
+        }
 
         // ✅ Browsers
-        if (strpos($userAgent, 'edg') !== false)
+        if (strpos($userAgent, 'edg') !== false) {
             return 'Edge';
-        if (strpos($userAgent, 'opr') !== false || strpos($userAgent, 'opera') !== false)
+        }
+        if (strpos($userAgent, 'opr') !== false || strpos($userAgent, 'opera') !== false) {
             return 'Opera';
-        if (strpos($userAgent, 'chrome') !== false && strpos($userAgent, 'chromium') === false)
+        }
+        if (strpos($userAgent, 'chrome') !== false && strpos($userAgent, 'chromium') === false) {
             return 'Chrome';
-        if (strpos($userAgent, 'firefox') !== false)
+        }
+        if (strpos($userAgent, 'firefox') !== false) {
             return 'Firefox';
-        if (strpos($userAgent, 'safari') !== false && strpos($userAgent, 'chrome') === false)
+        }
+        if (strpos($userAgent, 'safari') !== false && strpos($userAgent, 'chrome') === false) {
             return 'Safari';
-        if (strpos($userAgent, 'msie') !== false || strpos($userAgent, 'trident') !== false)
+        }
+        if (strpos($userAgent, 'msie') !== false || strpos($userAgent, 'trident') !== false) {
             return 'Internet Explorer';
-        if (strpos($userAgent, 'chromium') !== false)
+        }
+        if (strpos($userAgent, 'chromium') !== false) {
             return 'Chromium';
+        }
 
         // ✅ Mobile Apps or Others
-        if (strpos($userAgent, 'android') !== false)
+        if (strpos($userAgent, 'android') !== false) {
             return 'Android WebView';
-        if (strpos($userAgent, 'iphone') !== false)
+        }
+        if (strpos($userAgent, 'iphone') !== false) {
             return 'iPhone Safari';
-        if (strpos($userAgent, 'ipad') !== false)
+        }
+        if (strpos($userAgent, 'ipad') !== false) {
             return 'iPad Safari';
-        if (strpos($userAgent, 'flutter') !== false)
+        }
+        if (strpos($userAgent, 'flutter') !== false) {
             return 'Flutter App';
-        if (strpos($userAgent, 'reactnative') !== false)
+        }
+        if (strpos($userAgent, 'reactnative') !== false) {
             return 'React Native App';
+        }
 
         return 'Unknown';
     }
 }
-if (!function_exists('getDeviceType')) {
+if (! function_exists('getDeviceType')) {
     function getDeviceType($userAgent)
     {
         $userAgent = strtolower($userAgent ?? '');
@@ -1708,4 +1767,3 @@ if (!function_exists('getDeviceType')) {
         return 'Desktop';
     }
 }
-

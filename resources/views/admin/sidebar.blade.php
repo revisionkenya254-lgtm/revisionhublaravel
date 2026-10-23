@@ -19,6 +19,13 @@
                 </li>
             @endadminCan
 
+            <li class="{{ isRoute('admin.sabbath-plan.*', 'active') }}">
+                <a class="nav-link" href="{{ route('admin.sabbath-plan.index') }}">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>{{ __('Sabbath Plan') }}</span>
+                </a>
+            </li>
+
             @if(checkAdminHasPermission('course.management') || checkAdminHasPermission('course.certificate.management') || checkAdminHasPermission('badge.management') || checkAdminHasPermission('blog.view'))
                 <li class="menu-header">{{ __('Manage Contents') }}</li>
 

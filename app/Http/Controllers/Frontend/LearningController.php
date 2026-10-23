@@ -14,6 +14,7 @@ use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\QuizResult;
 use App\Rules\CustomRecaptcha;
+use App\Services\CatalogAccessService;
 use App\Traits\GenerateSecureLinkTrait;
 use Carbon\Carbon;
 use Firebase\JWT\JWT;
@@ -26,7 +27,8 @@ use Modules\Assignment\app\Models\Assignment;
 class LearningController extends Controller
 {
     use GenerateSecureLinkTrait;
-    function index(string $slug)
+
+    public function index(string $slug)
     {
         $user = userAuth();
         $courseQuery = Course::active()->with([
@@ -37,12 +39,12 @@ class LearningController extends Controller
             'chapters.chapterItems.assignment',
         ])->withTrashed()->where('slug', $slug);
 
-        if (!hasActiveSubscription($user)) {
-            $courseQuery->whereHas('enrollments', fn($q) => $q->where('user_id', $user->id));
+        if (! hasFullCatalogAccess($user)) {
+            $courseQuery->whereHas('enrollments', fn ($q) => $q->where('user_id', $user->id));
         }
 
         $course = $courseQuery->first();
-        if (!$course) {
+        if (! $course) {
             abort(404);
         }
 
@@ -74,7 +76,7 @@ class LearningController extends Controller
 
         $courseCompletedPercent = $courseLectureCount > 0 ? ($courseLectureCompletedByUser / $courseLectureCount) * 100 : 0;
 
-        if (!$currentProgress) {
+        if (! $currentProgress) {
             $lessonId = @$course->chapters?->first()?->chapterItems()?->first()?->lesson->id;
             if ($lessonId) {
                 $currentProgress = CourseProgress::create([
@@ -86,6 +88,7 @@ class LearningController extends Controller
                 ]);
             }
         }
+
         return view('frontend.pages.learning-player.index', compact(
             'course',
             'currentProgress',
@@ -99,7 +102,7 @@ class LearningController extends Controller
         ));
     }
 
-    function getFileInfo(Request $request)
+    public function getFileInfo(Request $request)
     {
         // set progress status
         CourseProgress::where('course_id', $request->courseId)->update(['current' => 0]);
@@ -127,6 +130,7 @@ class LearningController extends Controller
             if ($fileInfo['storage'] == 'bunny_stream') {
                 $fileInfo['file_path'] = generateVideoEmbedUrl($fileInfo['file_path'], $fileInfo['storage']);
             }
+
             return response()->json([
                 'file_info' => $fileInfo,
             ]);
@@ -139,17 +143,17 @@ class LearningController extends Controller
                     'course.instructor.jitsi_credential:id,instructor_id,app_id,api_key,permissions',
                     'live:id,lesson_id,start_time,type,meeting_id,password,join_url',
                 ])->select([
-                            'id',
-                            'course_id',
-                            'chapter_item_id',
-                            'title',
-                            'description',
-                            'duration',
-                            'file_path',
-                            'storage',
-                            'file_type',
-                            'downloadable',
-                        ])->findOrFail($request->lessonId)->toArray(),
+                    'id',
+                    'course_id',
+                    'chapter_item_id',
+                    'title',
+                    'description',
+                    'duration',
+                    'file_path',
+                    'storage',
+                    'file_type',
+                    'downloadable',
+                ])->findOrFail($request->lessonId)->toArray(),
                 ['type' => 'live']
             );
 
@@ -173,12 +177,12 @@ class LearningController extends Controller
             ]);
         } elseif ($request->type == 'document') {
             $fileInfo = array_merge(CourseChapterLesson::select(['id', 'file_path', 'storage', 'file_type', 'downloadable', 'description'])->findOrFail($request->lessonId)->toArray(), ['type' => 'document']);
-            if ('pdf' == $fileInfo['file_type']) {
+            if ($fileInfo['file_type'] == 'pdf') {
                 return response()->json([
                     'view' => view('frontend.pages.learning-player.partials.pdf-viewer', ['file_path' => $fileInfo['file_path']])->render(),
                     'file_info' => $fileInfo,
                 ]);
-            } elseif ('docx' == $fileInfo['file_type']) {
+            } elseif ($fileInfo['file_type'] == 'docx') {
                 return response()->json([
                     'view' => view('frontend.pages.learning-player.partials.docx-viewer', [
                         'file_path' => $fileInfo['file_path'],
@@ -208,12 +212,13 @@ class LearningController extends Controller
         }
     }
 
-    function makeLessonComplete(Request $request)
+    public function makeLessonComplete(Request $request)
     {
         $progress = CourseProgress::where(['lesson_id' => $request->lessonId, 'user_id' => userAuth()->id, 'type' => $request->type])->first();
         if ($progress) {
             $progress->watched = $request->status;
             $progress->save();
+
             return response()->json(['status' => 'success', 'message' => __('Updated successfully.')]);
         } else {
             if ($request->status == 0) {
@@ -224,16 +229,26 @@ class LearningController extends Controller
         }
     }
 
-    function downloadResource(string $lessonId)
+    public function downloadResource(string $lessonId)
     {
-        $resource = CourseChapterLesson::findOrFail($lessonId);
-        if (!\File::exists(public_path($resource->file_path))) {
+        $resource = CourseChapterLesson::with('course')->findOrFail($lessonId);
+        $access = app(CatalogAccessService::class)->course(userAuth(), $resource->course);
+
+        abort_unless($access['allowed'], 403);
+        abort_if(
+            $access['source'] === 'sabbath',
+            403,
+            __('Browser downloads are unavailable with Sabbath access. Use the Android app for temporary offline access.')
+        );
+
+        if (! \File::exists(public_path($resource->file_path))) {
             return redirect()->back()->with(['alert-type' => 'error', 'messege' => __('Links is broke or some thing went wrong')]);
         }
+
         return response()->download(public_path($resource->file_path));
     }
 
-    function quizIndex(string $id)
+    public function quizIndex(string $id)
     {
         $attempt = QuizResult::where('user_id', userAuth()->id)->where('quiz_id', $id)->count();
         $quiz = Quiz::withCount('questions')->findOrFail($id);
@@ -244,7 +259,7 @@ class LearningController extends Controller
         return view('frontend.pages.learning-player.quiz-index', compact('quiz', 'attempt'));
     }
 
-    function quizStore(Request $request, string $id)
+    public function quizStore(Request $request, string $id)
     {
         $grad = 0;
         $result = [];
@@ -257,8 +272,8 @@ class LearningController extends Controller
                 $grad += $question->grade;
             }
             $result[$key] = [
-                "answer" => $questionAns,
-                "correct" => in_array($questionAns, $answer),
+                'answer' => $questionAns,
+                'correct' => in_array($questionAns, $answer),
             ];
         }
 
@@ -269,10 +284,11 @@ class LearningController extends Controller
             'user_grade' => $grad,
             'status' => $grad >= $quiz->pass_mark ? 'pass' : 'failed',
         ]);
+
         return redirect()->route('student.quiz.result', ['id' => $id, 'result_id' => $quizResult->id]);
     }
 
-    function quizResult(string $id, string $resultId)
+    public function quizResult(string $id, string $resultId)
     {
         $attempt = QuizResult::where('user_id', userAuth()->id)->where('quiz_id', $id)->count();
         $quiz = Quiz::withCount('questions')->findOrFail($id);
@@ -281,13 +297,13 @@ class LearningController extends Controller
         return view('frontend.pages.learning-player.quiz-result', compact('quiz', 'attempt', 'quizResult'));
     }
 
-    function addReview(Request $request)
+    public function addReview(Request $request)
     {
         $request->validate([
             'course_id' => ['required', 'exists:courses,id'],
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'review' => ['required', 'max: 1000', 'string'],
-            'g-recaptcha-response' => Cache::get('setting')->recaptcha_status === 'active' ? ['required', new CustomRecaptcha()] : 'nullable',
+            'g-recaptcha-response' => Cache::get('setting')->recaptcha_status === 'active' ? ['required', new CustomRecaptcha] : 'nullable',
         ], [
             'rating.required' => __('rating filed is required'),
             'rating.integer' => __('rating have to be an integer'),
@@ -311,9 +327,10 @@ class LearningController extends Controller
 
     }
 
-    function fetchReviews(Request $request, string $courseId)
+    public function fetchReviews(Request $request, string $courseId)
     {
         $reviews = CourseReview::where(['course_id' => $courseId, 'status' => 1])->whereHas('course')->whereHas('user')->orderBy('id', 'desc')->paginate(8, ['*'], 'page', $request->page ?? 1);
+
         return response()->json([
             'view' => view('frontend.pages.learning-player.partials.review-card', compact('reviews'))->render(),
             'page' => $request->page,
@@ -322,7 +339,7 @@ class LearningController extends Controller
         ]);
     }
 
-    function liveSession(Request $request, string $slug, string $lesson_id)
+    public function liveSession(Request $request, string $slug, string $lesson_id)
     {
         $lesson = CourseChapterLesson::select('id', 'course_id', 'chapter_item_id', 'title')->with([
             'course' => function ($q) {
@@ -339,7 +356,7 @@ class LearningController extends Controller
             },
             'live' => function ($q) {
                 $q->select('id', 'lesson_id', 'start_time', 'type', 'meeting_id', 'password', 'join_url');
-            }
+            },
         ])->findOrFail($lesson_id);
 
         if ($lesson->live->type == 'zoom') {
@@ -349,12 +366,14 @@ class LearningController extends Controller
             if ($jitsi_credential) {
                 $jwt = $this->generateJwtToken($jitsi_credential);
                 $roomName = "{$jitsi_credential->app_id}/{$lesson->live->meeting_id}";
+
                 return view('frontend.pages.learning-player.partials.live.jitsi', [
                     'title' => $lesson->title,
                     'jwt' => trim($jwt),
-                    'roomName' => $roomName
+                    'roomName' => $roomName,
                 ]);
             }
+
             return redirect()->route('student.learning.index', $slug);
         }
     }
@@ -374,7 +393,7 @@ class LearningController extends Controller
         $user_email = $user->name;
         $user_name = $user->name;
         $user_is_moderator = $instructor;
-        $user_avatar_url = !empty($user->image) ? asset($user->image) : "";
+        $user_avatar_url = ! empty($user->image) ? asset($user->image) : '';
         $user_id = $user->id;
         $live_streaming_enabled = $instructor;
         $recording_enabled = $instructor;
@@ -395,21 +414,21 @@ class LearningController extends Controller
             'sub' => $app_id,
             'context' => [
                 'user' => [
-                    'moderator' => $user_is_moderator ? "true" : "false",
+                    'moderator' => $user_is_moderator ? 'true' : 'false',
                     'email' => $user_email,
                     'name' => $user_name,
                     'avatar' => $user_avatar_url,
                     'id' => $user_id,
                 ],
                 'features' => [
-                    'recording' => $recording_enabled ? "true" : "false",
-                    'livestreaming' => $live_streaming_enabled ? "true" : "false",
-                    'transcription' => $transcription_enabled ? "true" : "false",
-                    'outbound-call' => $outbound_enabled ? "true" : "false",
+                    'recording' => $recording_enabled ? 'true' : 'false',
+                    'livestreaming' => $live_streaming_enabled ? 'true' : 'false',
+                    'transcription' => $transcription_enabled ? 'true' : 'false',
+                    'outbound-call' => $outbound_enabled ? 'true' : 'false',
                 ],
             ],
         ];
 
-        return JWT::encode($payload, $private_key, "RS256", $api_key);
+        return JWT::encode($payload, $private_key, 'RS256', $api_key);
     }
 }

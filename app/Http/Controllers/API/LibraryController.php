@@ -27,7 +27,7 @@ class LibraryController extends Controller
             : null;
 
         $user = $request->user();
-        $subscriptionActive = hasActiveSubscription($user);
+        $subscriptionActive = hasFullCatalogAccess($user);
         $purchasedItems = OrderItem::query()
             ->with('order:id,buyer_id,payment_status,created_at')
             ->where('item_type', 'product')
@@ -71,8 +71,8 @@ class LibraryController extends Controller
                     default => 0.0,
                 };
                 $progressLabel = match ($product->type) {
-                    Product::TYPE_NOTE => $note?->completion_percent !== null ? number_format($progressPercent, 1) . '% read' : 'Ready to read',
-                    Product::TYPE_QUIZ => $quiz?->percentage !== null ? number_format($progressPercent, 1) . '% score' : 'Ready to start',
+                    Product::TYPE_NOTE => $note?->completion_percent !== null ? number_format($progressPercent, 1).'% read' : 'Ready to read',
+                    Product::TYPE_QUIZ => $quiz?->percentage !== null ? number_format($progressPercent, 1).'% score' : 'Ready to start',
                     Product::TYPE_PAST_PAPER, Product::TYPE_PREDICTION => 'Ready to read',
                     Product::TYPE_COURSE => 'Ready to open',
                     default => 'Open',

@@ -2,16 +2,19 @@
 
 namespace App\Http\Resources\API;
 
+use App\Services\SabbathDownloadTagService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class LessonResource extends JsonResource {
+class LessonResource extends JsonResource
+{
     /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array {
+    public function toArray(Request $request): array
+    {
         $id = data_get($this->resource, 'id');
         $title = data_get($this->resource, 'title');
         $description = data_get($this->resource, 'description');
@@ -29,22 +32,32 @@ class LessonResource extends JsonResource {
             || $request->route('lesson_id') !== null;
 
         if ($isDetailedLessonRequest) {
+            $tagService = app(SabbathDownloadTagService::class);
+            $downloadPolicy = data_get($this->resource, 'download_access_source') === 'sabbath'
+                && $request->user()
+                ? $tagService->temporaryPolicy($request->user(), 'lesson', (int) $id)
+                : $tagService->permanentPolicy();
+
             return [
-                'id'              => (int) $id,
-                'lecture_number'  => (string) $lectureNumber,
-                'title'           => (string) $title,
-                'description'     => (string) $description,
-                'overview'        => (string) $description,
-                'file_path'       => (string) generateVideoEmbedUrl($filePath, $storage, $fileType),
-                'video_url'       => (string) generateVideoEmbedUrl($filePath, $storage, $fileType),
-                'storage'         => (string) $storage,
-                'file_type'       => (string) $fileType,
-                'duration'        => (string) convertMinutesToHoursAndMinutes($duration),
+                'id' => (int) $id,
+                'lecture_number' => (string) $lectureNumber,
+                'title' => (string) $title,
+                'description' => (string) $description,
+                'overview' => (string) $description,
+                'file_path' => (string) generateVideoEmbedUrl($filePath, $storage, $fileType),
+                'video_url' => (string) generateVideoEmbedUrl($filePath, $storage, $fileType),
+                'storage' => (string) $storage,
+                'file_type' => (string) $fileType,
+                'duration' => (string) convertMinutesToHoursAndMinutes($duration),
                 'is_downloadable' => (bool) $downloadable,
-                'is_free'         => (bool) $isFree,
+                'sabbath_download' => $downloadPolicy['sabbath_download'],
+                'sabbath_download_tag' => $downloadPolicy['tag'],
+                'delete_after' => $downloadPolicy['delete_after'],
+                'download_policy' => $downloadPolicy,
+                'is_free' => (bool) $isFree,
                 'include_in_curriculum' => (bool) $includeInCurriculum,
-                'resources'       => LessonAttachmentResource::collection($this->whenLoaded('resources')),
-                'qna'             => [
+                'resources' => LessonAttachmentResource::collection($this->whenLoaded('resources')),
+                'qna' => [
                     'enabled' => (bool) $qnaEnabled,
                     'allow_questions' => (bool) data_get($this->resource, 'qna_allow_questions', true),
                     'allow_replies' => (bool) data_get($this->resource, 'qna_allow_replies', true),
@@ -52,15 +65,16 @@ class LessonResource extends JsonResource {
                 ],
             ];
         }
+
         return [
-            'id'                    => (int) $id,
-            'lecture_number'        => (string) $lectureNumber,
-            'title'                 => (string) $title,
-            'file_type'             => (string) $fileType,
-            'duration'              => (string) convertMinutesToHoursAndMinutes($duration),
-            'is_free'               => (bool) $isFree,
+            'id' => (int) $id,
+            'lecture_number' => (string) $lectureNumber,
+            'title' => (string) $title,
+            'file_type' => (string) $fileType,
+            'duration' => (string) convertMinutesToHoursAndMinutes($duration),
+            'is_free' => (bool) $isFree,
             'include_in_curriculum' => (bool) $includeInCurriculum,
-            'qna_enabled'           => (bool) $qnaEnabled,
+            'qna_enabled' => (bool) $qnaEnabled,
         ];
     }
 }

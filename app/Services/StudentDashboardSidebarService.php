@@ -19,7 +19,7 @@ class StudentDashboardSidebarService
         }
 
         $user = userAuth();
-        $subscriptionActive = hasActiveSubscription($user);
+        $subscriptionActive = hasFullCatalogAccess($user);
 
         $purchasedOrderItems = OrderItem::with(['order:id,buyer_id,payment_status,created_at', 'product.category.translation', 'product.course'])
             ->where('item_type', 'product')
@@ -118,10 +118,10 @@ class StudentDashboardSidebarService
     {
         return match ($product->type) {
             Product::TYPE_NOTE => $noteProgress?->completion_percent !== null
-                ? number_format((float) $noteProgress->completion_percent, 1) . '% ' . __('read')
+                ? number_format((float) $noteProgress->completion_percent, 1).'% '.__('read')
                 : __('Ready to read'),
             Product::TYPE_QUIZ => $quizAttempt?->percentage !== null
-                ? number_format((float) $quizAttempt->percentage, 1) . '% ' . __('score')
+                ? number_format((float) $quizAttempt->percentage, 1).'% '.__('score')
                 : __('Ready to start'),
             Product::TYPE_PAST_PAPER, Product::TYPE_PREDICTION => __('Ready to read'),
             Product::TYPE_COURSE => __('Ready to open'),
