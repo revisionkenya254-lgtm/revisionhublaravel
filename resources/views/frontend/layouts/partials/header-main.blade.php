@@ -156,6 +156,22 @@
             </div>
 
             <div class="revision-header__actions">
+                <button
+                    type="button"
+                    class="revision-header__theme-toggle"
+                    data-theme-toggle
+                    data-theme-bright-label="{{ __('Bright') }}"
+                    data-theme-dark-label="{{ __('Dark') }}"
+                    data-theme-switch-bright-label="{{ __('Switch to bright mode') }}"
+                    data-theme-switch-dark-label="{{ __('Switch to dark mode') }}"
+                    aria-label="{{ __('Switch to dark mode') }}"
+                    title="{{ __('Switch to dark mode') }}"
+                >
+                    <i class="far fa-moon revision-header__theme-icon revision-header__theme-icon--dark" aria-hidden="true"></i>
+                    <i class="far fa-sun revision-header__theme-icon revision-header__theme-icon--bright" aria-hidden="true"></i>
+                    <span class="revision-header__theme-label" data-theme-toggle-label>{{ __('Dark') }}</span>
+                </button>
+
                 <a href="{{ route('cart') }}" class="revision-header__cart" aria-label="{{ __('Cart') }}">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="revision-header__cart-badge" aria-label="{{ __('Cart items') }}">
@@ -677,6 +693,48 @@
             margin-left: auto;
         }
 
+        .revision-header__theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 46px;
+            height: 46px;
+            padding: 0 13px;
+            border: 1px solid rgba(93, 63, 255, 0.16);
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .revision-header__theme-toggle:hover {
+            transform: translateY(-1px);
+            color: #5d3fff;
+            border-color: rgba(93, 63, 255, 0.3);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .revision-header__theme-icon {
+            font-size: 16px;
+        }
+
+        .revision-header__theme-icon--bright {
+            display: none;
+        }
+
+        html[data-theme="dark"] .revision-header__theme-icon--dark {
+            display: none;
+        }
+
+        html[data-theme="dark"] .revision-header__theme-icon--bright {
+            display: inline-block;
+        }
+
         .revision-header__notifications {
             position: relative;
         }
@@ -1174,6 +1232,15 @@
 
             .revision-header__profile-label {
                 display: none;
+            }
+
+            .revision-header__theme-label {
+                display: none;
+            }
+
+            .revision-header__theme-toggle {
+                width: 46px;
+                padding: 0;
             }
         }
     </style>

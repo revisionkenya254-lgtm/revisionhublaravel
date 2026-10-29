@@ -1,4 +1,5 @@
 <script src="{{ asset('global/js/jquery-3.7.1.min.js') }}"></script>
+<script src="{{ asset('frontend/js/theme-mode.js') }}?v={{ $setting?->version }}"></script>
 <script src="{{ asset('frontend/js/proper.min.js') }}"></script>
 <script src="{{ asset('frontend/js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('frontend/js/imagesloaded.pkgd.min.js') }}"></script>

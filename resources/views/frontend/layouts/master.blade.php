@@ -1,5 +1,5 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-theme="bright">
 
 <head>
     <meta charset="utf-8">
@@ -8,6 +8,30 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="@yield('meta_description', '')">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+
+    <script>
+        (() => {
+            const storageKey = 'revisionhub-theme';
+            let theme = 'bright';
+
+            try {
+                const savedTheme = window.localStorage.getItem(storageKey);
+                if (savedTheme === 'bright' || savedTheme === 'dark') {
+                    theme = savedTheme;
+                }
+            } catch (error) {
+                // Bright mode remains the explicit default when storage is unavailable.
+            }
+
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+            document.querySelector('meta[name="theme-color"]')?.setAttribute(
+                'content',
+                theme === 'dark' ? '#111827' : '#ffffff'
+            );
+        })();
+    </script>
 
     <!-- Custom Meta -->
     @stack('custom_meta')

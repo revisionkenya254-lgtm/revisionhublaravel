@@ -148,6 +148,7 @@
 <link rel="stylesheet" href="{{ asset('global/nice-select/nice-select.css') }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/main.min.css') }}?v={{ $setting?->version }}">
 <link rel="stylesheet" href="{{ asset('frontend/css/frontend.min.css') }}?v={{ $setting?->version }}">
+<link rel="stylesheet" href="{{ asset('frontend/css/theme-mode.css') }}?v={{ $setting?->version }}">
 <style>
     @media (min-width: 992px) {
         .tgmobile__menu,

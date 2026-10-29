@@ -56,6 +56,11 @@
                                 data-bs-target="#itemTwo-tab-pane" type="button" role="tab"
                                 aria-controls="itemTwo-tab-pane" aria-selected="false">{{ __('Password') }}</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="appearance-tab" data-bs-toggle="tab"
+                                data-bs-target="#appearance-tab-pane" type="button" role="tab"
+                                aria-controls="appearance-tab-pane" aria-selected="false">{{ __('Appearance') }}</button>
+                        </li>
 
                     </ul>
                 </div>
@@ -73,6 +78,8 @@
                     @include('frontend.instructor-dashboard.profile.sections.payout')
 
                     @include('frontend.instructor-dashboard.profile.sections.social')
+
+                    @include('frontend.profile.sections.appearance')
                 </div>
                 @include('frontend.account-deletion.settings-action')
             </div>

@@ -44,6 +44,11 @@
                                 data-bs-target="#itemThree-tab-pane" type="button" role="tab"
                                 aria-controls="itemThree-tab-pane" aria-selected="false">{{ __('Social') }}</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="appearance-tab" data-bs-toggle="tab"
+                                data-bs-target="#appearance-tab-pane" type="button" role="tab"
+                                aria-controls="appearance-tab-pane" aria-selected="false">{{ __('Appearance') }}</button>
+                        </li>
                     </ul>
                 </div>
                 <div class="tab-content" id="myTabContent">
@@ -56,6 +61,8 @@
                     @include('frontend.student-dashboard.profile.sections.location')
 
                     @include('frontend.student-dashboard.profile.sections.social')
+
+                    @include('frontend.profile.sections.appearance')
                 </div>
                 @include('frontend.account-deletion.settings-action')
             </div>
