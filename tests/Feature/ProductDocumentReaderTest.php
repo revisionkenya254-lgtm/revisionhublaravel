@@ -7,6 +7,8 @@ use App\Models\AiDocumentChunk;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as ClientRequest;
+use Illuminate\Support\Facades\Http;
 use Modules\Order\app\Models\Order;
 use Modules\Order\app\Models\OrderItem;
 use Tests\TestCase;
@@ -69,6 +71,52 @@ class ProductDocumentReaderTest extends TestCase
             ->assertOk()
             ->assertHeader('content-disposition', 'inline; filename="' . basename(public_path($product->file_path)) . '"')
             ->assertHeader('x-content-type-options', 'nosniff');
+    }
+
+    public function test_purchased_bunny_pdf_streams_through_the_web_reader_with_range_support(): void
+    {
+        config(['bunny.storage_cdn_url' => 'https://revisionhubkenya.b-cdn.net']);
+        Http::fake([
+            'https://revisionhubkenya.b-cdn.net/*' => Http::response('%PDF-1.4 test bytes', 206, [
+                'Accept-Ranges' => 'bytes',
+                'Content-Length' => '19',
+                'Content-Range' => 'bytes 0-18/100',
+                'Content-Type' => 'application/pdf',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $product = Product::create([
+            'instructor_id' => User::factory()->create([
+                'role' => 'instructor',
+                'status' => 'active',
+            ])->id,
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'Bunny Reader Product',
+            'slug' => 'bunny-reader-product',
+            'price' => 30,
+            'status' => 'active',
+            'is_approved' => 'approved',
+            'file_path' => 'instructors/1019/products/past_paper/157/source/2026/10/paper.pdf',
+            'file_type' => 'pdf',
+        ]);
+        $this->purchaseProductFor($user, $product, 30);
+
+        $this->actingAs($user)
+            ->get(route('product.read-document', $product->slug))
+            ->assertOk()
+            ->assertSee(route('product.document-source', $product->slug), false);
+
+        $this->actingAs($user)
+            ->withHeader('Range', 'bytes=0-18')
+            ->get(route('product.document-source', $product->slug))
+            ->assertStatus(206)
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertHeader('content-range', 'bytes 0-18/100')
+            ->assertStreamedContent('%PDF-1.4 test bytes');
+
+        Http::assertSent(fn (ClientRequest $request) => $request->url() === 'https://revisionhubkenya.b-cdn.net/instructors/1019/products/past_paper/157/source/2026/10/paper.pdf'
+            && $request->hasHeader('Range', 'bytes=0-18'));
     }
 
     public function test_legacy_download_route_redirects_to_reader(): void

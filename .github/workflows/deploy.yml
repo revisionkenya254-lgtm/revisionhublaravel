@@ -54,5 +54,5 @@ jobs:
             php artisan optimize
 
             chmod -R 775 storage bootstrap/cache
-
+ 
             echo "DEPLOYED OK"

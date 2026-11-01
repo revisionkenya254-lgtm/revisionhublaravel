@@ -22,6 +22,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -147,7 +148,7 @@ class ProductPageController extends Controller
         ));
     }
 
-    public function documentSource(string $slug): BinaryFileResponse|RedirectResponse
+    public function documentSource(Request $request, string $slug): BinaryFileResponse|RedirectResponse|StreamedResponse
     {
         $product = $this->resolveReadableDocumentProduct($slug);
         $source = $this->resolveDocumentSource($product);
@@ -155,6 +156,10 @@ class ProductPageController extends Controller
         abort_unless($source !== null, 404);
 
         if ($source['kind'] === 'remote') {
+            if ($source['proxy'] ?? false) {
+                return $this->streamRemoteDocument($request, $source['url'], $product);
+            }
+
             return redirect()->away($source['url']);
         }
 
@@ -679,6 +684,47 @@ class ProductPageController extends Controller
         return response()->download($source['path'], $filename);
     }
 
+    private function streamRemoteDocument(Request $request, string $url, Product $product): StreamedResponse
+    {
+        $rangeHeaders = array_filter([
+            'Range' => $request->header('Range'),
+            'If-Range' => $request->header('If-Range'),
+        ]);
+        $upstream = Http::withOptions(['stream' => true])
+            ->withHeaders(array_merge(['Accept-Encoding' => 'identity'], $rangeHeaders))
+            ->timeout(60)
+            ->get($url);
+
+        abort_unless(in_array($upstream->status(), [200, 206], true), 502);
+
+        $headers = [
+            'Content-Type' => $upstream->header('Content-Type') ?: 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.Str::slug($product->title).'.pdf"',
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+        ];
+
+        foreach (['Accept-Ranges', 'Content-Length', 'Content-Range', 'ETag', 'Last-Modified'] as $header) {
+            $value = $upstream->header($header);
+            if ($value !== '') {
+                $headers[$header] = $value;
+            }
+        }
+
+        return response()->stream(function () use ($upstream): void {
+            $body = $upstream->toPsrResponse()->getBody();
+
+            while (! $body->eof() && ! connection_aborted()) {
+                echo $body->read(8192);
+            }
+
+            $body->close();
+        }, $upstream->status(), $headers);
+    }
+
     public function startQuiz(string $slug)
     {
         $product = Product::approved()->where('type', Product::TYPE_QUIZ)->where('slug', $slug)->firstOrFail();
@@ -1027,6 +1073,7 @@ class ProductPageController extends Controller
                 return [
                     'kind' => 'remote',
                     'url' => $filePath,
+                    'proxy' => $this->isStorageCdnUrl($filePath),
                 ];
             }
 
@@ -1037,6 +1084,7 @@ class ProductPageController extends Controller
                 return [
                     'kind' => 'remote',
                     'url' => $storageCdnUrl.'/'.ltrim($filePath, '/'),
+                    'proxy' => true,
                 ];
             }
 
@@ -1064,10 +1112,34 @@ class ProductPageController extends Controller
             return [
                 'kind' => 'remote',
                 'url' => $publicUrl,
+                'proxy' => $this->isStorageCdnUrl($publicUrl),
             ];
         }
 
         return null;
+    }
+
+    private function isStorageCdnUrl(string $url): bool
+    {
+        $storageCdnUrl = trim((string) config('bunny.storage_cdn_url'));
+        if ($storageCdnUrl === '') {
+            return false;
+        }
+
+        $sourceHost = parse_url($url, PHP_URL_HOST);
+        $cdnHost = parse_url($storageCdnUrl, PHP_URL_HOST);
+        $sourceScheme = parse_url($url, PHP_URL_SCHEME);
+        $cdnScheme = parse_url($storageCdnUrl, PHP_URL_SCHEME);
+        $sourcePort = parse_url($url, PHP_URL_PORT) ?? (strcasecmp((string) $sourceScheme, 'https') === 0 ? 443 : 80);
+        $cdnPort = parse_url($storageCdnUrl, PHP_URL_PORT) ?? (strcasecmp((string) $cdnScheme, 'https') === 0 ? 443 : 80);
+
+        return is_string($sourceHost)
+            && is_string($cdnHost)
+            && strcasecmp($sourceHost, $cdnHost) === 0
+            && is_string($sourceScheme)
+            && is_string($cdnScheme)
+            && strcasecmp($sourceScheme, $cdnScheme) === 0
+            && $sourcePort === $cdnPort;
     }
 
     private function documentReaderMode(Product $product, ?AiDocument $document = null): string
