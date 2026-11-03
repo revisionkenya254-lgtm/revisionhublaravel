@@ -545,6 +545,46 @@
         </div>
     @endif
 
+    @if ($showEducationLevelPrompt)
+        <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-3" role="region" aria-labelledby="education-level-prompt-title">
+            <div>
+                <h5 id="education-level-prompt-title" class="mb-1">{{ __('Personalize your learning') }}</h5>
+                <p class="mb-0">{{ __('Choose your education level to help us show you more relevant resources. You can change it later in your profile.') }}</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <form action="{{ route('student.setting.learning-level.update') }}" method="POST" class="d-flex flex-wrap align-items-center gap-2">
+                    @csrf
+                    @method('PUT')
+                    <label class="visually-hidden" for="dashboard-education-level">{{ __('Education level') }}</label>
+                    <select id="dashboard-education-level" name="education_level" class="form-select" required>
+                        <option value="">{{ __('Select your level') }}</option>
+                        @foreach ($educationLevels as $level)
+                            <option value="{{ $level['slug'] }}" @selected(old('education_level') === $level['slug'])>{{ $level['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+                </form>
+                <form action="{{ route('student.setting.learning-level.dismiss') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-link">{{ __('Skip for now') }}</button>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if ($selectedEducationLevel)
+        <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-3" role="status">
+            <div>
+                <i class="fas fa-graduation-cap text-primary me-2" aria-hidden="true"></i>
+                <strong>{{ __('Your education level') }}:</strong>
+                <span>{{ $selectedEducationLevel }}</span>
+            </div>
+            <a href="{{ route('student.setting.index') }}" class="btn btn-outline-primary btn-sm">
+                {{ __('Change') }}
+            </a>
+        </div>
+    @endif
+
     <div class="student-dashboard-hero">
         <div class="student-dashboard-hero__eyebrow">
             <i class="fas fa-layer-group"></i>

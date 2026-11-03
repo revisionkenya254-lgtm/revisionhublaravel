@@ -175,6 +175,8 @@ Route::group(['middleware' => 'maintenance.mode'], function () {
         // Profile setting routes
         Route::get('setting', [StudentProfileSettingController::class, 'index'])->name('setting.index');
         Route::put('setting/profile', [StudentProfileSettingController::class, 'updateProfile'])->name('setting.profile.update');
+        Route::put('setting/learning-level', [StudentProfileSettingController::class, 'updateLearningLevel'])->name('setting.learning-level.update');
+        Route::post('setting/learning-level/dismiss', [StudentProfileSettingController::class, 'dismissLearningLevelPrompt'])->name('setting.learning-level.dismiss');
         Route::put('setting/bio', [StudentProfileSettingController::class, 'updateBio'])->name('setting.bio.update');
         Route::put('setting/password', [StudentProfileSettingController::class, 'updatePassword'])->name('setting.password.update');
         Route::get('setting/experience-modal', [StudentProfileSettingController::class, 'showExperienceModal'])->name('setting.experience-modal');

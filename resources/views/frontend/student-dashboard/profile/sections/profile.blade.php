@@ -69,4 +69,29 @@
             </div>
         </form>
     </div>
+    <div class="instructor__profile-form-wrap mt-4">
+        <form action="{{ route('student.setting.learning-level.update') }}" method="POST" class="instructor__profile-form">
+            @csrf
+            @method('PUT')
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-grp">
+                        <label for="education_level">{{ __('Learning preferences') }}</label>
+                        <select id="education_level" name="education_level" class="form-select" required>
+                            <option value="">{{ __('Select your education level') }}</option>
+                            @foreach ($educationLevels as $level)
+                                <option value="{{ $level['slug'] }}" @selected(old('education_level', $user->education_level) === $level['slug'])>
+                                    {{ $level['label'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small>{{ __('Choose your current level to help us show more relevant learning resources.') }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="submit-btn mt-25">
+                <button type="submit" class="btn">{{ __('Save learning level') }}</button>
+            </div>
+        </form>
+    </div>
 </div>

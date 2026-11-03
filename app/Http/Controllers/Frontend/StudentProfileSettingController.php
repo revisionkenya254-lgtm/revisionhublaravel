@@ -8,12 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Frontend\StudentBioUpdateRequest;
 use App\Http\Requests\Frontend\StudentEducationStoreRequest;
 use App\Http\Requests\Frontend\StudentExperienceStoreRequest;
+use App\Http\Requests\Frontend\StudentLearningLevelUpdateRequest;
 use App\Http\Requests\Frontend\StudentPasswordUpdateRequest;
 use App\Http\Requests\Frontend\StudentProfileUpdateRequest;
 use App\Http\Requests\Frontend\StudentProfileAddressUpdateRequest;
 use App\Http\Requests\Frontend\StudentProfileSocialUpdateRequest;
 use App\Models\UserEducation;
 use App\Models\UserExperience;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use App\Traits\RedirectHelperTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -37,8 +39,28 @@ class StudentProfileSettingController extends Controller
         $educations = UserEducation::where('user_id', $user->id)->get();
         $states = State::where(['country_id' => $user->country_id,'status' => 1])->get();
         $cities = City::where(['state_id' => $user->state_id,'status' => 1])->get();
+        $educationLevels = app(TaxonomyCatalogRepository::class)->educationLevels();
 
-        return view('frontend.student-dashboard.profile.index', compact('user', 'experiences', 'educations', 'states', 'cities'));
+        return view('frontend.student-dashboard.profile.index', compact('user', 'experiences', 'educations', 'states', 'cities', 'educationLevels'));
+    }
+
+    function updateLearningLevel(StudentLearningLevelUpdateRequest $request): RedirectResponse
+    {
+        $user = Auth::user();
+        $user->education_level = $request->validated('education_level');
+        $user->education_level_prompt_dismissed_at = now();
+        $user->save();
+
+        return $this->redirectWithMessage(RedirectType::UPDATE->value);
+    }
+
+    function dismissLearningLevelPrompt(): RedirectResponse
+    {
+        $user = Auth::user();
+        $user->education_level_prompt_dismissed_at = now();
+        $user->save();
+
+        return redirect()->back();
     }
 
     function updateProfile(StudentProfileUpdateRequest $request): RedirectResponse

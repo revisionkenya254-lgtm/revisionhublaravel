@@ -22,6 +22,7 @@ use App\Models\CourseReview;
 use App\Models\Product;
 use App\Services\CacheService;
 use App\Services\ProductIdentityService;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use App\Services\Taxonomy\TaxonomyRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,14 @@ class FrontendController extends Controller {
             'status' => 'success',
             'data'   => $data,
         ], 200);
+    }
+
+    public function education_levels(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => app(TaxonomyCatalogRepository::class)->educationLevels(),
+        ]);
     }
 
     public function mainCategories(Request $request): JsonResponse

@@ -14,6 +14,7 @@ use App\Models\ProductQuizAttempt;
 use App\Models\QuizResult;
 use App\Services\Ai\AiCreditLedgerService;
 use App\Services\ProductMetadataCatalogService;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Dompdf\Dompdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -31,6 +32,12 @@ class StudentDashboardController extends Controller
     public function index(): View
     {
         $user = userAuth();
+        $educationLevels = app(TaxonomyCatalogRepository::class)->educationLevels();
+        $selectedEducationLevel = data_get(
+            collect($educationLevels)->firstWhere('slug', $user->education_level),
+            'label'
+        );
+        $showEducationLevelPrompt = blank($user->education_level) && blank($user->education_level_prompt_dismissed_at);
         $accessibleCourses = $this->accessibleCourses();
         $accessibleProducts = $this->accessibleProducts();
         $aiCreditLedger = app(AiCreditLedgerService::class);
@@ -128,7 +135,10 @@ class StudentDashboardController extends Controller
             'recentResources',
             'continueLearning',
             'quickLinks',
-            'orders'
+            'orders',
+            'educationLevels',
+            'selectedEducationLevel',
+            'showEducationLevelPrompt',
         ));
     }
 

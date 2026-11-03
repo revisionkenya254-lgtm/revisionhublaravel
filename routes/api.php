@@ -51,6 +51,7 @@ Route::prefix('bootstrap')->controller(FrontendController::class)->group(functio
     Route::get('menu', 'menu');
     Route::get('mobile-menu', 'mobileMenu');
     Route::get('onboarding', 'on_boarding_screen');
+    Route::get('education-levels', 'education_levels');
     Route::get('faqs', 'faqs');
     Route::get('privacy-policy', 'privacy_policy');
     Route::get('terms-and-conditions', 'terms_and_conditions');
@@ -133,6 +134,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('profile')->controller(DashboardController::class)->group(function () {
         Route::get('/', 'profile');
         Route::put('/', 'update_profile');
+        Route::put('education-level', 'update_education_level');
+        Route::post('education-level/dismiss', 'dismiss_education_level_prompt');
         Route::post('avatar', 'update_profile_picture')->withoutMiddleware('json.only');
         Route::put('bio', 'update_bio');
         Route::put('password', 'update_password');

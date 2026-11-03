@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\ProductQuiz;
 use App\Models\User;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Modules\Order\app\Models\Order;
@@ -79,6 +80,56 @@ class StudentDashboardProductCoverageTest extends TestCase
         $library->assertSee('Purchased');
     }
 
+    public function test_student_can_set_or_dismiss_the_dashboard_learning_level_prompt(): void
+    {
+        $student = User::factory()->create([
+            'role' => 'student',
+            'status' => 'active',
+        ]);
+        $level = app(TaxonomyCatalogRepository::class)->educationLevels()[0];
+        $educationLevel = $level['slug'];
+
+        $dashboard = $this->actingAs($student)->get(route('student.dashboard'));
+        $dashboard->assertOk();
+        $dashboard->assertSee('Personalize your learning');
+        $this->get(route('student.setting.index'))
+            ->assertOk()
+            ->assertSee('Learning preferences');
+
+        $this->put(route('student.setting.learning-level.update'), [
+            'education_level' => $educationLevel,
+        ])->assertSessionHas('messege');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $student->id,
+            'education_level' => $educationLevel,
+        ]);
+        $this->get(route('student.dashboard'))
+            ->assertDontSee('Personalize your learning')
+            ->assertSee('Your education level')
+            ->assertSee($level['label'])
+            ->assertSee(route('student.setting.index'), false);
+
+        $studentToDismiss = User::factory()->create([
+            'role' => 'student',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($studentToDismiss)
+            ->post(route('student.setting.learning-level.dismiss'))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $studentToDismiss->id,
+            'education_level' => $educationLevel,
+        ]);
+        $this->assertDatabaseHas('users', [
+            'id' => $studentToDismiss->id,
+        ]);
+        $this->assertNotNull($studentToDismiss->fresh()->education_level_prompt_dismissed_at);
+        $this->get(route('student.dashboard'))->assertDontSee('Personalize your learning');
+    }
+
     private function makeProduct(string $type, string $title, float $price = 0): Product
     {
         $instructor = User::factory()->create([
@@ -90,7 +141,7 @@ class StudentDashboardProductCoverageTest extends TestCase
             'instructor_id' => $instructor->id,
             'type' => $type,
             'title' => $title,
-            'slug' => Str::slug($title) . '-' . fake()->unique()->randomNumber(5),
+            'slug' => Str::slug($title).'-'.fake()->unique()->randomNumber(5),
             'price' => $price,
             'status' => 'active',
             'is_approved' => 'approved',

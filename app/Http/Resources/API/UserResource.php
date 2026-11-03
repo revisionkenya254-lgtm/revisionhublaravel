@@ -44,6 +44,9 @@ class UserResource extends JsonResource {
             'bio'        => (string) $bio,
             'gender'     => (string) $gender,
             'country_id' => (int) $countryId,
+            'education_level' => data_get($this->resource, 'education_level'),
+            'should_prompt_education_level' => data_get($this->resource, 'education_level') === null
+                && data_get($this->resource, 'education_level_prompt_dismissed_at') === null,
             'state'      => (string) $state,
             'city'       => (string) $city,
             'address'    => (string) $address,

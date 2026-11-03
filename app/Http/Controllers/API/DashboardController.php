@@ -31,6 +31,7 @@ use App\Models\QuizResult;
 use App\Models\User;
 use App\Notifications\NewLessonQuestionNotification;
 use App\Services\CatalogAccessService;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use App\Services\TokenSessionService;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
@@ -40,6 +41,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Modules\CertificateBuilder\app\Models\CertificateBuilder;
 use Modules\CertificateBuilder\app\Models\CertificateBuilderItem;
 use Modules\Order\app\Models\Enrollment;
@@ -755,6 +757,48 @@ class DashboardController extends Controller
         $user->save();
 
         return response()->json(['status' => 'success', 'message' => 'Updated Successfully'], 200);
+    }
+
+    public function update_education_level(Request $request): JsonResponse
+    {
+        $educationLevelSlugs = collect(app(TaxonomyCatalogRepository::class)->educationLevels())
+            ->pluck('slug')
+            ->filter()
+            ->all();
+        $validator = Validator::make($request->all(), [
+            'education_level' => ['required', 'string', Rule::in($educationLevelSlugs)],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = auth()->user();
+        $user->education_level = $validator->validated()['education_level'];
+        $user->education_level_prompt_dismissed_at = now();
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Education level updated successfully.',
+            'data' => new UserResource($user->fresh()),
+        ]);
+    }
+
+    public function dismiss_education_level_prompt(): JsonResponse
+    {
+        $user = auth()->user();
+        $user->education_level_prompt_dismissed_at = now();
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Education level prompt dismissed.',
+            'data' => new UserResource($user->fresh()),
+        ]);
     }
 
     public function update_profile_picture(Request $request): JsonResponse
