@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ManualEnrollmentController;
 use App\Http\Controllers\Admin\ProductQuizController;
 use App\Http\Controllers\Admin\ProductReviewController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
+use App\Http\Controllers\Admin\PushNotificationController;
 use App\Http\Controllers\Admin\RolesController;
 use App\Http\Controllers\Admin\SabbathPlanController;
 use App\Http\Controllers\Admin\SettingController;
@@ -31,6 +32,9 @@ Route::group(['as' => 'admin.', 'prefix' => 'admin'], function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
         Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
         Route::get('sabbath-plan', [SabbathPlanController::class, 'index'])->name('sabbath-plan.index');
+        Route::get('push-notifications', [PushNotificationController::class, 'index'])->name('push-notifications.index');
+        Route::get('push-notifications/create', [PushNotificationController::class, 'create'])->name('push-notifications.create');
+        Route::post('push-notifications', [PushNotificationController::class, 'store'])->name('push-notifications.store');
 
         Route::controller(AdminProfileController::class)->group(function () {
             Route::get('edit-profile', 'edit_profile')->name('edit-profile');

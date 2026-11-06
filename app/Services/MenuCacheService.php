@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v19';
+    const CACHE_VERSION = 'v20';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -791,7 +791,11 @@ class MenuCacheService
             ->get();
 
         foreach ($databasePaths as $path) {
-            $segments = collect([$path->root_slug, $path->child_slug, $path->grandchild_slug])
+            $segments = collect(app(ProductIdentityService::class)->canonicalizeCatalogPath([
+                $path->root_slug,
+                $path->child_slug,
+                $path->grandchild_slug,
+            ]))
                 ->map(fn ($slug) => Str::slug((string) $slug));
 
             if ($segments->contains('')) {
@@ -827,8 +831,12 @@ class MenuCacheService
             }
 
             $identity = $identityService->buildIdentity($metadata);
-            $segments = collect(['main_category', 'category', 'subject'])
-                ->map(fn (string $key) => Str::slug((string) ($identity[$key] ?? '')));
+            $segments = collect($identityService->canonicalizeCatalogPath([
+                $identity['main_category'] ?? null,
+                $identity['category'] ?? null,
+                $identity['subject'] ?? null,
+            ]))
+                ->map(fn ($slug) => Str::slug((string) $slug));
 
             if ($segments->contains('')) {
                 continue;

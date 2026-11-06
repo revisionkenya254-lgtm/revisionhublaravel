@@ -157,6 +157,12 @@
 
                 @if (Module::isEnabled('Customer') && checkAdminHasPermission('customer.view'))
                     @include('customer::sidebar')
+                    <li class="{{ isRoute('admin.push-notifications.*', 'active') }}">
+                        <a class="nav-link" href="{{ route('admin.push-notifications.index') }}">
+                            <i class="fas fa-bell"></i>
+                            <span>{{ __('Push Notifications') }}</span>
+                        </a>
+                    </li>
                 @endif
 
                 @if (Module::isEnabled('Location') && checkAdminHasPermission('location.view'))

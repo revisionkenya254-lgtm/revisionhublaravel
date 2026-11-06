@@ -157,6 +157,11 @@ This is the discoverability layer for the mobile app.
 - `GET /api/catalog/popular`
 - `GET /api/catalog/fresh`
 
+Product listings accept a `category_path` query parameter using the canonical
+taxonomy slugs, for example `high-school/kcse/mathematics`. Existing products
+stored under the legacy `kcse-national-assessment` category remain available
+through the canonical `kcse` path.
+
 ### Learning
 
 This is the most important part of the mobile app after auth.

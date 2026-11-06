@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountDeletionController;
 use App\Http\Controllers\API\AiChatController;
 use App\Http\Controllers\API\AuthenticatedController;
 use App\Http\Controllers\API\CartController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\API\FrontendController;
 use App\Http\Controllers\API\LessonResourceDownloadController;
 use App\Http\Controllers\API\LibraryController;
 use App\Http\Controllers\API\ProductDownloadController;
+use App\Http\Controllers\API\PushDeviceController;
 use App\Http\Controllers\API\SubscriptionController;
 use App\Http\Controllers\API\WishlistController;
 use App\Http\Controllers\Auth\GoogleIdentityController;
@@ -35,7 +37,7 @@ Route::prefix('auth')->group(function () {
         Route::get('devices', [AuthenticatedController::class, 'devices']);
         Route::delete('devices/{sessionId}', [AuthenticatedController::class, 'destroyDevice']);
         Route::delete('devices', [AuthenticatedController::class, 'destroyAllDevices']);
-        Route::delete('account', [\App\Http\Controllers\AccountDeletionController::class, 'requestApi'])
+        Route::delete('account', [AccountDeletionController::class, 'requestApi'])
             ->middleware('throttle:5,1')
             ->name('api.account-deletion.request');
     });
@@ -81,6 +83,9 @@ Route::prefix('catalog')->controller(FrontendController::class)->group(function 
 Route::get('subscriptions/plans', [SubscriptionController::class, 'plans']);
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('push/devices', [PushDeviceController::class, 'store'])->middleware('throttle:30,1');
+    Route::delete('push/devices', [PushDeviceController::class, 'destroy'])->middleware('throttle:30,1');
+
     Route::prefix('subscriptions')->controller(SubscriptionController::class)->group(function () {
         Route::get('me', 'current');
         Route::post('checkout', 'checkout');

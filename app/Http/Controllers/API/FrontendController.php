@@ -289,30 +289,34 @@ class FrontendController extends Controller {
             ->map(fn ($segment) => filled($segment) ? Str::slug((string) $segment) : null)
             ->take(3)
             ->values();
+        $segments = collect($this->productIdentityService->canonicalizeCatalogPath($segments->all()));
 
         $root = $segments->get(0);
         $category = $segments->get(1);
         $subject = $segments->get(2);
+        $categorySlugs = $root !== null && $category !== null
+            ? $this->productIdentityService->catalogCategorySlugCandidates($root, $category)
+            : [$category];
 
-        $query->where(function ($catalogQuery) use ($root, $category, $subject) {
-            $catalogQuery->where(function ($relationQuery) use ($root, $category, $subject) {
+        $query->where(function ($catalogQuery) use ($root, $category, $categorySlugs, $subject) {
+            $catalogQuery->where(function ($relationQuery) use ($root, $category, $categorySlugs, $subject) {
                 if ($subject !== null) {
                     $relationQuery->whereHas('category', fn ($query) => $query
                         ->where('slug', $subject)
                         ->whereHas('parentCategory', fn ($query) => $query
-                            ->where('slug', $category)
+                            ->whereIn('slug', $categorySlugs)
                             ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root))));
 
                     return;
                 }
 
                 if ($category !== null) {
-                    $relationQuery->where(function ($query) use ($root, $category) {
+                    $relationQuery->where(function ($query) use ($root, $categorySlugs) {
                         $query->whereHas('category', fn ($query) => $query
-                            ->where('slug', $category)
+                            ->whereIn('slug', $categorySlugs)
                             ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root)))
                             ->orWhereHas('category.parentCategory', fn ($query) => $query
-                                ->where('slug', $category)
+                                ->whereIn('slug', $categorySlugs)
                                 ->whereHas('parentCategory', fn ($query) => $query->where('slug', $root)));
                     });
 
@@ -324,9 +328,9 @@ class FrontendController extends Controller {
                         ->orWhereHas('category.parentCategory', fn ($query) => $query->where('slug', $root))
                         ->orWhereHas('category.parentCategory.parentCategory', fn ($query) => $query->where('slug', $root));
                 });
-            })->orWhere(function ($metadataQuery) use ($root, $category, $subject) {
+            })->orWhere(function ($metadataQuery) use ($root, $category, $categorySlugs, $subject) {
                 $metadataQuery->where('metadata->catalog_identity->main_category', $root)
-                    ->when($category !== null, fn ($query) => $query->where('metadata->catalog_identity->category', $category))
+                    ->when($category !== null, fn ($query) => $query->whereIn('metadata->catalog_identity->category', $categorySlugs))
                     ->when($subject !== null, fn ($query) => $query->where('metadata->catalog_identity->subject', $subject));
             });
         });

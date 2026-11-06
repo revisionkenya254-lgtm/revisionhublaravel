@@ -80,15 +80,29 @@ class ProductListResource extends JsonResource
         $grandparent = $parent && $parent->relationLoaded('parentCategory')
             ? $parent->getRelation('parentCategory')
             : null;
+        $identityService = app(ProductIdentityService::class);
+        $categoryPath = $grandparent
+            ? $identityService->canonicalizeCatalogPath([
+                $grandparent?->slug,
+                $parent?->slug,
+                $category->slug,
+            ])
+            : $identityService->canonicalizeCatalogPath([
+                $parent?->slug,
+                $category->slug,
+            ]);
+        [$grandparentSlug, $parentSlug, $categorySlug] = count($categoryPath) === 3
+            ? $categoryPath
+            : [null, $categoryPath[0] ?? null, $categoryPath[1] ?? $category->slug];
 
         return [
-            'slug' => (string) $category->slug,
+            'slug' => (string) $categorySlug,
             'name' => (string) $category->name,
             'parent' => $parent && $parent->exists ? [
-                'slug' => (string) $parent->slug,
+                'slug' => (string) $parentSlug,
                 'name' => (string) $parent->name,
                 'grandparent' => $grandparent && $grandparent->exists ? [
-                    'slug' => (string) $grandparent->slug,
+                    'slug' => (string) $grandparentSlug,
                     'name' => (string) $grandparent->name,
                 ] : null,
             ] : null,

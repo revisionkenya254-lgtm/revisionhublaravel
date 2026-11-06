@@ -43,6 +43,11 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', env('APP_URL') . '/auth/google/callback'),
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+    ],
+
     'ai' => [
         'retrieval_min_score' => env('AI_RETRIEVAL_MIN_SCORE', 10),
         'scanned_pdf_max_pages' => env('AI_SCANNED_PDF_MAX_PAGES', 10),

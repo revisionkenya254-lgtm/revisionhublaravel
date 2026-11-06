@@ -57,13 +57,17 @@ class ProductIdentityService
             data_get($existingMetadata, 'catalog_identity.category'),
             $this->inferCategoryFromClassGrade($classGrade),
         ]);
+        [$mainCategorySlug, $categorySlug] = $this->canonicalizeCatalogPath([
+            $this->normalizeSlugValue($mainCategory),
+            $this->normalizeSlugValue($category),
+        ]);
         $subject = $this->normalizeSlugValue($subjectLabel);
 
         return array_filter([
             'type' => $this->normalizeSlugValue($type),
-            'main_category' => $this->normalizeSlugValue($mainCategory),
+            'main_category' => $mainCategorySlug,
             'main_category_label' => $educationLevel,
-            'category' => $this->normalizeSlugValue($category),
+            'category' => $categorySlug,
             'category_label' => $classGrade,
             'subject' => $subject,
             'subject_label' => $subjectLabel,
@@ -120,10 +124,35 @@ class ProductIdentityService
         $metadataIdentity = $this->buildIdentity($product->metadata ?? [], $product);
         $categoryIdentity = $this->categoryIdentityForProduct($product);
 
-        return array_filter(
-            array_merge($categoryIdentity, $metadataIdentity),
-            fn ($value) => $value !== null && $value !== ''
-        );
+        $identity = array_merge($categoryIdentity, $metadataIdentity);
+        [$identity['main_category'], $identity['category'], $identity['subject']] =
+            $this->canonicalizeCatalogPath([
+                $identity['main_category'] ?? null,
+                $identity['category'] ?? null,
+                $identity['subject'] ?? null,
+            ]);
+
+        return array_filter($identity, fn ($value) => $value !== null && $value !== '');
+    }
+
+    public function canonicalizeCatalogPath(array $segments): array
+    {
+        if (Str::slug((string) ($segments[0] ?? '')) === 'high-school'
+            && in_array(Str::slug((string) ($segments[1] ?? '')), ['kcse', 'kcse-national-assessment'], true)) {
+            $segments[1] = 'kcse';
+        }
+
+        return array_values($segments);
+    }
+
+    public function catalogCategorySlugCandidates(string $rootSlug, string $categorySlug): array
+    {
+        if (Str::slug($rootSlug) === 'high-school'
+            && in_array(Str::slug($categorySlug), ['kcse', 'kcse-national-assessment'], true)) {
+            return ['kcse', 'kcse-national-assessment'];
+        }
+
+        return [$categorySlug];
     }
 
     private function categoryIdentityForProduct(Product $product): array

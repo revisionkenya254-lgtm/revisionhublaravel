@@ -178,6 +178,45 @@ class ProductCatalogApiTest extends TestCase
             ->assertJsonCount(0, 'data.quiz');
     }
 
+    public function test_canonical_kcse_path_matches_legacy_national_assessment_categories(): void
+    {
+        $instructor = User::factory()->create();
+        $root = CourseCategory::create(['slug' => 'high-school']);
+        $legacyAssessment = CourseCategory::create([
+            'slug' => 'kcse-national-assessment',
+            'parent_id' => $root->id,
+        ]);
+        $mathematics = CourseCategory::create([
+            'slug' => 'mathematics',
+            'parent_id' => $legacyAssessment->id,
+        ]);
+        $product = $this->createProduct(
+            $instructor,
+            Product::TYPE_PAST_PAPER,
+            'legacy-kcse-mathematics-paper',
+            'active',
+            $mathematics->id
+        );
+
+        $this->getJson('/api/catalog/products/past_paper?category_path=high-school/kcse/mathematics')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.slug', $product->slug)
+            ->assertJsonPath('data.0.catalog_category', 'kcse')
+            ->assertJsonPath('data.0.category.parent.slug', 'kcse');
+
+        $categories = $this->getJson('/api/catalog/categories/high-school/subcategories')
+            ->assertOk()
+            ->json('data');
+        $kcse = collect($categories)->firstWhere('slug', 'kcse');
+
+        $this->assertNotNull($kcse);
+        $this->assertSame(
+            ['mathematics'],
+            collect($kcse['children'])->pluck('slug')->all()
+        );
+    }
+
     public function test_category_apis_only_include_grandchildren_with_active_approved_content(): void
     {
         $instructor = User::factory()->create();
