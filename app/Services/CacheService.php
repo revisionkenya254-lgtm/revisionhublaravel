@@ -87,7 +87,8 @@ class CacheService
      */
     public function getMainCategories($languageCode = 'en', $limit = -1)
     {
-        $cacheKey = "main_categories_v6_{$languageCode}_{$limit}";
+        $catalogVersion = CatalogCacheClear::version();
+        $cacheKey = "main_categories_v7_{$catalogVersion}_{$languageCode}_{$limit}";
         
         return Cache::remember($cacheKey, self::TTL_CATEGORIES, function () use ($languageCode, $limit) {
             $categories = collect(app(\App\Services\MenuCacheService::class)->getCategoryLinks($languageCode))

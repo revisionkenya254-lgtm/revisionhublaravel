@@ -72,4 +72,62 @@ class TaxonomyProductionControlsTest extends TestCase
             ->assertJsonPath('taxonomy_revision', $revision)
             ->assertHeader('X-Taxonomy-Revision', (string) $revision);
     }
+
+    public function test_education_taxonomy_api_exposes_unfiltered_managed_nodes_and_revision(): void
+    {
+        $revision = app(TaxonomyRevisionService::class);
+        $before = $revision->current();
+        $level = CourseCategory::whereNull('parent_id')->where('slug', 'junior-school')->firstOrFail();
+
+        app(TaxonomyManagementService::class)->syncSharedLeaf($level, null, [
+            'name' => 'Robotics',
+            'slug' => 'robotics',
+            'node_type' => CourseCategory::TYPE_SUBJECT,
+            'order' => 90,
+        ]);
+        app(TaxonomyManagementService::class)->createNode(null, [
+            'name' => 'Adult Learning',
+            'slug' => 'adult-learning',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'order' => 99,
+        ]);
+
+        $response = $this->getJson('/api/bootstrap/education-taxonomy');
+        $response->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('taxonomy_revision', $revision->current())
+            ->assertHeader('X-Taxonomy-Revision', (string) $revision->current());
+
+        $taxonomy = $response->json('data');
+        $this->assertSame('database', $taxonomy['source']);
+        $this->assertTrue(collect($taxonomy['subjects_by_level']['junior-school'])
+            ->contains('slug', 'robotics'));
+        $this->assertTrue(collect($taxonomy['education_levels'])
+            ->contains('slug', 'adult-learning'));
+        $this->assertTrue(collect($taxonomy['tree'])->contains('slug', 'adult-learning'));
+        $gradeSeven = collect($taxonomy['tree'])
+            ->firstWhere('slug', 'junior-school')['children'];
+        $gradeSeven = collect($gradeSeven)->firstWhere('slug', 'grade-7');
+        $this->assertTrue(collect($gradeSeven['children'])->contains('slug', 'robotics'));
+        $this->assertGreaterThan($before, $revision->current());
+    }
+
+    public function test_main_category_api_refreshes_cached_taxonomy_labels_after_updates(): void
+    {
+        $level = CourseCategory::whereNull('parent_id')->where('slug', 'junior-school')->firstOrFail();
+        $this->getJson('/api/bootstrap/categories?language=en')->assertOk();
+
+        app(TaxonomyManagementService::class)->updateNode($level, [
+            'name' => 'Junior Academy',
+            'slug' => 'junior-school',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'order' => $level->order,
+        ]);
+
+        $response = $this->getJson('/api/bootstrap/categories?language=en')->assertOk();
+        $juniorSchool = collect($response->json('data'))->firstWhere('slug', 'junior-school');
+
+        $this->assertSame('Junior Academy', $juniorSchool['name']);
+        $response->assertJsonPath('taxonomy_revision', app(TaxonomyRevisionService::class)->current());
+    }
 }

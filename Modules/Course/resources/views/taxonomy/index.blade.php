@@ -203,11 +203,37 @@
 
 @push('js')
     <script>
-        document.querySelectorAll('.taxonomy-archive-form').forEach(function (form) {
+        const taxonomyScrollKey = 'admin-taxonomy-scroll-position';
+        const taxonomyPrefix = window.location.pathname.replace(/\/$/, '') + '/';
+        const savedScrollPosition = window.sessionStorage.getItem(taxonomyScrollKey);
+
+        if (savedScrollPosition !== null) {
+            window.sessionStorage.removeItem(taxonomyScrollKey);
+            window.requestAnimationFrame(function () {
+                window.scrollTo(0, Number(savedScrollPosition));
+            });
+        }
+
+        function saveTaxonomyScrollPosition() {
+            window.sessionStorage.setItem(taxonomyScrollKey, String(window.scrollY));
+        }
+
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('a[href]');
+            if (link && new URL(link.href, window.location.href).pathname.startsWith(taxonomyPrefix)) {
+                saveTaxonomyScrollPosition();
+            }
+        });
+
+        document.querySelectorAll('form').forEach(function (form) {
             form.addEventListener('submit', function (event) {
-                if (!window.confirm(@json(__('Archive this taxonomy branch? This is blocked when products or courses still use it.')))) {
+                if (form.classList.contains('taxonomy-archive-form')
+                    && !window.confirm(@json(__('Archive this taxonomy branch? This is blocked when products or courses still use it.')))) {
                     event.preventDefault();
+                    return;
                 }
+
+                saveTaxonomyScrollPosition();
             });
         });
     </script>

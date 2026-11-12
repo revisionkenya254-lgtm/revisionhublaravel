@@ -28,6 +28,11 @@ class TaxonomyCatalogRepository
         return $this->snapshot($languageCode)['education_levels'];
     }
 
+    public function taxonomy(?string $languageCode = null): array
+    {
+        return $this->snapshot($languageCode);
+    }
+
     public function classGradesByLevel(?string $languageCode = null): array
     {
         return $this->snapshot($languageCode)['class_grades_by_level'];
@@ -110,6 +115,19 @@ class TaxonomyCatalogRepository
             $classGradesByLevel = [];
             $subjectsByLevel = [];
             $nodesByLevel = [];
+            $buildTree = function ($node) use (&$buildTree, $childrenByParent): array {
+                return [
+                    'id' => (int) $node->id,
+                    'slug' => (string) $node->slug,
+                    'label' => $this->label($node),
+                    'node_type' => (string) $node->node_type,
+                    'order' => (int) $node->order,
+                    'children' => collect($childrenByParent[(string) $node->id] ?? [])
+                        ->map(fn ($child) => $buildTree($child))
+                        ->all(),
+                ];
+            };
+            $tree = $roots->map(fn ($root) => $buildTree($root))->all();
 
             foreach ($roots as $root) {
                 $levelSlug = (string) $root->slug;
@@ -191,6 +209,7 @@ class TaxonomyCatalogRepository
                 'class_grades_by_level' => $classGradesByLevel,
                 'subjects_by_level' => $subjectsByLevel,
                 'nodes_by_level' => $nodesByLevel,
+                'tree' => $tree,
                 'source' => 'database',
             ];
         } catch (Throwable) {
@@ -223,12 +242,50 @@ class TaxonomyCatalogRepository
                 ])
                 ->all();
         }
+        $tree = collect($educationLevels)
+            ->map(function (array $level) use ($classGradesByLevel, $subjectsByLevel): array {
+                $levelSlug = (string) $level['slug'];
+                $subjects = collect($subjectsByLevel[$levelSlug] ?? []);
+
+                return [
+                    'id' => $level['id'] ?? $levelSlug,
+                    'slug' => $levelSlug,
+                    'label' => (string) ($level['label'] ?? $levelSlug),
+                    'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+                    'order' => (int) ($level['order'] ?? 0),
+                    'children' => collect($classGradesByLevel[$levelSlug] ?? [])
+                        ->map(function (array $class, int $index) use ($levelSlug, $subjects): array {
+                            return [
+                                'id' => $class['id'] ?? $levelSlug.'-'.$class['slug'],
+                                'slug' => (string) $class['slug'],
+                                'label' => (string) ($class['label'] ?? $class['slug']),
+                                'node_type' => (string) ($class['node_type'] ?? CourseCategory::TYPE_GRADE),
+                                'order' => (int) ($class['order'] ?? $index),
+                                'children' => $subjects
+                                    ->values()
+                                    ->map(fn (array $subject, int $subjectIndex) => [
+                                        'id' => $subject['id'] ?? $levelSlug.'-'.$class['slug'].'-'.$subject['slug'],
+                                        'slug' => (string) $subject['slug'],
+                                        'label' => (string) ($subject['name'] ?? $subject['slug']),
+                                        'node_type' => (string) ($subject['node_type'] ?? CourseCategory::TYPE_SUBJECT),
+                                        'order' => (int) ($subject['order'] ?? $subjectIndex),
+                                        'children' => [],
+                                    ])
+                                    ->all(),
+                            ];
+                        })
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
 
         return [
             'education_levels' => $educationLevels,
             'class_grades_by_level' => $classGradesByLevel,
             'subjects_by_level' => $subjectsByLevel,
             'nodes_by_level' => $nodesByLevel,
+            'tree' => $tree,
             'source' => 'configuration',
         ];
     }

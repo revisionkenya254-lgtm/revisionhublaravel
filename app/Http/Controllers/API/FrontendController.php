@@ -74,6 +74,17 @@ class FrontendController extends Controller {
         ]);
     }
 
+    public function education_taxonomy(): JsonResponse
+    {
+        $revision = $this->taxonomyRevisionService->current();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => app(TaxonomyCatalogRepository::class)->taxonomy(),
+            'taxonomy_revision' => $revision,
+        ])->header('X-Taxonomy-Revision', (string) $revision);
+    }
+
     public function mainCategories(Request $request): JsonResponse
     {
         $code = strtolower($request->query('language', 'en'));

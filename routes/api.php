@@ -54,6 +54,7 @@ Route::prefix('bootstrap')->controller(FrontendController::class)->group(functio
     Route::get('mobile-menu', 'mobileMenu');
     Route::get('onboarding', 'on_boarding_screen');
     Route::get('education-levels', 'education_levels');
+    Route::get('education-taxonomy', 'education_taxonomy');
     Route::get('faqs', 'faqs');
     Route::get('privacy-policy', 'privacy_policy');
     Route::get('terms-and-conditions', 'terms_and_conditions');
