@@ -1,5 +1,6 @@
 @forelse ($items as $item)
     @php
+        $trialActive = auth('web')->check() && hasActiveTrial();
         $cardType = (string) ($item->type ?? '');
         $typeMap = [
             'course' => ['label' => __('Video'), 'tone' => 'blue', 'icon' => 'fa-video', 'action' => __('Preview'), 'accent' => '#2563eb'],
@@ -18,7 +19,7 @@
         };
         $cardRating = $item->rating !== null ? (string) $item->rating : null;
     $cardPriceValue = (float) (($item->discount !== null && (float) $item->discount > 0) ? $item->discount : $item->price);
-    $cardActionLabel = $item->is_purchased ? ($item->access_label ?? __('Open')) : $cardConfig['action'];
+    $cardActionLabel = $trialActive ? __('Open') : ($item->is_purchased ? ($item->access_label ?? __('Open')) : $cardConfig['action']);
     $cardCategory = (string) ($item->category_translation_name ?? '');
     $cardCategorySlug = (string) ($item->category_slug ?? '');
     @endphp
@@ -66,7 +67,9 @@
 
                 <div class="catalog-listing-card__footer">
                     <div class="catalog-listing-card__price">
-                        @if ($cardPriceValue == 0)
+                        @if ($trialActive)
+                            <span class="catalog-listing-card__price-value">{{ __('Open') }}</span>
+                        @elseif ($cardPriceValue == 0)
                             <span class="catalog-listing-card__price-value">{{ __('Free') }}</span>
                         @else
                             <span class="catalog-listing-card__price-label">{{ __('KSh') }}</span>

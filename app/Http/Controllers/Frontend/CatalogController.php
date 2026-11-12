@@ -491,7 +491,7 @@ class CatalogController extends Controller
 
         return $items->map(function ($item) use ($sessionEnrollments, $purchasedProductIds, $hasActiveSubscription) {
             $item->is_purchased = match ($item->source ?? null) {
-                'course' => in_array((int) $item->id, $sessionEnrollments, true),
+                'course' => $hasActiveSubscription || in_array((int) $item->id, $sessionEnrollments, true),
                 'product' => $hasActiveSubscription || in_array((int) $item->id, $purchasedProductIds, true),
                 default => false,
             };

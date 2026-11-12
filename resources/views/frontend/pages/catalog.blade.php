@@ -1,6 +1,9 @@
 @extends('frontend.layouts.master')
 @php
     use App\Models\Product;
+    $trialActive = auth('web')->check() && hasActiveTrial();
+    $trialRemainingDays = $trialActive ? app(\App\Services\TrialService::class)->remainingDays(auth('web')->user()) : 0;
+    $trialExpiresAt = $trialActive ? auth('web')->user()->trial_expires_at : null;
 @endphp
 @section('meta_title', __('Catalog') . ' || ' . $setting->app_name)
 @section('meta_description', __('Browse courses, past papers, predictions, notes, and quizzes.'))
@@ -54,6 +57,8 @@
 
         <section class="catalog-landing">
             <div class="container custom-container xl_container">
+                @include('frontend.partials.catalog-trial-banner')
+
                 <div class="catalog-hero catalog-hero--compact">
                     <div class="catalog-hero__copy">
                         <nav class="catalog-hero__breadcrumb" aria-label="{{ __('Breadcrumb') }}">
@@ -141,6 +146,7 @@
                                     @endforeach
                                 </div>
 
+                                @unless ($trialActive)
                                 <div class="catalog-price-range">
                                     <h4>{{ __('PRICE (KES)') }}</h4>
                                     <div class="catalog-price-range__track">
@@ -152,6 +158,7 @@
                                         <span>5,000+</span>
                                     </div>
                                 </div>
+                                @endunless
 
                                 <div class="catalog-rating-filter">
                                     <h4>{{ __('RATING') }}</h4>
@@ -274,6 +281,17 @@
                                 </div>
                             </div>
 
+                            @if ($trialActive)
+                            <div class="catalog-right-card catalog-offer-card">
+                                <h3><i class="fas fa-gift"></i> {{ __('Free Trial Active') }}</h3>
+                                <ul>
+                                    <li>{{ __('All catalogue resources are open') }}</li>
+                                    <li>{{ __('No payment is required during your trial') }}</li>
+                                    <li>{{ trans_choice(':count day remaining|:count days remaining', $trialRemainingDays, ['count' => $trialRemainingDays]) }}</li>
+                                </ul>
+                                <a href="{{ route('student.subscription') }}" class="catalog-offer-card__button">{{ __('View Trial') }}</a>
+                            </div>
+                            @else
                             <div class="catalog-right-card catalog-offer-card">
                                 <h3><i class="fas fa-crown"></i> {{ __('Unlock All Resources') }}</h3>
                                 <ul>
@@ -286,6 +304,7 @@
                             <div class="catalog-offer-card__price">{{ __('KES 500') }} <span>/ {{ __('month') }}</span></div>
                                 <a href="{{ $subscribeNowUrl }}" class="catalog-offer-card__button">{{ __('Subscribe Now') }}</a>
                             </div>
+                            @endif
 
                             <div class="catalog-right-card catalog-recent-card">
                                 <div class="catalog-right-card__header">
@@ -334,6 +353,8 @@
 
         <section class="all-courses-area section-py-120 top-baseline catalog-page catalog-page--levels">
             <div class="container position-relative">
+                @include('frontend.partials.catalog-trial-banner')
+
                 <div class="catalog-levels-hero">
                     <div>
                         <span class="catalog-levels-hero__eyebrow">{{ __('Browse all levels') }}</span>
@@ -409,6 +430,65 @@
 
 @push('styles')
     <style>
+        .catalog-trial-banner {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 22px;
+            padding: 16px 18px;
+            color: #14532d;
+            background: linear-gradient(135deg, #dcfce7 0%, #ecfdf5 100%);
+            border: 1px solid #86efac;
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(22, 163, 74, .08);
+        }
+
+        .catalog-trial-banner__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            color: #fff;
+            background: #16a34a;
+            border-radius: 12px;
+        }
+
+        .catalog-trial-banner__copy {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .catalog-trial-banner__copy strong {
+            color: #14532d;
+            font-size: 16px;
+        }
+
+        .catalog-trial-banner__copy span {
+            color: #166534;
+            font-size: 14px;
+        }
+
+        .catalog-trial-banner > a {
+            color: #166534;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 767px) {
+            .catalog-trial-banner {
+                align-items: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .catalog-trial-banner > a {
+                margin-left: 56px;
+            }
+        }
+
         .catalog-hero--compact {
             display: flex;
             align-items: flex-start;

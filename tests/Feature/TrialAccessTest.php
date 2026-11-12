@@ -93,6 +93,41 @@ class TrialAccessTest extends TestCase
             ->assertJsonPath('data.trial.remaining_days', 7);
     }
 
+    public function test_catalog_cards_show_open_without_prices_during_trial(): void
+    {
+        $user = User::factory()->create();
+        app(TrialService::class)->start($user);
+        $this->actingAs($user);
+
+        $item = (object) [
+            'type' => 'past_paper',
+            'type_label' => 'Past Paper',
+            'id' => 10,
+            'title' => 'Test Past Paper',
+            'slug' => 'test-past-paper',
+            'thumbnail' => null,
+            'price' => 500,
+            'discount' => null,
+            'category_id' => 1,
+            'category_slug' => 'mathematics',
+            'category_translation_name' => 'Mathematics',
+            'url' => '/test-resource',
+            'cart_id' => 10,
+            'cart_type' => 'product',
+            'meta' => '2026 | PDF',
+            'rating' => null,
+            'is_purchased' => true,
+            'access_label' => 'Read now',
+        ];
+
+        $html = view('frontend.partials.catalog-card', ['items' => collect([$item])])->render();
+
+        $this->assertStringContainsString('Open', $html);
+        $this->assertStringNotContainsString('KSh', $html);
+        $this->assertStringNotContainsString('Buy Now', $html);
+        $this->assertStringNotContainsString('Add To Cart', $html);
+    }
+
     public function test_successful_registration_otp_starts_the_trial(): void
     {
         Carbon::setTestNow('2026-11-12 10:00:00');
