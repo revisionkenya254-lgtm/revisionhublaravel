@@ -56,6 +56,7 @@ class DashboardController extends Controller
         $limit = $request->filled('limit') && is_numeric($request->limit) ? (int) $request->limit : 6;
 
         if (hasFullCatalogAccess($user)) {
+            $accessSource = fullCatalogAccessSource($user);
             $enrolls = Course::active()
                 ->select('id', 'instructor_id', 'title', 'slug', 'thumbnail')
                 ->with('instructor:id,name,image')
@@ -63,10 +64,10 @@ class DashboardController extends Controller
                 ->latest('id')
                 ->paginate(perPage: $limit);
 
-            $enrolls->setCollection($enrolls->getCollection()->map(function (Course $course) {
+            $enrolls->setCollection($enrolls->getCollection()->map(function (Course $course) use ($accessSource) {
                 $enrollment = new Enrollment;
                 $enrollment->setRelation('course', $course);
-                $enrollment->setAttribute('access_source', 'subscription');
+                $enrollment->setAttribute('access_source', $accessSource);
 
                 return $enrollment;
             }));

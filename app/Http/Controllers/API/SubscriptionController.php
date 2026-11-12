@@ -30,6 +30,7 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
         $active = hasActiveSubscription($user);
+        $trialActive = hasActiveTrial($user);
 
         return response()->json([
             'status' => 'success',
@@ -41,6 +42,15 @@ class SubscriptionController extends Controller
                 'plan_id' => $user->subscription_plan_id,
                 'started_at' => $user->subscription_started_at?->toIso8601String(),
                 'expires_at' => $user->subscription_expires_at?->toIso8601String(),
+                'has_full_catalog_access' => hasFullCatalogAccess($user),
+                'access_source' => fullCatalogAccessSource($user),
+                'trial' => [
+                    'active' => $trialActive,
+                    'claimed' => $user->trial_claimed_at !== null,
+                    'started_at' => $user->trial_started_at?->toIso8601String(),
+                    'expires_at' => $user->trial_expires_at?->toIso8601String(),
+                    'remaining_days' => app(\App\Services\TrialService::class)->remainingDays($user),
+                ],
             ],
         ]);
     }

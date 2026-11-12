@@ -543,7 +543,7 @@
                         </div>
                         <div class="courses__details-enroll">
                             <div class="tg-button-wrap">
-                                @if (in_array($course->id, session('enrollments') ?? []))
+                                @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                     <a href="{{ route('student.enrolled-courses') }}"
                                         class="btn btn-two arrow-btn already-enrolled-btn" data-id="">
                                         <span class="text">{{ __('Enrolled') }}</span>

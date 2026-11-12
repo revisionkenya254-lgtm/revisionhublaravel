@@ -73,6 +73,7 @@ class GoogleAuthenticationTest extends TestCase
             'google_id' => 'google-user-123',
             'image' => 'https://images.example.com/google-user.jpg',
         ]);
+        $this->assertTrue(hasActiveTrial(User::where('email', 'google@example.com')->firstOrFail()));
     }
 
     public function test_google_login_links_an_existing_user_by_verified_email(): void
@@ -99,6 +100,7 @@ class GoogleAuthenticationTest extends TestCase
             'id' => $user->id,
             'google_id' => 'google-existing-123',
         ]);
+        $this->assertFalse(hasActiveTrial($user->refresh()));
     }
 
     public function test_invalid_google_tokens_are_rejected(): void

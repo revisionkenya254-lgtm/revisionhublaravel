@@ -1031,6 +1031,15 @@ if (! function_exists('hasActiveSubscription')) {
     }
 }
 
+if (! function_exists('hasActiveTrial')) {
+    function hasActiveTrial($user = null): bool
+    {
+        $user = $user instanceof User ? $user : userAuth();
+
+        return $user instanceof User && app(\App\Services\TrialService::class)->isActive($user);
+    }
+}
+
 if (! function_exists('hasSabbathAccess')) {
     function hasSabbathAccess($user = null): bool
     {
@@ -1045,7 +1054,25 @@ if (! function_exists('hasFullCatalogAccess')) {
     {
         $user = $user instanceof User ? $user : userAuth();
 
-        return hasActiveSubscription($user) || hasSabbathAccess($user);
+        return hasActiveSubscription($user) || hasActiveTrial($user) || hasSabbathAccess($user);
+    }
+}
+
+if (! function_exists('fullCatalogAccessSource')) {
+    function fullCatalogAccessSource($user = null): ?string
+    {
+        $user = $user instanceof User ? $user : userAuth();
+
+        if (! $user) {
+            return null;
+        }
+
+        return match (true) {
+            hasActiveSubscription($user) => 'subscription',
+            hasActiveTrial($user) => 'trial',
+            hasSabbathAccess($user) => 'sabbath',
+            default => null,
+        };
     }
 }
 
@@ -1059,12 +1086,24 @@ if (! function_exists('activateSubscriptionPlanForUser')) {
         }
 
         $startedAt = Carbon::now();
+        $trialCarrySeconds = hasActiveTrial($user) && $user->trial_expires_at
+            ? max(0, $startedAt->diffInSeconds($user->trial_expires_at, false))
+            : 0;
+        $expiresAt = revisionHubSubscriptionExpiry($plan['id'], $startedAt)
+            ->addSeconds($trialCarrySeconds);
 
         $user->forceFill([
             'subscription_plan_id' => $plan['id'],
             'subscription_started_at' => $startedAt,
-            'subscription_expires_at' => revisionHubSubscriptionExpiry($plan['id'], $startedAt),
+            'subscription_expires_at' => $expiresAt,
+            'trial_expires_at' => $trialCarrySeconds > 0 ? $startedAt : $user->trial_expires_at,
         ])->save();
+
+        if ($order && $trialCarrySeconds > 0) {
+            $details = (array) $order->order_details;
+            $details['trial_carried_seconds'] = $trialCarrySeconds;
+            $order->forceFill(['order_details' => $details])->save();
+        }
     }
 }
 

@@ -12,6 +12,7 @@ use App\Services\AuthOtpService;
 use App\Services\DeviceService;
 use App\Services\MailSenderService;
 use App\Services\TokenSessionService;
+use App\Services\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,7 +106,11 @@ class AuthenticatedController extends Controller
         }
     }
 
-    public function verifyOtp(Request $request, AuthOtpService $authOtpService): JsonResponse
+    public function verifyOtp(
+        Request $request,
+        AuthOtpService $authOtpService,
+        TrialService $trialService
+    ): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
@@ -131,10 +136,16 @@ class AuthenticatedController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Your account has been banned'], 403);
         }
 
-        if (!$user->email_verified_at) {
+        $wasUnverified = ! $user->email_verified_at;
+
+        if ($wasUnverified) {
             $user->email_verified_at = now();
             $user->save();
         }
+
+        $trialStarted = $wasUnverified
+            && $request->purpose === AuthOtpService::PURPOSE_REGISTER
+            && $trialService->start($user);
 
         $authOtpService->clear($user);
 
@@ -142,9 +153,11 @@ class AuthenticatedController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => $request->purpose === AuthOtpService::PURPOSE_REGISTER
-                ? 'Account verified successfully.'
-                : 'Logged in successfully.',
+            'message' => $trialStarted
+                ? 'Account verified successfully. Your free 7-day trial has started.'
+                : ($request->purpose === AuthOtpService::PURPOSE_REGISTER
+                    ? 'Account verified successfully.'
+                    : 'Logged in successfully.'),
             // Retained during the mobile-client migration window.
             'bearer_token' => $tokens['access_token'],
             ...$tokens,

@@ -146,11 +146,16 @@ class StudentDashboardController extends Controller
     {
         $user = userAuth();
         $isActive = hasActiveSubscription($user);
+        $trialActive = hasActiveTrial($user);
         $plan = filled($user->subscription_plan_id)
             ? revisionHubSubscriptionPlan((string) $user->subscription_plan_id)
             : null;
         $startedAt = $user->subscription_started_at;
         $expiresAt = $user->subscription_expires_at;
+        $trialStartedAt = $user->trial_started_at;
+        $trialExpiresAt = $user->trial_expires_at;
+        $trialRemainingDays = app(\App\Services\TrialService::class)->remainingDays($user);
+        $trialRemainingPercentage = 0;
         $remainingDays = 0;
         $remainingPercentage = 0;
 
@@ -162,6 +167,12 @@ class StudentDashboardController extends Controller
                 $durationSeconds = max(1, $startedAt->diffInSeconds($expiresAt, false));
                 $remainingPercentage = min(100, max(0, (int) round(($remainingSeconds / $durationSeconds) * 100)));
             }
+        }
+
+        if ($trialActive && $trialStartedAt && $trialExpiresAt) {
+            $trialRemainingSeconds = max(0, now()->diffInSeconds($trialExpiresAt, false));
+            $trialDurationSeconds = max(1, $trialStartedAt->diffInSeconds($trialExpiresAt));
+            $trialRemainingPercentage = min(100, max(0, (int) round(($trialRemainingSeconds / $trialDurationSeconds) * 100)));
         }
 
         $upgradePlans = collect(revisionHubSubscriptionPlans())
@@ -179,11 +190,16 @@ class StudentDashboardController extends Controller
         return view('frontend.student-dashboard.subscription.index', compact(
             'user',
             'isActive',
+            'trialActive',
             'plan',
             'startedAt',
             'expiresAt',
             'remainingDays',
             'remainingPercentage',
+            'trialStartedAt',
+            'trialExpiresAt',
+            'trialRemainingDays',
+            'trialRemainingPercentage',
             'upgradePlans',
             'subscriptionOrders'
         ));
@@ -364,12 +380,12 @@ class StudentDashboardController extends Controller
                     || (float) $product->effective_price === 0.0
                     || $purchasedOrderItems->has($product->id);
             })
-            ->map(function (Product $product) use ($subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts) {
+            ->map(function (Product $product) use ($user, $subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts) {
                 $orderItem = $purchasedOrderItems->get($product->id);
                 $noteProgress = $latestNoteProgress->get($product->id);
                 $quizAttempt = $latestQuizAttempts->get($product->id);
                 $accessSource = $subscriptionActive
-                    ? 'subscription'
+                    ? fullCatalogAccessSource($user)
                     : (($orderItem !== null) ? 'purchase' : 'free');
 
                 return (object) [
@@ -675,6 +691,8 @@ class StudentDashboardController extends Controller
     {
         return match ($source) {
             'subscription' => __('Subscription'),
+            'trial' => __('Free trial'),
+            'sabbath' => __('Sabbath access'),
             'purchase' => __('Purchased'),
             'free' => __('Free'),
             default => __('Open'),

@@ -2,8 +2,8 @@
 
 @section('dashboard-contents')
     @php
-        $statusLabel = $isActive ? __('Active') : (filled($user->subscription_plan_id) ? __('Expired') : __('No active plan'));
-        $statusClass = $isActive ? 'is-active' : 'is-inactive';
+        $statusLabel = $isActive ? __('Active') : ($trialActive ? __('Free trial') : (filled($user->subscription_plan_id) ? __('Expired') : __('No active plan')));
+        $statusClass = ($isActive || $trialActive) ? 'is-active' : 'is-inactive';
         $renewPlanId = $plan['id'] ?? data_get($upgradePlans->first(), 'id', 'month-1');
     @endphp
 
@@ -15,7 +15,7 @@
                 <p>{{ __('Review your plan, access period, and subscription payment history.') }}</p>
             </div>
             <span class="subscription-status {{ $statusClass }}">
-                <i class="fas {{ $isActive ? 'fa-check-circle' : 'fa-info-circle' }}"></i>
+                <i class="fas {{ ($isActive || $trialActive) ? 'fa-check-circle' : 'fa-info-circle' }}"></i>
                 {{ $statusLabel }}
             </span>
         </div>
@@ -84,6 +84,51 @@
                     @endif
                     <a href="{{ route('subscriptions') }}" class="btn btn-outline-primary">{{ __('View all plans') }}</a>
                 </div>
+            </section>
+        @elseif ($trialActive)
+            <section class="subscription-hero">
+                <div class="subscription-hero__content">
+                    <span class="subscription-hero__label">{{ __('Free trial') }}</span>
+                    <h2>{{ __('Full access for 7 days') }}</h2>
+                    <p>{{ __('Explore every RevisionHub learning resource during your free trial. No payment method is required.') }}</p>
+
+                    <div class="subscription-hero__progress-copy">
+                        <span>{{ trans_choice(':count day remaining|:count days remaining', $trialRemainingDays, ['count' => $trialRemainingDays]) }}</span>
+                        <span>{{ $trialRemainingPercentage }}%</span>
+                    </div>
+                    <div class="subscription-hero__progress" role="progressbar" aria-valuenow="{{ $trialRemainingPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                        <span style="width: {{ $trialRemainingPercentage }}%"></span>
+                    </div>
+                </div>
+
+                <div class="subscription-hero__price">
+                    <span>{{ __('Trial price') }}</span>
+                    <strong>{{ __('Free') }}</strong>
+                    <small>{{ __('7 days') }}</small>
+                </div>
+            </section>
+
+            <div class="subscription-summary-grid">
+                <article class="subscription-summary-card">
+                    <span class="subscription-summary-card__icon is-violet"><i class="fas fa-calendar-check"></i></span>
+                    <div><small>{{ __('Started') }}</small><strong>{{ formatDate($trialStartedAt) }}</strong></div>
+                </article>
+                <article class="subscription-summary-card">
+                    <span class="subscription-summary-card__icon is-green"><i class="fas fa-hourglass-half"></i></span>
+                    <div><small>{{ __('Expires') }}</small><strong>{{ formatDate($trialExpiresAt) }}</strong></div>
+                </article>
+                <article class="subscription-summary-card">
+                    <span class="subscription-summary-card__icon is-blue"><i class="fas fa-layer-group"></i></span>
+                    <div><small>{{ __('Access') }}</small><strong>{{ __('All learning resources') }}</strong></div>
+                </article>
+            </div>
+
+            <section class="subscription-panel subscription-panel--actions">
+                <div>
+                    <h5>{{ __('Keep your access') }}</h5>
+                    <p>{{ __('Choose a paid plan before your trial ends. Any unused trial time will be added to your subscription.') }}</p>
+                </div>
+                <a href="{{ route('subscriptions', ['plan' => data_get($upgradePlans->first(), 'id')]) }}" class="btn btn-primary">{{ __('Choose a plan') }}</a>
             </section>
         @else
             <section class="subscription-empty">

@@ -14,7 +14,7 @@
                 <div class="col-xl-6 col-lg-8">
                     <div class="singUp-wrap">
                         <h2 class="title">{{ __('Create Your Account') }}</h2>
-                        <p>{{ __('Create your account, then confirm it with a 5-digit OTP sent to your email.') }}
+                        <p>{{ __('Create your account and confirm your email to start a free 7-day trial with full access. No payment method is required.') }}
                         </p>
                         @include('auth.partials.google-identity-button', ['context' => 'signup', 'buttonText' => 'signup_with'])
                         <form method="POST" action="{{ route('register') }}" class="account__form">

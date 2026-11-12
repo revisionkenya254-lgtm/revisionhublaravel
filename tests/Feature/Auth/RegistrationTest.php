@@ -71,6 +71,8 @@ class RegistrationTest extends TestCase
 
         $this->assertGuest();
         $this->assertNull($user->email_verified_at);
+        $this->assertNull($user->trial_claimed_at);
+        $this->assertNull($user->trial_expires_at);
         $response->assertRedirect(route('auth.otp.notice', [
             'email' => $user->email,
             'purpose' => AuthOtpService::PURPOSE_REGISTER,

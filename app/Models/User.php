@@ -50,6 +50,9 @@ class User extends Authenticatable
         'subscription_plan_id',
         'subscription_started_at',
         'subscription_expires_at',
+        'trial_started_at',
+        'trial_expires_at',
+        'trial_claimed_at',
     ];
 
     /**
@@ -74,6 +77,9 @@ class User extends Authenticatable
         'education_level_prompt_dismissed_at' => 'datetime',
         'subscription_started_at' => 'datetime',
         'subscription_expires_at' => 'datetime',
+        'trial_started_at' => 'datetime',
+        'trial_expires_at' => 'datetime',
+        'trial_claimed_at' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -125,6 +131,11 @@ class User extends Authenticatable
     public function hasActiveSubscription(): bool
     {
         return hasActiveSubscription($this);
+    }
+
+    public function hasActiveTrial(): bool
+    {
+        return hasActiveTrial($this);
     }
 
     public function hasFullCatalogAccess(): bool

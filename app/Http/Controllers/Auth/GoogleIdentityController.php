@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AuthAccountResolverService;
 use App\Services\GoogleTokenVerifier;
 use App\Services\TokenSessionService;
+use App\Services\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class GoogleIdentityController extends Controller
         GoogleTokenVerifier $tokenVerifier,
         TokenSessionService $tokenSessions,
         AuthAccountResolverService $accountResolver,
+        TrialService $trialService,
     ): JsonResponse|RedirectResponse {
         $validated = $request->validate([
             'credential' => ['nullable', 'string', 'max:8192', 'required_without:id_token'],
@@ -105,6 +107,8 @@ class GoogleIdentityController extends Controller
                 return ['error' => __('Your account has been banned'), 'status' => 403];
             }
 
+            $newUser = false;
+
             if (! $user) {
                 $user = User::create([
                     'role' => 'student',
@@ -116,6 +120,7 @@ class GoogleIdentityController extends Controller
                     'email_verified_at' => now(),
                     'password' => Hash::make(Str::random(64)),
                 ]);
+                $newUser = true;
 
                 if ($avatarUrl) {
                     $user->forceFill(['image' => $avatarUrl])->save();
@@ -131,11 +136,15 @@ class GoogleIdentityController extends Controller
                 $user->forceFill(['image' => $avatarUrl])->save();
             }
 
-            return ['user' => $user];
+            return ['user' => $user, 'new_user' => $newUser];
         });
 
         if (isset($result['error'])) {
             return $this->failure($wantsJson, $result['error'], $result['status']);
+        }
+
+        if ($result['new_user'] ?? false) {
+            $trialService->start($result['user']);
         }
 
         /** @var User $user */

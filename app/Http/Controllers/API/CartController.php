@@ -18,11 +18,14 @@ class CartController extends Controller
         $currency = strtoupper(request()->query('currency'));
         $cartItems = $user->carts()->with(['course.instructor', 'product.instructor'])->get();
         $subscriptionActive = hasFullCatalogAccess($user);
+        $accessSource = fullCatalogAccessSource($user);
         $data = [
             'total_qty' => (int) $user->cartCount,
             'total_amount' => (string) apiCurrency($subscriptionActive ? 0 : $user->cartTotal, $currency),
             'subscription_active' => $subscriptionActive,
-            'cart_items' => $cartItems->map(fn (Cart $cart) => $this->cartItem($cart, $currency, $subscriptionActive))->values(),
+            'has_full_catalog_access' => $subscriptionActive,
+            'access_source' => $accessSource,
+            'cart_items' => $cartItems->map(fn (Cart $cart) => $this->cartItem($cart, $currency, $subscriptionActive, $accessSource))->values(),
         ];
 
         $courses = $cartItems->where('item_type', '!=', 'product')->pluck('course')->filter();
@@ -46,7 +49,7 @@ class CartController extends Controller
         $products = $cartItems->where('item_type', 'product');
         if ($products->isNotEmpty()) {
             $data['cart_products'] = $products
-                ->map(fn (Cart $cart) => $this->cartItem($cart, $currency))
+                ->map(fn (Cart $cart) => $this->cartItem($cart, $currency, $subscriptionActive, $accessSource))
                 ->values();
         }
 
@@ -67,8 +70,8 @@ class CartController extends Controller
             return response()->json([
                 'status' => 'success',
                 'state' => 'access_granted',
-                'message' => 'This item is included in your active subscription.',
-                'access_source' => 'subscription',
+                'message' => 'This item is included in your current access.',
+                'access_source' => fullCatalogAccessSource($user),
                 'payment_required' => false,
             ], 200);
         }
@@ -118,7 +121,7 @@ class CartController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Item removed from cart!'], 200);
     }
 
-    private function cartItem(Cart $cart, string $currency, bool $subscriptionActive = false): array
+    private function cartItem(Cart $cart, string $currency, bool $subscriptionActive = false, ?string $accessSource = null): array
     {
         $item = $cart->item_type === 'product' ? $cart->product : $cart->course;
         $price = (float) ($item?->price ?? 0);
@@ -133,7 +136,7 @@ class CartController extends Controller
             'price' => $subscriptionActive || $price == 0 ? 0 : (string) apiCurrency($price, $currency),
             'discount' => $subscriptionActive || $discount == 0 ? 0 : (string) apiCurrency($discount, $currency),
             'quantity' => (int) $cart->qty,
-            'access_source' => $subscriptionActive ? 'subscription' : null,
+            'access_source' => $subscriptionActive ? $accessSource : null,
             'payment_required' => ! $subscriptionActive,
             'instructor' => $item?->instructor ? [
                 'id' => $item->instructor->id,

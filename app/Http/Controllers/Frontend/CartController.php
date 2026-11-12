@@ -52,6 +52,18 @@ class CartController extends Controller {
 
         if (auth()->check()) {
             $user = userAuth();
+            if (hasFullCatalogAccess($user)) {
+                return response()->json([
+                    'status' => 'success',
+                    'state' => 'access_granted',
+                    'message' => __('This item is included in your current access.'),
+                    'access_source' => fullCatalogAccessSource($user),
+                    'payment_required' => false,
+                    'redirect_url' => $itemType === 'course'
+                        ? route('student.enrolled-courses')
+                        : route('student.library'),
+                ]);
+            }
             if ($itemType === 'course' && isOwnCourse($user, $item)) {
                 return response()->json(['status' => 'error', 'message' => 'You can not add to cart your own course!'], 200);
             }

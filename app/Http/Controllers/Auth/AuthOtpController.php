@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Services\AuthAccountResolverService;
 use App\Services\AuthOtpService;
+use App\Services\TrialService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +30,8 @@ class AuthOtpController extends Controller
     public function verify(
         Request $request,
         AuthOtpService $authOtpService,
-        AuthAccountResolverService $accountResolver
+        AuthAccountResolverService $accountResolver,
+        TrialService $trialService
     ): RedirectResponse
     {
         $validated = $request->validate([
@@ -74,9 +76,15 @@ class AuthOtpController extends Controller
             ]);
         }
 
-        if (!$user->email_verified_at) {
+        $wasUnverified = ! $user->email_verified_at;
+
+        if ($wasUnverified) {
             $user->forceFill(['email_verified_at' => now()])->save();
         }
+
+        $trialStarted = $wasUnverified
+            && $validated['purpose'] === AuthOtpService::PURPOSE_REGISTER
+            && $trialService->start($user);
 
         $authOtpService->clear($user);
 
@@ -90,9 +98,11 @@ class AuthOtpController extends Controller
         };
 
         return redirect()->intended($redirectUrl)->with([
-            'messege' => $validated['purpose'] === AuthOtpService::PURPOSE_REGISTER
-                ? __('Your account has been verified successfully.')
-                : __('Logged in successfully.'),
+            'messege' => $trialStarted
+                ? __('Your account has been verified and your free 7-day trial has started.')
+                : ($validated['purpose'] === AuthOtpService::PURPOSE_REGISTER
+                    ? __('Your account has been verified successfully.')
+                    : __('Logged in successfully.')),
             'alert-type' => 'success',
         ]);
     }

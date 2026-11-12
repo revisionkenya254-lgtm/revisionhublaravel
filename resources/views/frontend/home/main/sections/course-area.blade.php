@@ -103,7 +103,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">
@@ -189,7 +189,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">
@@ -274,7 +274,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">
@@ -359,7 +359,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">
@@ -444,7 +444,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">
@@ -529,7 +529,7 @@
                                                 href="{{ route('instructor-details', ['id' => $course->instructor->id, 'slug' => Str::slug($course->instructor->name)]) }}">{{ $course->instructor->name }}</a>
                                         </p>
                                         <div class="courses__item-bottom">
-                                            @if (in_array($course->id, session('enrollments') ?? []))
+                                            @if ((auth('web')->check() && hasFullCatalogAccess()) || in_array($course->id, session('enrollments') ?? []))
                                                 <div class="button">
                                                     <a href="{{ route('student.enrolled-courses') }}"
                                                         class="already-enrolled-btn" data-id="">

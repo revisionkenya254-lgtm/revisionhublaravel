@@ -576,13 +576,15 @@ class PaymentController extends Controller
 
     private function subscriptionAccessResponse(): JsonResponse
     {
+        $source = fullCatalogAccessSource(request()->user());
+
         return response()->json([
             'status' => 'success',
             'state' => 'access_granted',
-            'message' => 'Your active subscription already includes all catalogue products.',
+            'message' => 'Your current access already includes all catalogue products.',
             'data' => [
                 'access_granted' => true,
-                'access_source' => 'subscription',
+                'access_source' => $source,
                 'payment_required' => false,
             ],
         ]);

@@ -19,6 +19,10 @@ class CatalogAccessService
             return $this->grant('subscription');
         }
 
+        if (hasActiveTrial($user)) {
+            return $this->grant('trial');
+        }
+
         if ((float) $product->effective_price === 0.0) {
             return $this->grant('free');
         }
@@ -43,6 +47,10 @@ class CatalogAccessService
     {
         if (hasActiveSubscription($user)) {
             return $this->grant('subscription');
+        }
+
+        if (hasActiveTrial($user)) {
+            return $this->grant('trial');
         }
 
         $purchased = $user->enrollments()

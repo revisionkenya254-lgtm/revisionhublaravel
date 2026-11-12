@@ -60,11 +60,11 @@ class LibraryController extends Controller
             ->filter(fn (Product $product) => $subscriptionActive
                 || (float) $product->effective_price === 0.0
                 || $purchasedItems->has($product->id))
-            ->map(function (Product $product) use ($subscriptionActive, $purchasedItems, $noteProgress, $quizAttempts) {
+            ->map(function (Product $product) use ($user, $subscriptionActive, $purchasedItems, $noteProgress, $quizAttempts) {
                 $orderItem = $purchasedItems->get($product->id);
                 $note = $noteProgress->get($product->id);
                 $quiz = $quizAttempts->get($product->id);
-                $accessSource = $subscriptionActive ? 'subscription' : ($orderItem ? 'purchase' : 'free');
+                $accessSource = $subscriptionActive ? fullCatalogAccessSource($user) : ($orderItem ? 'purchase' : 'free');
                 $progressPercent = match ($product->type) {
                     Product::TYPE_NOTE => (float) ($note?->completion_percent ?? 0),
                     Product::TYPE_QUIZ => (float) ($quiz?->percentage ?? 0),

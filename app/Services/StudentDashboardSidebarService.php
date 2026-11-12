@@ -61,18 +61,18 @@ class StudentDashboardSidebarService
         ];
 
         $sections = collect($sectionOrder)
-            ->map(function (string $type) use ($products, $subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts, $itemsPerSection) {
+            ->map(function (string $type) use ($user, $products, $subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts, $itemsPerSection) {
                 $typeProducts = $products->get($type, collect());
 
                 $sectionProducts = $typeProducts
                     ->sortByDesc('updated_at')
                     ->take($itemsPerSection)
-                    ->map(function (Product $product) use ($type, $subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts) {
+                    ->map(function (Product $product) use ($user, $type, $subscriptionActive, $purchasedOrderItems, $latestNoteProgress, $latestQuizAttempts) {
                         $orderItem = $purchasedOrderItems->get($product->id);
                         $noteProgress = $latestNoteProgress->get($product->id);
                         $quizAttempt = $latestQuizAttempts->get($product->id);
                         $accessSource = $subscriptionActive
-                            ? 'subscription'
+                            ? fullCatalogAccessSource($user)
                             : (($orderItem !== null) ? 'purchase' : 'free');
 
                         return (object) [
@@ -209,6 +209,8 @@ class StudentDashboardSidebarService
     {
         return match ($source) {
             'subscription' => __('Subscription'),
+            'trial' => __('Free trial'),
+            'sabbath' => __('Sabbath access'),
             'purchase' => __('Purchased'),
             'free' => __('Free'),
             default => __('Open'),

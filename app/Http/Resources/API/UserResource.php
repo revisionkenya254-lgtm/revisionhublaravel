@@ -55,6 +55,15 @@ class UserResource extends JsonResource {
             "linkedin"   => (string) $linkedin,
             "website"    => (string) $website,
             "github"     => (string) $github,
+            'has_full_catalog_access' => hasFullCatalogAccess($this->resource),
+            'access_source' => fullCatalogAccessSource($this->resource),
+            'trial' => [
+                'active' => hasActiveTrial($this->resource),
+                'claimed' => data_get($this->resource, 'trial_claimed_at') !== null,
+                'started_at' => data_get($this->resource, 'trial_started_at')?->toIso8601String(),
+                'expires_at' => data_get($this->resource, 'trial_expires_at')?->toIso8601String(),
+                'remaining_days' => app(\App\Services\TrialService::class)->remainingDays($this->resource),
+            ],
         ];
     }
 }
