@@ -146,6 +146,14 @@ class StudentDashboardProductCoverageTest extends TestCase
             'catalog_identity' => ['main_category' => 'high-school'],
         ]]);
         $unidentified = $this->makeProduct(Product::TYPE_NOTE, 'Unidentified Library Note');
+        $matchingPaper = $this->makeProduct(Product::TYPE_PAST_PAPER, 'Lower Primary Dashboard Paper');
+        $matchingPaper->update(['metadata' => [
+            'catalog_identity' => ['main_category' => 'lower-primary'],
+        ]]);
+        $otherLevelPaper = $this->makeProduct(Product::TYPE_PAST_PAPER, 'High School Dashboard Paper');
+        $otherLevelPaper->update(['metadata' => [
+            'catalog_identity' => ['main_category' => 'high-school'],
+        ]]);
 
         $response = $this->actingAs($student)->get(route('student.library'));
 
@@ -156,6 +164,15 @@ class StudentDashboardProductCoverageTest extends TestCase
         $this->assertTrue($listedProducts->contains('id', $matching->id));
         $this->assertFalse($listedProducts->contains('id', $otherLevel->id));
         $this->assertFalse($listedProducts->contains('id', $unidentified->id));
+
+        $dashboard = $this->get(route('student.dashboard'));
+        $dashboard->assertOk();
+        $pastPaperCard = collect($dashboard->viewData('productTypeCards'))
+            ->firstWhere('label', 'Past Papers');
+        $this->assertSame(1, $pastPaperCard['count']);
+        $dashboardProducts = $dashboard->viewData('accessibleProducts')->pluck('product');
+        $this->assertTrue($dashboardProducts->contains('id', $matchingPaper->id));
+        $this->assertFalse($dashboardProducts->contains('id', $otherLevelPaper->id));
     }
 
     private function makeProduct(string $type, string $title, float $price = 0): Product

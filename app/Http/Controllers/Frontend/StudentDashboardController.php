@@ -40,7 +40,10 @@ class StudentDashboardController extends Controller
         );
         $showEducationLevelPrompt = blank($user->education_level) && blank($user->education_level_prompt_dismissed_at);
         $accessibleCourses = $this->accessibleCourses();
-        $accessibleProducts = $this->accessibleProducts();
+        $accessibleProducts = $this->accessibleProducts(
+            filled($user->education_level) ? (string) $user->education_level : null,
+            $selectedEducationLevel
+        );
         $aiCreditLedger = app(AiCreditLedgerService::class);
         $aiCreditLedger->ensureMonthlyGrant($user);
         $currentAiCredits = $aiCreditLedger->currentBalance($user);

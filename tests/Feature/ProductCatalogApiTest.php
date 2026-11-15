@@ -125,6 +125,11 @@ class ProductCatalogApiTest extends TestCase
         $otherLevelProduct->update(['metadata' => [
             'catalog_identity' => ['main_category' => 'high-school'],
         ]]);
+        $otherLevelPaper = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'high-school-catalog-paper');
+        $otherLevelPaper->update(['metadata' => [
+            'year' => '2026',
+            'catalog_identity' => ['main_category' => 'high-school'],
+        ]]);
         $unidentifiedProduct = $this->createProduct($instructor, Product::TYPE_NOTE, 'unidentified-note');
         Sanctum::actingAs($student);
 
@@ -139,12 +144,14 @@ class ProductCatalogApiTest extends TestCase
         $this->assertTrue($ids->contains($catalogIdentityProduct->id));
         $this->assertTrue($ids->contains($legacyProduct->id));
         $this->assertFalse($ids->contains($otherLevelProduct->id));
+        $this->assertFalse($ids->contains($otherLevelPaper->id));
         $this->assertFalse($ids->contains($unidentifiedProduct->id));
 
         $this->getJson('/api/library?type=past_paper&year=2026')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $catalogIdentityProduct->id)
+            ->assertJsonPath('pagination.total', 1)
             ->assertJsonPath('filters.type', Product::TYPE_PAST_PAPER)
             ->assertJsonPath('filters.year', '2026');
     }
