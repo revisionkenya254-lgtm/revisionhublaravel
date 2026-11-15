@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\CatalogCacheClear;
+use App\Services\MenuCacheService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Services\CatalogCacheClear;
-use App\Services\MenuCacheService;
+use Illuminate\Support\Str;
 use Modules\Course\app\Models\CourseCategory;
 use Modules\Order\app\Models\OrderItem;
 
@@ -19,11 +20,17 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     public const TYPE_COURSE = 'course';
+
     public const TYPE_PAST_PAPER = 'past_paper';
+
     public const TYPE_PREDICTION = 'prediction';
+
     public const TYPE_NOTE = 'note';
+
     public const TYPE_QUIZ = 'quiz';
+
     public const YEAR_ALL = 'all';
+
     public const YEAR_MISSING = 'missing';
 
     protected $fillable = [
@@ -83,6 +90,49 @@ class Product extends Model
             : $query;
     }
 
+    public function scopeForEducationLevel(
+        Builder $query,
+        ?string $educationLevelSlug,
+        ?string $educationLevelLabel = null
+    ): Builder {
+        $educationLevelSlug = Str::slug((string) $educationLevelSlug);
+
+        if ($educationLevelSlug === '') {
+            return $query;
+        }
+
+        $configuredLabel = data_get(
+            collect(config('product_taxonomy.education_levels', []))->firstWhere('slug', $educationLevelSlug),
+            'label'
+        );
+        $metadataValues = collect([
+            $educationLevelSlug,
+            $educationLevelLabel,
+            $configuredLabel,
+            Str::headline($educationLevelSlug),
+            preg_replace('/\s*\([^)]*\)\s*$/', '', (string) ($educationLevelLabel ?: $configuredLabel)),
+        ])
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $query->where(function (Builder $query) use ($educationLevelSlug, $metadataValues) {
+            $query->where('metadata->catalog_identity->main_category', $educationLevelSlug)
+                ->orWhereIn('metadata->catalog_identity->education_level', $metadataValues)
+                ->orWhereIn('metadata->education_level', $metadataValues)
+                ->orWhereHas('category', fn (Builder $categoryQuery) => $categoryQuery
+                    ->where('slug', $educationLevelSlug))
+                ->orWhereHas('category.parentCategory', fn (Builder $categoryQuery) => $categoryQuery
+                    ->where('slug', $educationLevelSlug))
+                ->orWhereHas('category.parentCategory.parentCategory', fn (Builder $categoryQuery) => $categoryQuery
+                    ->where('slug', $educationLevelSlug))
+                ->orWhereHas('category.parentCategory.parentCategory.parentCategory', fn (Builder $categoryQuery) => $categoryQuery
+                    ->where('slug', $educationLevelSlug));
+        });
+    }
+
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class)->withTrashed();
@@ -102,7 +152,7 @@ class Product extends Model
     {
         return $this->hasMany(ProductReview::class);
     }
-    
+
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'product_id');

@@ -7,6 +7,7 @@ use App\Http\Resources\API\LibraryItemResource;
 use App\Models\Product;
 use App\Models\ProductNoteProgress;
 use App\Models\ProductQuizAttempt;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -15,7 +16,7 @@ use Modules\Order\app\Models\OrderItem;
 
 class LibraryController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, TaxonomyCatalogRepository $taxonomyCatalog): JsonResponse
     {
         $validated = $request->validate([
             'type' => ['nullable', 'in:course,note,past_paper,prediction,quiz'],
@@ -27,6 +28,10 @@ class LibraryController extends Controller
             : null;
 
         $user = $request->user();
+        $educationLevel = collect($taxonomyCatalog->educationLevels())
+            ->firstWhere('slug', $user->education_level);
+        $educationLevelSlug = filled($user->education_level) ? (string) $user->education_level : null;
+        $educationLevelLabel = data_get($educationLevel, 'label');
         $subscriptionActive = hasFullCatalogAccess($user);
         $purchasedItems = OrderItem::query()
             ->with('order:id,buyer_id,payment_status,created_at')
@@ -53,6 +58,7 @@ class LibraryController extends Controller
             ->map(fn (Collection $items) => $items->first());
 
         $items = Product::approved()
+            ->forEducationLevel($educationLevelSlug, $educationLevelLabel)
             ->with(['category.translation'])
             ->when($validated['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
             ->when(filled($selectedYear), fn ($query) => $query->forPaperYear($selectedYear))
@@ -102,6 +108,11 @@ class LibraryController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => LibraryItemResource::collection($paginator->getCollection()),
+            'filters' => [
+                'education_level' => $educationLevelSlug,
+                'type' => $validated['type'] ?? null,
+                'year' => $selectedYear,
+            ],
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),

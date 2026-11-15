@@ -15,6 +15,7 @@ use App\Models\QuizResult;
 use App\Services\Ai\AiCreditLedgerService;
 use App\Services\ProductMetadataCatalogService;
 use App\Services\Taxonomy\TaxonomyCatalogRepository;
+use App\Services\TrialService;
 use Dompdf\Dompdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -154,7 +155,7 @@ class StudentDashboardController extends Controller
         $expiresAt = $user->subscription_expires_at;
         $trialStartedAt = $user->trial_started_at;
         $trialExpiresAt = $user->trial_expires_at;
-        $trialRemainingDays = app(\App\Services\TrialService::class)->remainingDays($user);
+        $trialRemainingDays = app(TrialService::class)->remainingDays($user);
         $trialRemainingPercentage = 0;
         $remainingDays = 0;
         $remainingPercentage = 0;
@@ -215,7 +216,13 @@ class StudentDashboardController extends Controller
 
     public function library(ProductMetadataCatalogService $metadataCatalog)
     {
-        $items = $this->accessibleProducts();
+        $user = userAuth();
+        $educationLevel = collect(app(TaxonomyCatalogRepository::class)->educationLevels())
+            ->firstWhere('slug', $user->education_level);
+        $educationLevelSlug = filled($user->education_level) ? (string) $user->education_level : null;
+        $educationLevelLabel = data_get($educationLevel, 'label')
+            ?: (filled($educationLevelSlug) ? str($educationLevelSlug)->headline()->toString() : null);
+        $items = $this->accessibleProducts($educationLevelSlug, $educationLevelLabel);
         $requestedType = request()->string('type')->toString();
         $allowedTypes = [
             Product::TYPE_NOTE,
@@ -257,7 +264,9 @@ class StudentDashboardController extends Controller
             'items',
             'selectedType',
             'selectedYear',
-            'yearOptions'
+            'yearOptions',
+            'educationLevelSlug',
+            'educationLevelLabel'
         ));
     }
 
@@ -346,8 +355,10 @@ class StudentDashboardController extends Controller
         return collect($courseMap)->values();
     }
 
-    private function accessibleProducts(): Collection
-    {
+    private function accessibleProducts(
+        ?string $educationLevelSlug = null,
+        ?string $educationLevelLabel = null
+    ): Collection {
         $user = userAuth();
         $subscriptionActive = hasFullCatalogAccess($user);
 
@@ -373,6 +384,7 @@ class StudentDashboardController extends Controller
             ->map(fn (Collection $items) => $items->first());
 
         return Product::approved()
+            ->forEducationLevel($educationLevelSlug, $educationLevelLabel)
             ->with(['category.translation', 'course', 'note', 'quiz'])
             ->get()
             ->filter(function (Product $product) use ($subscriptionActive, $purchasedOrderItems) {

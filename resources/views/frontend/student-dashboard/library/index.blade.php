@@ -15,6 +15,16 @@
         <div class="dashboard__content-title d-flex flex-wrap justify-content-between align-items-center gap-3">
             <h4 class="title">{{ __('Library') }}</h4>
         </div>
+        @if (filled($educationLevelSlug))
+            <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
+                <span>
+                    {{ __('Showing resources for :level.', ['level' => $educationLevelLabel ?: $educationLevelSlug]) }}
+                </span>
+                <a href="{{ route('student.setting.index') }}" class="alert-link">
+                    {{ __('Change learning preferences') }}
+                </a>
+            </div>
+        @endif
         <form action="{{ route('student.library') }}" method="GET" class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <div class="row g-3 align-items-end">
@@ -110,7 +120,9 @@
                     <h6>
                         {{ $isPastPaperListing && filled($selectedYear)
                             ? __('No past papers found for the selected year.')
-                            : __('No library resources found.') }}
+                            : (filled($educationLevelSlug)
+                                ? __('No library resources are available for :level.', ['level' => $educationLevelLabel ?: $educationLevelSlug])
+                                : __('No library resources found.')) }}
                     </h6>
                 </div>
             @endforelse

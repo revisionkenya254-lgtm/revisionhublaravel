@@ -82,6 +82,73 @@ class ProductCatalogApiTest extends TestCase
             ->assertJsonPath('pagination.per_page', 10);
     }
 
+    public function test_authenticated_library_is_restricted_to_the_students_education_level(): void
+    {
+        $student = User::factory()->create([
+            'role' => 'student',
+            'status' => 'active',
+            'education_level' => 'lower-primary',
+        ]);
+        $instructor = User::factory()->create();
+        $root = CourseCategory::create([
+            'slug' => 'lower-primary',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'status' => 1,
+        ]);
+        $grade = CourseCategory::create([
+            'slug' => 'grade-2',
+            'parent_id' => $root->id,
+            'node_type' => CourseCategory::TYPE_GRADE,
+            'status' => 1,
+        ]);
+        $subject = CourseCategory::create([
+            'slug' => 'mathematics',
+            'parent_id' => $grade->id,
+            'node_type' => CourseCategory::TYPE_SUBJECT,
+            'status' => 1,
+        ]);
+        $categoryProduct = $this->createProduct(
+            $instructor,
+            Product::TYPE_NOTE,
+            'lower-primary-category-note',
+            'active',
+            $subject->id
+        );
+        $catalogIdentityProduct = $this->createProduct($instructor, Product::TYPE_PAST_PAPER, 'lower-primary-catalog-paper');
+        $catalogIdentityProduct->update(['metadata' => [
+            'year' => '2026',
+            'catalog_identity' => ['main_category' => 'lower-primary'],
+        ]]);
+        $legacyProduct = $this->createProduct($instructor, Product::TYPE_PREDICTION, 'lower-primary-legacy-prediction');
+        $legacyProduct->update(['metadata' => ['education_level' => 'Lower Primary']]);
+        $otherLevelProduct = $this->createProduct($instructor, Product::TYPE_NOTE, 'high-school-note');
+        $otherLevelProduct->update(['metadata' => [
+            'catalog_identity' => ['main_category' => 'high-school'],
+        ]]);
+        $unidentifiedProduct = $this->createProduct($instructor, Product::TYPE_NOTE, 'unidentified-note');
+        Sanctum::actingAs($student);
+
+        $response = $this->getJson('/api/library?per_page=10');
+
+        $response->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('filters.education_level', 'lower-primary')
+            ->assertJsonPath('pagination.total', 3);
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($categoryProduct->id));
+        $this->assertTrue($ids->contains($catalogIdentityProduct->id));
+        $this->assertTrue($ids->contains($legacyProduct->id));
+        $this->assertFalse($ids->contains($otherLevelProduct->id));
+        $this->assertFalse($ids->contains($unidentifiedProduct->id));
+
+        $this->getJson('/api/library?type=past_paper&year=2026')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $catalogIdentityProduct->id)
+            ->assertJsonPath('filters.type', Product::TYPE_PAST_PAPER)
+            ->assertJsonPath('filters.year', '2026');
+    }
+
     public function test_all_year_value_returns_every_past_paper_for_legacy_api_clients(): void
     {
         $student = User::factory()->create(['role' => 'student', 'status' => 'active']);
@@ -349,8 +416,7 @@ class ProductCatalogApiTest extends TestCase
         string $slug,
         string $status = 'active',
         ?int $categoryId = null
-    ): Product
-    {
+    ): Product {
         return Product::create([
             'instructor_id' => $instructor->id,
             'category_id' => $categoryId,

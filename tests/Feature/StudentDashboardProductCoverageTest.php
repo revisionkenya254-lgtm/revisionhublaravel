@@ -130,6 +130,34 @@ class StudentDashboardProductCoverageTest extends TestCase
         $this->get(route('student.dashboard'))->assertDontSee('Personalize your learning');
     }
 
+    public function test_web_library_is_restricted_to_the_students_education_level(): void
+    {
+        $student = User::factory()->create([
+            'role' => 'student',
+            'status' => 'active',
+            'education_level' => 'lower-primary',
+        ]);
+        $matching = $this->makeProduct(Product::TYPE_NOTE, 'Lower Primary Library Note');
+        $matching->update(['metadata' => [
+            'catalog_identity' => ['main_category' => 'lower-primary'],
+        ]]);
+        $otherLevel = $this->makeProduct(Product::TYPE_NOTE, 'High School Library Note');
+        $otherLevel->update(['metadata' => [
+            'catalog_identity' => ['main_category' => 'high-school'],
+        ]]);
+        $unidentified = $this->makeProduct(Product::TYPE_NOTE, 'Unidentified Library Note');
+
+        $response = $this->actingAs($student)->get(route('student.library'));
+
+        $response->assertOk()
+            ->assertSee('Showing resources for Lower Primary.')
+            ->assertSee(route('student.setting.index'), false);
+        $listedProducts = $response->viewData('items')->getCollection()->pluck('product');
+        $this->assertTrue($listedProducts->contains('id', $matching->id));
+        $this->assertFalse($listedProducts->contains('id', $otherLevel->id));
+        $this->assertFalse($listedProducts->contains('id', $unidentified->id));
+    }
+
     private function makeProduct(string $type, string $title, float $price = 0): Product
     {
         $instructor = User::factory()->create([
