@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductNoteProgress;
 use App\Models\ProductQuizAttempt;
 use App\Services\Ai\AiCreditLedgerService;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Support\Collection;
 use Modules\Order\app\Models\OrderItem;
 
@@ -20,6 +21,10 @@ class StudentDashboardSidebarService
 
         $user = userAuth();
         $subscriptionActive = hasFullCatalogAccess($user);
+        $educationLevel = collect(app(TaxonomyCatalogRepository::class)->educationLevels())
+            ->firstWhere('slug', $user->education_level);
+        $educationLevelSlug = filled($user->education_level) ? (string) $user->education_level : null;
+        $educationLevelLabel = data_get($educationLevel, 'label');
 
         $purchasedOrderItems = OrderItem::with(['order:id,buyer_id,payment_status,created_at', 'product.category.translation', 'product.course'])
             ->where('item_type', 'product')
@@ -43,6 +48,7 @@ class StudentDashboardSidebarService
             ->map(fn (Collection $items) => $items->first());
 
         $products = Product::approved()
+            ->forEducationLevel($educationLevelSlug, $educationLevelLabel)
             ->with(['category.translation', 'course', 'note', 'quiz'])
             ->get()
             ->filter(function (Product $product) use ($subscriptionActive, $purchasedOrderItems) {

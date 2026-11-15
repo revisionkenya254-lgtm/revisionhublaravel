@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\ProductQuiz;
 use App\Models\User;
+use App\Services\StudentDashboardSidebarService;
 use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -173,6 +174,17 @@ class StudentDashboardProductCoverageTest extends TestCase
         $dashboardProducts = $dashboard->viewData('accessibleProducts')->pluck('product');
         $this->assertTrue($dashboardProducts->contains('id', $matchingPaper->id));
         $this->assertFalse($dashboardProducts->contains('id', $otherLevelPaper->id));
+
+        $pastPaperSidebarSection = app(StudentDashboardSidebarService::class)
+            ->sidebarSections()
+            ->firstWhere('type', Product::TYPE_PAST_PAPER);
+        $this->assertSame(1, $pastPaperSidebarSection->count);
+        $this->assertTrue($pastPaperSidebarSection->items->contains(
+            fn (object $item) => $item->product->is($matchingPaper)
+        ));
+        $this->assertFalse($pastPaperSidebarSection->items->contains(
+            fn (object $item) => $item->product->is($otherLevelPaper)
+        ));
     }
 
     private function makeProduct(string $type, string $title, float $price = 0): Product
