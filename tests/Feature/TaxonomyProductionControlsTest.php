@@ -130,4 +130,40 @@ class TaxonomyProductionControlsTest extends TestCase
         $this->assertSame('Junior Academy', $juniorSchool['name']);
         $response->assertJsonPath('taxonomy_revision', app(TaxonomyRevisionService::class)->current());
     }
+
+    public function test_main_category_api_uses_admin_taxonomy_as_its_source_of_truth(): void
+    {
+        $level = app(TaxonomyManagementService::class)->createNode(null, [
+            'name' => 'Adult Learning',
+            'slug' => 'adult-learning',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'order' => 99,
+        ]);
+
+        $response = $this->getJson('/api/bootstrap/categories?language=en')->assertOk();
+
+        $this->assertTrue(collect($response->json('data'))->contains('slug', 'adult-learning'));
+
+        app(TaxonomyManagementService::class)->archiveNode($level);
+
+        $response = $this->getJson('/api/bootstrap/categories?language=en')->assertOk();
+
+        $this->assertFalse(collect($response->json('data'))->contains('slug', 'adult-learning'));
+    }
+
+    public function test_main_category_api_returns_the_complete_nested_taxonomy(): void
+    {
+        $response = $this->getJson('/api/bootstrap/categories?language=en')->assertOk();
+        $juniorSchool = collect($response->json('data'))->firstWhere('slug', 'junior-school');
+
+        $this->assertNotNull($juniorSchool);
+        $this->assertNull($juniorSchool['parent_id']);
+        $this->assertSame(CourseCategory::TYPE_EDUCATION_LEVEL, $juniorSchool['node_type']);
+
+        $gradeSeven = collect($juniorSchool['children'])->firstWhere('slug', 'grade-7');
+
+        $this->assertNotNull($gradeSeven);
+        $this->assertSame($juniorSchool['id'], $gradeSeven['parent_id']);
+        $this->assertTrue(collect($gradeSeven['children'])->contains('slug', 'mathematics'));
+    }
 }

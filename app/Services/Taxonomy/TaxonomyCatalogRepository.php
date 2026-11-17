@@ -118,6 +118,7 @@ class TaxonomyCatalogRepository
             $buildTree = function ($node) use (&$buildTree, $childrenByParent): array {
                 return [
                     'id' => (int) $node->id,
+                    'parent_id' => $node->parent_id ? (int) $node->parent_id : null,
                     'slug' => (string) $node->slug,
                     'label' => $this->label($node),
                     'node_type' => (string) $node->node_type,

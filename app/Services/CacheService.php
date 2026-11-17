@@ -2,24 +2,11 @@
 
 namespace App\Services;
 
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Support\Facades\Cache;
 
 class CacheService
 {
-    /**
-     * Main categories that should not appear in the topic strip menu.
-     */
-    private const HIDDEN_MAIN_CATEGORY_SLUGS = [
-        'finance',
-        'music',
-        'marketing',
-        'design',
-        'personal-developemnt',
-        'it-software',
-        'business',
-        'development',
-    ];
-
     /**
      * Stable icon keys for mobile and other API clients.
      */
@@ -88,22 +75,39 @@ class CacheService
     public function getMainCategories($languageCode = 'en', $limit = -1)
     {
         $catalogVersion = CatalogCacheClear::version();
-        $cacheKey = "main_categories_v7_{$catalogVersion}_{$languageCode}_{$limit}";
+        $cacheKey = "main_categories_v9_{$catalogVersion}_{$languageCode}_{$limit}";
         
         return Cache::remember($cacheKey, self::TTL_CATEGORIES, function () use ($languageCode, $limit) {
-            $categories = collect(app(\App\Services\MenuCacheService::class)->getCategoryLinks($languageCode))
-                ->reject(fn ($category) => in_array((string) $category['slug'], self::HIDDEN_MAIN_CATEGORY_SLUGS, true))
+            $categories = collect(app(TaxonomyCatalogRepository::class)->taxonomy($languageCode)['tree'] ?? [])
                 ->when($limit >= 0, fn ($items) => $items->take($limit))
-                ->map(fn ($category) => [
-                    'slug' => (string) $category['slug'],
-                    'name' => (string) $category['label'],
-                    'icon' => self::MAIN_CATEGORY_ICONS[(string) $category['slug']] ?? 'school',
-                    'show_at_trending' => false,
-                ])
+                ->map(fn (array $category) => $this->normalizeTaxonomyCategory($category))
                 ->values();
 
             return $categories->toArray();
         });
+    }
+
+    /**
+     * Normalize every taxonomy level to one stable recursive API shape.
+     */
+    private function normalizeTaxonomyCategory(array $category): array
+    {
+        $slug = (string) ($category['slug'] ?? '');
+
+        return [
+            'id' => isset($category['id']) ? (int) $category['id'] : null,
+            'parent_id' => isset($category['parent_id']) ? (int) $category['parent_id'] : null,
+            'slug' => $slug,
+            'name' => (string) ($category['label'] ?? $slug),
+            'node_type' => (string) ($category['node_type'] ?? ''),
+            'order' => (int) ($category['order'] ?? 0),
+            'icon' => self::MAIN_CATEGORY_ICONS[$slug] ?? 'school',
+            'show_at_trending' => false,
+            'children' => collect($category['children'] ?? [])
+                ->map(fn (array $child) => $this->normalizeTaxonomyCategory($child))
+                ->values()
+                ->all(),
+        ];
     }
 
     /**
