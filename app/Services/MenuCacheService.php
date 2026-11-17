@@ -12,7 +12,7 @@ use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v20';
+    const CACHE_VERSION = 'v21';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -271,7 +271,8 @@ class MenuCacheService
         };
 
         return collect($byParent['root'] ?? [])
-            ->filter(fn ($category) => in_array((string) $category->slug, $this->educationRootSlugs, true))
+            ->filter(fn ($category) => in_array((string) $category->slug, $this->educationRootSlugs, true)
+                || (string) $category->node_type === CourseCategory::TYPE_EDUCATION_LEVEL)
             ->sortBy(fn ($category) => $rootOrder[(string) $category->slug] ?? 999)
             ->map(function ($category) use ($buildNode, $languageCode) {
                 $node = $buildNode($category);

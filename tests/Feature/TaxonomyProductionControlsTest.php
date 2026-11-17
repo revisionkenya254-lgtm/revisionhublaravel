@@ -166,4 +166,33 @@ class TaxonomyProductionControlsTest extends TestCase
         $this->assertSame($juniorSchool['id'], $gradeSeven['parent_id']);
         $this->assertTrue(collect($gradeSeven['children'])->contains('slug', 'mathematics'));
     }
+
+    public function test_custom_education_level_slug_exposes_its_children_to_mobile_clients(): void
+    {
+        $management = app(TaxonomyManagementService::class);
+        $level = $management->createNode(null, [
+            'name' => 'CDACC Courses',
+            'slug' => 'cdacc-courses',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'order' => 99,
+        ]);
+        $management->createNode($level->id, [
+            'name' => 'Health Science Department',
+            'slug' => 'health-science-department',
+            'node_type' => CourseCategory::TYPE_GRADE,
+            'order' => 0,
+        ]);
+
+        $this->getJson('/api/bootstrap/categories?language=en')
+            ->assertOk()
+            ->assertJsonFragment(['slug' => 'cdacc-courses']);
+
+        $this->getJson('/api/catalog/categories/cdacc-courses/subcategories?language=en')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', 'health-science-department');
+
+        $this->getJson('/api/bootstrap/menu?language=en')
+            ->assertOk()
+            ->assertJsonFragment(['slug' => 'cdacc-courses']);
+    }
 }
