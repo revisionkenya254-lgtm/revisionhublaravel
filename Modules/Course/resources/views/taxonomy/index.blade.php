@@ -15,6 +15,17 @@
             </div>
 
             <div class="section-body">
+                @php
+                    $availableProfiles = collect(config('higher_education_taxonomy.profiles', []))
+                        ->filter(function ($item, $slug) use ($levels) {
+                            return $levels->contains('taxonomy_profile', $slug);
+                        });
+                @endphp
+                @if ($availableProfiles->isNotEmpty())
+                    <div class="card mb-4"><div class="card-header"><h4>{{ __('Higher Education Workspaces') }}</h4></div><div class="card-body d-flex flex-wrap" style="gap:.5rem">
+                        @foreach($availableProfiles as $slug => $item)<a class="btn btn-outline-primary" href="{{ route('admin.taxonomy.profiles.show', $slug) }}"><i class="{{ $item['icon'] }}"></i> {{ $item['label'] }}</a>@endforeach
+                    </div></div>
+                @endif
                 <div class="alert alert-info">
                     {{ __('School subjects and pathways are shared across every grade, form, and national assessment in an education level. Use the Shared Subjects action so all product builders and APIs remain uniform.') }}
                 </div>

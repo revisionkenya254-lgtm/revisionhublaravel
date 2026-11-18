@@ -18,12 +18,32 @@
                             @csrf
                             @if ($editing) @method('PUT') @endif
                             <input type="hidden" name="parent_id" value="{{ $parent?->id }}">
+                            @if ($parent)
+                                <input type="hidden" name="taxonomy_profile" value="{{ old('taxonomy_profile', $node->taxonomy_profile ?? $parent->taxonomy_profile) }}">
+                            @endif
                             <div class="row">
                                 <div class="form-group col-md-6">
                                     <label>{{ __('Name') }} *</label>
                                     <input name="name" id="taxonomy-name" class="form-control" value="{{ old('name', $node->name ?? '') }}" required>
                                     @error('name')<span class="text-danger">{{ $message }}</span>@enderror
                                 </div>
+                                @if (!$parent)
+                                    <div class="form-group col-md-6">
+                                        <label>{{ __('Taxonomy Profile') }}</label>
+                                        <select name="taxonomy_profile" class="form-control">
+                                            <option value="">{{ __('School / standard hierarchy') }}</option>
+                                            @foreach(config('higher_education_taxonomy.profiles', []) as $profileSlug => $profileConfig)
+                                                <option value="{{ $profileSlug }}" @selected(old('taxonomy_profile', $node->taxonomy_profile ?? '') === $profileSlug)>{{ $profileConfig['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                                @if (($node->node_type ?? null) === 'programme' || $parent?->node_type === 'department')
+                                    <div class="form-group col-md-6">
+                                        <label>{{ __('Qualification Level') }}</label>
+                                        <input name="taxonomy_metadata[qualification_level]" class="form-control" value="{{ old('taxonomy_metadata.qualification_level', data_get($node->taxonomy_metadata ?? [], 'qualification_level')) }}" placeholder="{{ __('e.g. Level 6') }}">
+                                    </div>
+                                @endif
                                 <div class="form-group col-md-6">
                                     <label>{{ __('Slug') }} *</label>
                                     <input name="slug" id="taxonomy-slug" class="form-control" value="{{ old('slug', $node->slug ?? '') }}" required>

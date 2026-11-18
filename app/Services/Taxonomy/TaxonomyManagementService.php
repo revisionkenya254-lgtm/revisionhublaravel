@@ -31,6 +31,16 @@ class TaxonomyManagementService
             return [CourseCategory::TYPE_EDUCATION_LEVEL];
         }
 
+        if ($parent->node_type === CourseCategory::TYPE_EDUCATION_LEVEL && $parent->taxonomy_profile) {
+            return [
+                CourseCategory::TYPE_AWARDING_BODY,
+                CourseCategory::TYPE_DEPARTMENT,
+                CourseCategory::TYPE_SCHOOL,
+                CourseCategory::TYPE_COURSE,
+                CourseCategory::TYPE_RESOURCE,
+            ];
+        }
+
         return match ($parent->node_type) {
             CourseCategory::TYPE_EDUCATION_LEVEL => [
                 CourseCategory::TYPE_GRADE,
@@ -44,6 +54,13 @@ class TaxonomyManagementService
             CourseCategory::TYPE_FORM,
             CourseCategory::TYPE_NATIONAL_EXAM => self::LEAF_TYPES,
             CourseCategory::TYPE_SCHOOL => [CourseCategory::TYPE_COURSE],
+            CourseCategory::TYPE_AWARDING_BODY => [CourseCategory::TYPE_DEPARTMENT],
+            CourseCategory::TYPE_DEPARTMENT => [CourseCategory::TYPE_PROGRAMME],
+            CourseCategory::TYPE_PROGRAMME => [
+                CourseCategory::TYPE_QUALIFICATION_LEVEL,
+                CourseCategory::TYPE_UNIT_GROUP,
+            ],
+            CourseCategory::TYPE_QUALIFICATION_LEVEL => [CourseCategory::TYPE_UNIT_GROUP],
             default => [],
         };
     }
@@ -54,6 +71,7 @@ class TaxonomyManagementService
             $parent = $parentId ? CourseCategory::lockForUpdate()->findOrFail($parentId) : null;
             $this->assertAllowedType($parent, $data['node_type']);
             $this->assertSiblingSlugAvailable($parentId, $data['slug']);
+            $data['taxonomy_profile'] ??= $parent?->taxonomy_profile;
 
             $node = $this->insertNode($parentId, $data);
 
@@ -85,6 +103,8 @@ class TaxonomyManagementService
                 'node_type' => $data['node_type'],
                 'order' => (int) $data['order'],
                 'status' => true,
+                'taxonomy_profile' => $data['taxonomy_profile'] ?? $parent?->taxonomy_profile,
+                'taxonomy_metadata' => $data['taxonomy_metadata'] ?? $node->taxonomy_metadata,
             ])->saveQuietly();
             $this->upsertTranslation($node->id, $data['name']);
             $node->setAttribute('translation_name', $data['name']);
@@ -315,6 +335,8 @@ class TaxonomyManagementService
             'node_type' => $data['node_type'],
             'order' => (int) $data['order'],
             'status' => true,
+            'taxonomy_profile' => $data['taxonomy_profile'] ?? $data['profile'] ?? null,
+            'taxonomy_metadata' => $data['taxonomy_metadata'] ?? null,
         ])->saveQuietly();
         $this->upsertTranslation($node->id, $data['name']);
 

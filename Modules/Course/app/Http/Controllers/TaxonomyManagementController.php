@@ -4,6 +4,10 @@ namespace Modules\Course\app\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\TaxonomyChangeLog;
+use App\Models\CurriculumUnit;
+use App\Models\ProgrammeUnitAssignment;
+use App\Services\Taxonomy\CurriculumUnitService;
+use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
 use App\Services\Taxonomy\TaxonomyManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,8 +17,72 @@ use Modules\Course\app\Models\CourseCategory;
 
 class TaxonomyManagementController extends Controller
 {
-    public function __construct(private readonly TaxonomyManagementService $taxonomy)
+    public function __construct(
+        private readonly TaxonomyManagementService $taxonomy,
+        private readonly CurriculumUnitService $curriculumUnits,
+        private readonly HigherEducationTaxonomyRepository $higherEducation
+    )
     {
+    }
+
+    public function profile(string $profile): View
+    {
+        $profileConfig = config("higher_education_taxonomy.profiles.{$profile}");
+        abort_unless(is_array($profileConfig), 404);
+        $tree = $this->higherEducation->profile($profile, false);
+        $root = CourseCategory::findOrFail($tree['id']);
+        $programmes = CourseCategory::with('translation')->where('taxonomy_profile', $profile)
+            ->where('node_type', CourseCategory::TYPE_PROGRAMME)->orderBy('order')->get();
+        $units = CurriculumUnit::withCount(['assignments' => fn ($query) => $query->where('status', true)])
+            ->where('awarding_body_id', $root->id)->orderBy('name')->get();
+
+        return view('course::taxonomy.profile', compact(
+            'profile', 'profileConfig', 'tree', 'root', 'programmes', 'units'
+        ));
+    }
+
+    public function storeUnit(Request $request, string $profile): RedirectResponse
+    {
+        $this->curriculumUnits->create($this->profileRoot($profile), $this->validateUnit($request));
+        return $this->profileSuccess($profile, __('Canonical unit created.'));
+    }
+
+    public function updateUnit(Request $request, string $profile, CurriculumUnit $unit): RedirectResponse
+    {
+        abort_unless($unit->awarding_body_id === $this->profileRoot($profile)->id, 404);
+        $this->curriculumUnits->update($unit, $this->validateUnit($request));
+        return $this->profileSuccess($profile, __('Canonical unit updated everywhere it is assigned.'));
+    }
+
+    public function archiveUnit(string $profile, CurriculumUnit $unit): RedirectResponse
+    {
+        abort_unless($unit->awarding_body_id === $this->profileRoot($profile)->id, 404);
+        $this->curriculumUnits->archive($unit);
+        return $this->profileSuccess($profile, __('Canonical unit archived without deleting its assignments or resources.'));
+    }
+
+    public function storeAssignment(Request $request, string $profile, CourseCategory $programme): RedirectResponse
+    {
+        abort_unless($programme->taxonomy_profile === $profile, 404);
+        $data = $request->validate([
+            'curriculum_unit_id' => ['required', 'integer', 'exists:curriculum_units,id'],
+            'group_type' => ['required', 'in:'.implode(',', ProgrammeUnitAssignment::GROUPS)],
+            'semester' => ['nullable', 'string', 'max:80'],
+            'credit_hours' => ['nullable', 'numeric', 'min:0', 'max:999'],
+            'is_mandatory' => ['nullable', 'boolean'],
+            'display_order' => ['required', 'integer', 'min:0', 'max:65535'],
+        ]);
+        $this->curriculumUnits->assign(
+            $programme, CurriculumUnit::findOrFail($data['curriculum_unit_id']), $data
+        );
+        return $this->profileSuccess($profile, __('Unit assigned to programme.'));
+    }
+
+    public function destroyAssignment(string $profile, ProgrammeUnitAssignment $assignment): RedirectResponse
+    {
+        abort_unless($assignment->programme?->taxonomy_profile === $profile, 404);
+        $this->curriculumUnits->unassign($assignment);
+        return $this->profileSuccess($profile, __('Unit removed from programme.'));
     }
 
     public function index(): View
@@ -222,6 +290,33 @@ class TaxonomyManagementController extends Controller
             'node_type' => ['required', 'string', 'in:'.implode(',', CourseCategory::NODE_TYPES)],
             'order' => ['required', 'integer', 'min:0', 'max:65535'],
             'parent_id' => ['nullable', 'integer', 'exists:course_categories,id'],
+            'taxonomy_profile' => ['nullable', 'string', 'max:40'],
+            'taxonomy_metadata' => ['nullable', 'array'],
+        ]);
+    }
+
+    private function validateUnit(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'code' => ['nullable', 'string', 'max:100'],
+            'curriculum_version' => ['required', 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:5000'],
+        ]);
+    }
+
+    private function profileRoot(string $profile): CourseCategory
+    {
+        abort_unless(array_key_exists($profile, config('higher_education_taxonomy.profiles', [])), 404);
+        return CourseCategory::whereNull('parent_id')->where('taxonomy_profile', $profile)->firstOrFail();
+    }
+
+    private function profileSuccess(string $profile, string $message): RedirectResponse
+    {
+        return redirect()->route('admin.taxonomy.profiles.show', $profile)->with([
+            'messege' => $message,
+            'alert-type' => 'success',
         ]);
     }
 

@@ -148,6 +148,11 @@ class Product extends Model
         return $this->belongsTo(CourseCategory::class, 'category_id', 'id')->withDefault();
     }
 
+    public function curriculumContexts(): HasMany
+    {
+        return $this->hasMany(ProductCurriculumContext::class);
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(ProductReview::class);

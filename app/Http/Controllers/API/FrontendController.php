@@ -23,6 +23,7 @@ use App\Models\Product;
 use App\Services\CacheService;
 use App\Services\ProductIdentityService;
 use App\Services\Taxonomy\TaxonomyCatalogRepository;
+use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
 use App\Services\Taxonomy\TaxonomyRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,18 @@ class FrontendController extends Controller {
         return response()->json([
             'status' => 'success',
             'data' => app(TaxonomyCatalogRepository::class)->taxonomy(),
+            'taxonomy_revision' => $revision,
+        ])->header('X-Taxonomy-Revision', (string) $revision);
+    }
+
+    public function higherEducationTaxonomy(string $profile): JsonResponse
+    {
+        abort_unless(array_key_exists($profile, config('higher_education_taxonomy.profiles', [])), 404);
+        $revision = $this->taxonomyRevisionService->current();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => app(HigherEducationTaxonomyRepository::class)->profile($profile),
             'taxonomy_revision' => $revision,
         ])->header('X-Taxonomy-Revision', (string) $revision);
     }

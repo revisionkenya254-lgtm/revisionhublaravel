@@ -320,6 +320,35 @@
                                     </select>
                                 </div>
 
+                                @if (!empty($curriculumOptions['units']))
+                                    <div class="paper-field paper-field--full">
+                                        <div class="paper-confirmation-box">
+                                            <strong>{{ __('Higher Education Curriculum Context') }}</strong>
+                                            <p class="paper-confirmation-box__note">{{ __('Optional. Select a canonical unit to make this resource appear beneath every applicable programme, or select a programme assignment to limit it to one programme.') }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="paper-field">
+                                        <label for="curriculum_unit_id">{{ __('Canonical Unit') }}</label>
+                                        <select id="curriculum_unit_id" name="curriculum_unit_id">
+                                            <option value="">{{ __('Not a higher-education unit resource') }}</option>
+                                            @foreach($curriculumOptions['units'] as $unitOption)
+                                                <option value="{{ $unitOption['id'] }}" @selected((string)($curriculumOptions['selected']['unit_id'] ?? '') === (string)$unitOption['id'])>{{ $unitOption['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="paper-field">
+                                        <label for="programme_unit_assignment_id">{{ __('Programme Scope') }}</label>
+                                        <select id="programme_unit_assignment_id" name="programme_unit_assignment_id">
+                                            <option value="">{{ __('Shared across every assigned programme') }}</option>
+                                            @foreach($curriculumOptions['assignments'] as $assignmentOption)
+                                                <option value="{{ $assignmentOption['id'] }}" data-unit-id="{{ $assignmentOption['unit_id'] }}" @selected((string)($curriculumOptions['selected']['assignment_id'] ?? '') === (string)$assignmentOption['id'])>{{ $assignmentOption['label'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="paper-field"><label for="assessment_series">{{ __('Assessment Series') }}</label><input id="assessment_series" name="assessment_series" value="{{ $curriculumOptions['selected']['assessment_series'] ?? '' }}" placeholder="{{ __('e.g. July or November') }}"></div>
+                                    <div class="paper-field"><label for="paper_number">{{ __('Paper Number') }}</label><input id="paper_number" name="paper_number" value="{{ $curriculumOptions['selected']['paper_number'] ?? '' }}"></div>
+                                @endif
+
                                 <div class="paper-field">
                                     <label for="class_grade">
                                         <span class="paper-field__label-text" data-label-for="class_grade">{{ $classGradeLabel }}</span>
@@ -2331,6 +2360,28 @@
             }
         }
     </style>
+@endpush
+
+@push('js')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const unit = document.getElementById('curriculum_unit_id');
+    const assignment = document.getElementById('programme_unit_assignment_id');
+    if (!unit || !assignment) return;
+    const syncAssignments = function () {
+        const selectedUnit = unit.value;
+        Array.from(assignment.options).forEach(function (option, index) {
+            if (index === 0) return;
+            option.hidden = option.dataset.unitId !== selectedUnit;
+            option.disabled = option.hidden;
+        });
+        const selected = assignment.options[assignment.selectedIndex];
+        if (selected && selected.disabled) assignment.value = '';
+    };
+    unit.addEventListener('change', syncAssignments);
+    syncAssignments();
+});
+</script>
 @endpush
 
 @push('js')

@@ -23,6 +23,11 @@ class CourseCategory extends Model {
     public const TYPE_SCHOOL = 'school';
     public const TYPE_COURSE = 'course';
     public const TYPE_RESOURCE = 'resource';
+    public const TYPE_AWARDING_BODY = 'awarding_body';
+    public const TYPE_DEPARTMENT = 'department';
+    public const TYPE_PROGRAMME = 'programme';
+    public const TYPE_QUALIFICATION_LEVEL = 'qualification_level';
+    public const TYPE_UNIT_GROUP = 'unit_group';
     public const TYPE_LEGACY = 'legacy';
 
     public const NODE_TYPES = [
@@ -35,6 +40,11 @@ class CourseCategory extends Model {
         self::TYPE_SCHOOL,
         self::TYPE_COURSE,
         self::TYPE_RESOURCE,
+        self::TYPE_AWARDING_BODY,
+        self::TYPE_DEPARTMENT,
+        self::TYPE_PROGRAMME,
+        self::TYPE_QUALIFICATION_LEVEL,
+        self::TYPE_UNIT_GROUP,
         self::TYPE_LEGACY,
     ];
 
@@ -48,12 +58,15 @@ class CourseCategory extends Model {
         'order',
         'parent_id',
         'node_type',
+        'taxonomy_profile',
+        'taxonomy_metadata',
     ];
 
     protected $casts = [
         'status' => 'boolean',
         'show_at_trending' => 'boolean',
         'order' => 'integer',
+        'taxonomy_metadata' => 'array',
     ];
 
     function scopeActive() {
@@ -107,6 +120,10 @@ class CourseCategory extends Model {
 
     public function products() {
         return $this->hasMany(Product::class, 'category_id');
+    }
+
+    public function programmeUnitAssignments(): HasMany {
+        return $this->hasMany(\App\Models\ProgrammeUnitAssignment::class, 'programme_node_id');
     }
 
     public function hasDependents(): bool {

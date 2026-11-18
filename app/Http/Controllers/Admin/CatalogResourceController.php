@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AiDocument;
 use App\Models\Product;
+use App\Models\CurriculumUnit;
+use App\Models\ProgrammeUnitAssignment;
 use App\Models\AiSetting;
 use App\Services\Ai\AiDocumentService;
 use App\Services\Ai\BunnyDocumentStorageService;
 use App\Services\ProductIdentityService;
 use App\Services\ProductMetadataCatalogService;
+use App\Services\Taxonomy\CurriculumUnitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +28,8 @@ class CatalogResourceController extends Controller
 {
     public function __construct(
         private readonly ProductMetadataCatalogService $metadataCatalog,
-        private readonly ProductIdentityService $identityService
+        private readonly ProductIdentityService $identityService,
+        private readonly CurriculumUnitService $curriculumUnits
     )
     {
     }
@@ -109,8 +113,9 @@ class CatalogResourceController extends Controller
         $educationTree = $this->buildPaperEducationTreeForForm($categories);
         $metadataOptions = $this->metadataCatalog->paperSelectionOptions();
         $paperForm = $this->resolvePaperFormDefaults(request(), $type);
+        $curriculumOptions = $this->curriculumOptions();
 
-        return view('admin.catalog-resources.form', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'paperForm', 'type', 'meta', 'metadataOptions'));
+        return view('admin.catalog-resources.form', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'paperForm', 'type', 'meta', 'metadataOptions', 'curriculumOptions'));
     }
 
     public function store(Request $request, string $type): RedirectResponse
@@ -122,7 +127,8 @@ class CatalogResourceController extends Controller
         $data['discount'] = $data['discount'] ?? 0;
         $data['metadata'] = $this->buildMetadata($request, $type);
 
-        Product::create($data);
+        $product = Product::create($data);
+        $this->syncCurriculumContext($request, $product);
 
         return redirect()->route($meta['route'] . '.index')->with([
             'messege' => __($meta['singular'] . ' created successfully'),
@@ -146,8 +152,9 @@ class CatalogResourceController extends Controller
             ->latest()
             ->first();
         $latestAiDocumentPayload = $latestAiDocument ? $this->normalizeAiDocument($latestAiDocument) : null;
+        $curriculumOptions = $this->curriculumOptions($resource);
 
-        return view('admin.catalog-resources.form', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'paperForm', 'type', 'meta', 'resource', 'metadataOptions', 'latestAiDocument', 'latestAiDocumentPayload', 'aiSettings'));
+        return view('admin.catalog-resources.form', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'paperForm', 'type', 'meta', 'resource', 'metadataOptions', 'latestAiDocument', 'latestAiDocumentPayload', 'aiSettings', 'curriculumOptions'));
     }
 
     public function update(Request $request, Product $resource, string $type): RedirectResponse
@@ -164,6 +171,7 @@ class CatalogResourceController extends Controller
         }
 
         $resource->update($data);
+        $this->syncCurriculumContext($request, $resource);
 
         return redirect()->route($meta['route'] . '.index', $request->query())->with([
             'messege' => __($meta['singular'] . ' updated successfully'),
@@ -327,6 +335,10 @@ class CatalogResourceController extends Controller
             'access_type' => ['nullable', Rule::in(['paid', 'free'])],
             'preview_pages' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'string', 'max:255'],
+            'curriculum_unit_id' => ['nullable', 'integer', 'exists:curriculum_units,id'],
+            'programme_unit_assignment_id' => ['nullable', 'integer', 'exists:programme_unit_assignments,id'],
+            'assessment_series' => ['nullable', 'string', 'max:80'],
+            'paper_number' => ['nullable', 'string', 'max:40'],
         ];
 
         if ($type === Product::TYPE_NOTE) {
@@ -336,6 +348,54 @@ class CatalogResourceController extends Controller
         }
 
         return $request->validate($rules);
+    }
+
+    private function curriculumOptions(?Product $product = null): array
+    {
+        $units = CurriculumUnit::query()->with('awardingBody.translation')->where('status', true)
+            ->orderBy('name')->get();
+        $assignments = ProgrammeUnitAssignment::query()
+            ->with(['unit', 'programme.translation'])->where('status', true)
+            ->orderBy('programme_node_id')->orderBy('group_type')->orderBy('display_order')->get();
+        $selected = $product?->curriculumContexts()->first();
+
+        return [
+            'units' => $units->map(fn (CurriculumUnit $unit) => [
+                'id' => $unit->id,
+                'label' => ($unit->awardingBody?->name ?? __('Higher Education')).' / '.$unit->name,
+            ])->all(),
+            'assignments' => $assignments->map(fn (ProgrammeUnitAssignment $assignment) => [
+                'id' => $assignment->id,
+                'unit_id' => $assignment->curriculum_unit_id,
+                'label' => ($assignment->programme?->name ?? __('Programme')).' / '.ucfirst($assignment->group_type).' / '.$assignment->unit->name,
+            ])->all(),
+            'selected' => [
+                'unit_id' => old('curriculum_unit_id', $selected?->curriculum_unit_id),
+                'assignment_id' => old('programme_unit_assignment_id', $selected?->programme_unit_assignment_id),
+                'assessment_series' => old('assessment_series', $selected?->assessment_series),
+                'paper_number' => old('paper_number', $selected?->paper_number),
+            ],
+        ];
+    }
+
+    private function syncCurriculumContext(Request $request, Product $product): void
+    {
+        if (! $request->filled('curriculum_unit_id')) {
+            $product->curriculumContexts()->delete();
+            return;
+        }
+
+        $unit = CurriculumUnit::findOrFail($request->integer('curriculum_unit_id'));
+        $product->curriculumContexts()
+            ->where('curriculum_unit_id', '!=', $unit->id)
+            ->delete();
+        $this->curriculumUnits->attachResource($product, $unit, [
+            'programme_unit_assignment_id' => $request->integer('programme_unit_assignment_id') ?: null,
+            'resource_type' => $product->type,
+            'assessment_series' => $request->input('assessment_series'),
+            'assessment_year' => $request->filled('year') ? (int) $request->input('year') : null,
+            'paper_number' => $request->input('paper_number'),
+        ]);
     }
 
     private function buildMetadata(Request $request, string $type, ?Product $existing = null): array

@@ -17,6 +17,12 @@ use Modules\Course\app\Http\Controllers\TaxonomyManagementController;
 Route::group(['middleware' => ['auth:admin', 'translation'], 'prefix' => 'admin', 'as' => 'admin.'], function () {
     Route::prefix('taxonomy')->name('taxonomy.')->controller(TaxonomyManagementController::class)->group(function () {
         Route::get('/', 'index')->name('index');
+        Route::get('/profiles/{profile}', 'profile')->name('profiles.show');
+        Route::post('/profiles/{profile}/units', 'storeUnit')->name('units.store');
+        Route::put('/profiles/{profile}/units/{unit}', 'updateUnit')->name('units.update');
+        Route::delete('/profiles/{profile}/units/{unit}', 'archiveUnit')->name('units.archive');
+        Route::post('/profiles/{profile}/programmes/{programme}/assignments', 'storeAssignment')->name('assignments.store');
+        Route::delete('/profiles/{profile}/assignments/{assignment}', 'destroyAssignment')->name('assignments.destroy');
         Route::get('/nodes/create', 'createNode')->name('nodes.create');
         Route::post('/nodes', 'storeNode')->name('nodes.store');
         Route::get('/nodes/{node}/edit', 'editNode')->name('nodes.edit');
