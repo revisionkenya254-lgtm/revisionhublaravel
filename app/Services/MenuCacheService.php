@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Product;
+use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Modules\Course\app\Models\CourseCategory;
 
 class MenuCacheService
 {
-    const CACHE_VERSION = 'v21';
+    const CACHE_VERSION = 'v22';
 
     /**
      * Cache TTL for menu data (24 hours)
@@ -194,7 +195,7 @@ class MenuCacheService
     protected function normalizeCategoryNode(array $node, array $ancestors = [], $languageCode = 'en'): array
     {
         $slug = (string) ($node['slug'] ?? '');
-        $name = (string) __((string) ($node['name'] ?? $slug));
+        $name = (string) __((string) ($node['label'] ?? $node['translation_name'] ?? $node['name'] ?? $slug));
         $rootSlug = $ancestors[0] ?? $slug;
 
         $routeParams = ['main_category' => $rootSlug];
@@ -206,10 +207,14 @@ class MenuCacheService
         }
 
         return [
+            'id' => isset($node['id']) && is_numeric($node['id']) ? (int) $node['id'] : ($node['id'] ?? null),
+            'parent_id' => isset($node['parent_id']) && is_numeric($node['parent_id']) ? (int) $node['parent_id'] : null,
             'slug' => $slug,
             'name' => $name,
             'label' => $name,
             'translation_name' => $name,
+            'node_type' => (string) ($node['node_type'] ?? ''),
+            'order' => (int) ($node['order'] ?? 0),
             'href' => route('catalog', $routeParams),
             'icon' => (string) ($node['icon'] ?? ''),
             'icon_url' => $this->resolveIconUrl($node['icon'] ?? ''),
@@ -649,15 +654,22 @@ class MenuCacheService
         $cacheKey = "menu_category_tree_".self::CACHE_VERSION."_{$languageCode}";
 
         return $this->rememberForeverWithLock($cacheKey, function () use ($languageCode) {
-            $canonicalTree = $this->categoryMenuBlueprint();
-            $databaseTree = $this->categoryMenuFromDatabase($languageCode);
-            $sourceTree = !empty($databaseTree)
-                ? $this->mergeCategoryTrees($canonicalTree, $databaseTree)
-                : $canonicalTree;
+            // Taxonomy Management is the single source of truth for every API
+            // menu and subcategory response. Do not merge the stored tree with
+            // legacy blueprints or product metadata: those can attach children
+            // from one education level (for example Diploma) to another.
+            $sourceTree = app(TaxonomyCatalogRepository::class)
+                ->taxonomy($languageCode)['tree'] ?? [];
 
-            $sourceTree = $this->removeDeprecatedCategoryNodes($sourceTree);
-            $sourceTree = $this->enforceCanonicalEducationHierarchy($sourceTree, $canonicalTree);
+            // Retain a safe bootstrap fallback for installations that have not
+            // run the database-backed taxonomy migrations yet.
+            if (empty($sourceTree)) {
+                $sourceTree = $this->categoryMenuBlueprint();
+            }
 
+            // Availability is a presentation concern, not another taxonomy
+            // source: hide empty leaf choices without inventing or reparenting
+            // any nodes from blueprints or product metadata.
             $sourceTree = $this->filterGrandchildrenWithoutContent($sourceTree, $languageCode);
 
             return collect($sourceTree)

@@ -189,10 +189,16 @@ class TaxonomyProductionControlsTest extends TestCase
 
         $this->getJson('/api/catalog/categories/cdacc-courses/subcategories?language=en')
             ->assertOk()
+            ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.slug', 'health-science-department');
 
-        $this->getJson('/api/bootstrap/menu?language=en')
-            ->assertOk()
-            ->assertJsonFragment(['slug' => 'cdacc-courses']);
+        $menu = $this->getJson('/api/bootstrap/menu?language=en')->assertOk();
+        $cdacc = collect($menu->json('data.categories'))->firstWhere('slug', 'cdacc-courses');
+
+        $this->assertNotNull($cdacc);
+        $this->assertSame(
+            ['health-science-department'],
+            collect($cdacc['children'])->pluck('slug')->all()
+        );
     }
 }
