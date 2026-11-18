@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\ProductIdentityService;
 use App\Services\ProductMetadataCatalogService;
 use App\Services\ProductQuizBuilderService;
+use App\Services\Taxonomy\ProductCurriculumContextService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Modules\Course\app\Models\CourseCategory;
@@ -17,7 +18,8 @@ class InstructorProductQuizController extends Controller
     public function __construct(
         private readonly ProductQuizBuilderService $builderService,
         private readonly ProductMetadataCatalogService $metadataCatalog,
-        private readonly ProductIdentityService $identityService
+        private readonly ProductIdentityService $identityService,
+        private readonly ProductCurriculumContextService $curriculumContexts
     )
     {
     }
@@ -54,6 +56,7 @@ class InstructorProductQuizController extends Controller
             ]),
             'metadataOptions' => $this->metadataCatalog->quizSelectionOptions(),
             'isEditing' => false,
+            'curriculumOptions' => $this->curriculumContexts->formOptions(),
         ]);
     }
 
@@ -65,6 +68,8 @@ class InstructorProductQuizController extends Controller
         if ($isDraftSave) {
             $validated['status'] = 'is_draft';
         }
+        $request->merge(['status' => $validated['status']]);
+        $this->curriculumContexts->validateRequest($request);
 
         $data = [
             'instructor_id' => userAuth()->id,
@@ -78,7 +83,7 @@ class InstructorProductQuizController extends Controller
             'status' => $validated['status'],
             'is_approved' => 'pending',
             'submission_signature' => $this->buildQuizSubmissionSignature($validated),
-            'metadata' => $this->identityService->stampMetadata([], [
+            'metadata' => $this->identityService->stampMetadata($this->curriculumContexts->metadataSnapshot($request), [
                 'type' => Product::TYPE_QUIZ,
                 'education_level' => $validated['education_level'] ?? null,
                 'class_grade' => $validated['class_grade'] ?? null,
@@ -101,6 +106,7 @@ class InstructorProductQuizController extends Controller
         }
 
         $product = Product::create($data);
+        $this->curriculumContexts->sync($request, $product);
         $this->builderService->sync($product, $validated, false);
 
         $redirect = redirect()->route('instructor.quizzes.edit', $product->id)
@@ -122,6 +128,7 @@ class InstructorProductQuizController extends Controller
             'quizFormData' => $this->builderService->formData($product),
             'metadataOptions' => $this->metadataCatalog->quizSelectionOptions(),
             'isEditing' => true,
+            'curriculumOptions' => $this->curriculumContexts->formOptions($product),
         ]);
     }
 
@@ -134,6 +141,8 @@ class InstructorProductQuizController extends Controller
         if ($isDraftSave) {
             $validated['status'] = 'is_draft';
         }
+        $request->merge(['status' => $validated['status']]);
+        $this->curriculumContexts->validateRequest($request);
 
         $data = [
             'title' => $validated['title'],
@@ -144,8 +153,11 @@ class InstructorProductQuizController extends Controller
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'is_approved' => 'pending',
+            'approval_note' => null,
+            'taxonomy_verified_at' => null,
+            'taxonomy_verified_by' => null,
             'submission_signature' => $this->buildQuizSubmissionSignature($validated),
-            'metadata' => $this->identityService->stampMetadata($product->metadata ?? [], [
+            'metadata' => $this->identityService->stampMetadata(array_merge($product->metadata ?? [], $this->curriculumContexts->metadataSnapshot($request)), [
                 'type' => Product::TYPE_QUIZ,
                 'education_level' => $validated['education_level'] ?? null,
                 'class_grade' => $validated['class_grade'] ?? null,
@@ -168,6 +180,7 @@ class InstructorProductQuizController extends Controller
         }
 
         $product->update($data);
+        $this->curriculumContexts->sync($request, $product);
         $this->builderService->sync($product, $validated, false);
 
         $redirect = redirect()->route('instructor.quizzes.edit', $product->id)

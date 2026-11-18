@@ -1905,6 +1905,8 @@
                     </div>
                 </div>
 
+                @include('partials.product-curriculum-context-fields', ['curriculumAdmin' => false])
+
                 <div class="quiz-builder-field-grid quiz-builder-field-grid--4">
                     <div class="form-grp">
                         <label for="topic">{{ __('Topic') }} <span class="text-danger">*</span></label>

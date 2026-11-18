@@ -4,6 +4,7 @@ namespace App\Services\Taxonomy;
 
 use App\Models\ProgrammeUnitAssignment;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Modules\Course\app\Models\CourseCategory;
 
 class HigherEducationTaxonomyRepository
@@ -36,44 +37,14 @@ class HigherEducationTaxonomyRepository
 
         if ($node->node_type === CourseCategory::TYPE_PROGRAMME) {
             $programmeAssignments = collect($assignments->get($node->id, collect()));
-            foreach (ProgrammeUnitAssignment::GROUPS as $group) {
-                $groupAssignments = $programmeAssignments->where('group_type', $group)->values();
-                if ($groupAssignments->isEmpty() && $publicOnly) {
-                    continue;
-                }
-                $children[] = [
-                    'id' => 'group-'.$node->id.'-'.$group,
-                    'slug' => $group.'-units',
-                    'label' => ucfirst($group).' Units',
-                    'node_type' => 'unit_group',
-                    'group_type' => $group,
-                    'children' => $groupAssignments->map(fn (ProgrammeUnitAssignment $assignment) => [
-                        'id' => 'unit-'.$assignment->unit->id,
-                        'assignment_id' => $assignment->id,
-                        'slug' => $assignment->unit->slug,
-                        'label' => $assignment->unit->name,
-                        'code' => $assignment->unit->code,
-                        'curriculum_version' => $assignment->unit->curriculum_version,
-                        'node_type' => 'unit',
-                        'shared_count' => $assignment->unit->assignments->where('status', true)->count(),
-                        'children' => $assignment->unit->resourceContexts
-                            ->whereNull('programme_unit_assignment_id')
-                            ->merge($assignment->resourceContexts)
-                            ->unique('id')
-                            ->filter(fn ($context) => ! $publicOnly || ($context->product?->status === 'active'
-                                && $context->product?->is_approved === 'approved'))
-                            ->map(fn ($context) => [
-                                'id' => 'resource-'.$context->product_id,
-                                'slug' => $context->product?->slug,
-                                'label' => $context->product?->title,
-                                'node_type' => 'resource',
-                                'resource_type' => $context->resource_type,
-                                'assessment_series' => $context->assessment_series,
-                                'assessment_year' => $context->assessment_year,
-                            ])->filter(fn ($resource) => filled($resource['slug']))->values()->all(),
-                    ])->all(),
-                ];
-            }
+            $config = config('higher_education_taxonomy.profiles.'.$node->taxonomy_profile, []);
+            $children = array_merge($children, $this->assignmentTree(
+                $node,
+                $programmeAssignments,
+                $config['period_fields'] ?? [],
+                $config['group_types'] ?? [],
+                $publicOnly
+            ));
         }
 
         return [
@@ -85,6 +56,99 @@ class HigherEducationTaxonomyRepository
             'profile' => $node->taxonomy_profile,
             'metadata' => $node->taxonomy_metadata ?? (object) [],
             'children' => $children,
+        ];
+    }
+
+    private function assignmentTree(
+        CourseCategory $programme,
+        Collection $assignments,
+        array $periodFields,
+        array $groupTypes,
+        bool $publicOnly,
+        array $path = []
+    ): array {
+        if ($periodFields !== []) {
+            $field = array_shift($periodFields);
+            $hasPeriodValues = $assignments->contains(fn (ProgrammeUnitAssignment $assignment) => filled($assignment->{$field}));
+            if ($hasPeriodValues) {
+                return $assignments
+                    ->groupBy(fn (ProgrammeUnitAssignment $assignment) => filled($assignment->{$field})
+                        ? (string) $assignment->{$field}
+                        : 'Unspecified')
+                    ->map(function (Collection $periodAssignments, string $value) use (
+                        $programme, $periodFields, $groupTypes, $publicOnly, $path, $field
+                    ) {
+                        $periodPath = [...$path, $field.'-'.$value];
+                        return [
+                            'id' => 'period-'.$programme->id.'-'.Str::slug(implode('-', $periodPath)),
+                            'slug' => Str::slug($value),
+                            'label' => $value,
+                            'node_type' => 'study_period',
+                            'period_type' => $field,
+                            'children' => $this->assignmentTree(
+                                $programme,
+                                $periodAssignments,
+                                $periodFields,
+                                $groupTypes,
+                                $publicOnly,
+                                $periodPath
+                            ),
+                        ];
+                    })->values()->all();
+            }
+
+            return $this->assignmentTree(
+                $programme, $assignments, $periodFields, $groupTypes, $publicOnly, $path
+            );
+        }
+
+        $groups = [];
+        foreach ($groupTypes as $group => $label) {
+            $groupAssignments = $assignments->where('group_type', $group)->values();
+            if ($groupAssignments->isEmpty() && $publicOnly) {
+                continue;
+            }
+            $groups[] = [
+                'id' => 'group-'.$programme->id.'-'.Str::slug(implode('-', [...$path, $group])),
+                'slug' => Str::slug($label),
+                'label' => $label,
+                'node_type' => 'unit_group',
+                'group_type' => $group,
+                'children' => $groupAssignments->map(
+                    fn (ProgrammeUnitAssignment $assignment) => $this->unitNode($assignment, $publicOnly)
+                )->all(),
+            ];
+        }
+
+        return $groups;
+    }
+
+    private function unitNode(ProgrammeUnitAssignment $assignment, bool $publicOnly): array
+    {
+        return [
+            'id' => 'unit-'.$assignment->unit->id,
+            'assignment_id' => $assignment->id,
+            'slug' => $assignment->unit->slug,
+            'label' => $assignment->unit->name,
+            'code' => $assignment->unit->code,
+            'curriculum_version' => $assignment->unit->curriculum_version,
+            'node_type' => 'unit',
+            'shared_count' => $assignment->unit->assignments->where('status', true)->count(),
+            'children' => $assignment->unit->resourceContexts
+                ->whereNull('programme_unit_assignment_id')
+                ->merge($assignment->resourceContexts)
+                ->unique('id')
+                ->filter(fn ($context) => ! $publicOnly || ($context->product?->status === 'active'
+                    && $context->product?->is_approved === 'approved'))
+                ->map(fn ($context) => [
+                    'id' => 'resource-'.$context->product_id,
+                    'slug' => $context->product?->slug,
+                    'label' => $context->product?->title,
+                    'node_type' => 'resource',
+                    'resource_type' => $context->resource_type,
+                    'assessment_series' => $context->assessment_series,
+                    'assessment_year' => $context->assessment_year,
+                ])->filter(fn ($resource) => filled($resource['slug']))->values()->all(),
         ];
     }
 }

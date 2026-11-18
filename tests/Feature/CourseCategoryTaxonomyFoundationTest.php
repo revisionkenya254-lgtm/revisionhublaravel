@@ -51,6 +51,11 @@ class CourseCategoryTaxonomyFoundationTest extends TestCase
             'school',
             'course',
             'resource',
+            'awarding_body',
+            'department',
+            'programme',
+            'qualification_level',
+            'unit_group',
             'legacy',
         ], CourseCategory::NODE_TYPES);
     }

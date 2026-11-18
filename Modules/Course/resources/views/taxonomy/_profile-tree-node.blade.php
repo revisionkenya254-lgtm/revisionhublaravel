@@ -6,6 +6,7 @@
         'department' => 'badge-success',
         'programme' => 'badge-primary',
         'unit_group' => 'badge-info',
+        'study_period' => 'badge-secondary',
         'unit' => 'badge-warning',
         default => 'badge-light',
     };

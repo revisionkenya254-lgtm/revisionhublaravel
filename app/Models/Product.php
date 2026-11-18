@@ -47,6 +47,9 @@ class Product extends Model
         'discount',
         'status',
         'is_approved',
+        'approval_note',
+        'taxonomy_verified_at',
+        'taxonomy_verified_by',
         'metadata',
         'file_path',
         'file_type',
@@ -54,6 +57,7 @@ class Product extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'taxonomy_verified_at' => 'datetime',
     ];
 
     public function scopeActive($query)

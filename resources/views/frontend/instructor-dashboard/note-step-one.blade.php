@@ -197,6 +197,8 @@
                     @enderror
                 </div>
 
+                @include('partials.product-curriculum-context-fields', ['curriculumAdmin' => false])
+
                 <div class="note-field-grid note-field-grid--3">
                     <div class="note-field">
                         <label for="education_level">{{ __('Education Level') }} <span>*</span></label>

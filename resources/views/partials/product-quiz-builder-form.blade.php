@@ -88,6 +88,10 @@
                             </div>
                         </div>
 
+                        <div class="col-12">
+                            @include('partials.product-curriculum-context-fields', ['curriculumAdmin' => true])
+                        </div>
+
                         <div class="col-md-6">
                             <div class="form-grp">
                                 <label for="difficulty">{{ __('Difficulty') }} <span class="text-danger">*</span></label>
@@ -223,6 +227,11 @@
                                     <option value="{{ $value }}" @selected(old('is_approved', $product->is_approved ?? 'approved') === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="form-grp">
+                            <label for="approval_note">{{ __('Approval / Rejection Note') }}</label>
+                            <textarea id="approval_note" name="approval_note" class="form-control" rows="3" placeholder="{{ __('Required when rejecting.') }}">{{ old('approval_note', $product->approval_note) }}</textarea>
+                            @error('approval_note')<span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                     @elseif (!empty($isEditing))
                         <div class="alert alert-info mt-3">

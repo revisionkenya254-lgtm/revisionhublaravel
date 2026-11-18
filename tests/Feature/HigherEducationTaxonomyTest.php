@@ -8,6 +8,9 @@ use App\Models\Product;
 use App\Models\ProgrammeUnitAssignment;
 use App\Services\Taxonomy\CurriculumUnitService;
 use App\Services\Taxonomy\TaxonomyManagementService;
+use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
+use App\Services\Taxonomy\ProductCurriculumContextService;
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -128,5 +131,238 @@ class HigherEducationTaxonomyTest extends TestCase
             ->expectsOutputToContain('Dry run only')
             ->assertSuccessful();
         $this->assertSame($before, CurriculumUnit::count());
+    }
+
+    public function test_each_upper_profile_projects_its_own_periods_and_unit_groups(): void
+    {
+        $definitions = [
+            'certificate' => [
+                'group_type' => 'common',
+                'periods' => ['module' => 'Module 1', 'semester' => 'Semester 1'],
+                'expected' => ['Module 1', 'Semester 1', 'Common Units'],
+            ],
+            'diploma' => [
+                'group_type' => 'major',
+                'periods' => ['study_year' => 'Year 1', 'semester' => 'Semester 1'],
+                'expected' => ['Year 1', 'Semester 1', 'Major Units'],
+            ],
+            'undergraduate' => [
+                'group_type' => 'university_common',
+                'periods' => ['study_year' => 'Year 1', 'semester' => 'Semester 1'],
+                'expected' => ['Year 1', 'Semester 1', 'University Common Units'],
+            ],
+            'professional' => [
+                'group_type' => 'paper',
+                'periods' => ['stage' => 'Intermediate Level', 'section' => 'Section 2'],
+                'expected' => ['Intermediate Level', 'Section 2', 'Papers'],
+            ],
+        ];
+
+        foreach ($definitions as $profile => $definition) {
+            $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', $profile)->firstOrFail();
+            $owner = app(TaxonomyManagementService::class)->createNode($root->id, [
+                'name' => ucfirst($profile).' Owner',
+                'slug' => $profile.'-owner',
+                'node_type' => CourseCategory::TYPE_AWARDING_BODY,
+                'order' => 90,
+            ]);
+            $department = app(TaxonomyManagementService::class)->createNode($owner->id, [
+                'name' => ucfirst($profile).' Department',
+                'slug' => $profile.'-department',
+                'node_type' => CourseCategory::TYPE_DEPARTMENT,
+                'order' => 0,
+            ]);
+            $programme = app(TaxonomyManagementService::class)->createNode($department->id, [
+                'name' => ucfirst($profile).' Programme',
+                'slug' => $profile.'-programme',
+                'node_type' => CourseCategory::TYPE_PROGRAMME,
+                'order' => 0,
+            ]);
+            $unit = app(CurriculumUnitService::class)->create($owner, [
+                'name' => ucfirst($profile).' Shared Unit',
+                'slug' => $profile.'-shared-unit',
+                'curriculum_version' => '2026',
+            ]);
+            app(CurriculumUnitService::class)->assign($programme, $unit, array_merge(
+                ['group_type' => $definition['group_type']],
+                $definition['periods']
+            ));
+
+            $tree = json_encode(app(HigherEducationTaxonomyRepository::class)->profile($profile));
+            foreach ($definition['expected'] as $expected) {
+                $this->assertStringContainsString($expected, $tree, $profile.' projection missing '.$expected);
+            }
+        }
+    }
+
+    public function test_institution_owned_unit_cannot_be_assigned_to_another_institution(): void
+    {
+        $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', 'diploma')->firstOrFail();
+        $management = app(TaxonomyManagementService::class);
+        $ownerA = $management->createNode($root->id, ['name' => 'Institution A', 'slug' => 'institution-a', 'node_type' => CourseCategory::TYPE_AWARDING_BODY, 'order' => 90]);
+        $ownerB = $management->createNode($root->id, ['name' => 'Institution B', 'slug' => 'institution-b', 'node_type' => CourseCategory::TYPE_AWARDING_BODY, 'order' => 91]);
+        $department = $management->createNode($ownerB->id, ['name' => 'Engineering', 'slug' => 'institution-b-engineering', 'node_type' => CourseCategory::TYPE_DEPARTMENT, 'order' => 0]);
+        $programme = $management->createNode($department->id, ['name' => 'Diploma Programme', 'slug' => 'institution-b-diploma', 'node_type' => CourseCategory::TYPE_PROGRAMME, 'order' => 0]);
+        $unit = app(CurriculumUnitService::class)->create($ownerA, ['name' => 'Institution A Unit', 'slug' => 'institution-a-unit', 'curriculum_version' => '2026']);
+
+        $this->expectException(ValidationException::class);
+        app(CurriculumUnitService::class)->assign($programme, $unit, ['group_type' => 'major']);
+    }
+
+    public function test_admin_can_open_every_upper_education_workspace(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Upper Education Admin',
+            'email' => 'upper-education@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $expected = [
+            'certificate' => 'Certificate Curriculum',
+            'diploma' => 'Diploma Curriculum',
+            'undergraduate' => 'Undergraduate Curriculum',
+            'professional' => 'Professional Curriculum',
+        ];
+
+        foreach ($expected as $profile => $heading) {
+            $this->actingAs($admin, 'admin')
+                ->get('/admin/taxonomy/profiles/'.$profile)
+                ->assertOk()
+                ->assertSee($heading)
+                ->assertSee('Profile architecture');
+        }
+    }
+
+    public function test_product_forms_receive_every_upper_education_architecture(): void
+    {
+        $options = app(ProductCurriculumContextService::class)->formOptions();
+
+        $this->assertEqualsCanonicalizing(
+            ['cdacc', 'tvet', 'certificate', 'diploma', 'undergraduate', 'professional'],
+            collect($options['profiles'])->pluck('key')->all()
+        );
+        $this->assertTrue(collect($options['assignments'])->contains(
+            fn (array $assignment) => $assignment['profile'] === 'cdacc'
+                && str_contains($assignment['label'], 'Agricultural Engineering')
+        ));
+    }
+
+    public function test_active_instructor_product_requires_a_programme_unit_for_upper_education(): void
+    {
+        $request = Request::create('/', 'POST', [
+            'status' => 'active',
+            'education_level' => 'CDACC',
+            'curriculum_profile' => 'cdacc',
+        ]);
+
+        $this->expectException(ValidationException::class);
+        app(ProductCurriculumContextService::class)->validateRequest($request);
+    }
+
+    public function test_product_context_sync_uses_stable_assignment_and_unit_ids(): void
+    {
+        $assignment = ProgrammeUnitAssignment::query()
+            ->whereHas('programme', fn ($query) => $query->where('taxonomy_profile', 'cdacc'))
+            ->with('unit')->firstOrFail();
+        $product = Product::create([
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'July 2026 Renewable Energy Paper',
+            'slug' => 'july-2026-renewable-energy-paper',
+            'price' => 0,
+            'status' => 'active',
+            'is_approved' => 'pending',
+        ]);
+        $request = Request::create('/', 'POST', [
+            'status' => 'active',
+            'curriculum_profile' => 'cdacc',
+            'programme_unit_assignment_id' => $assignment->id,
+            'assessment_series' => 'July',
+            'year' => '2026',
+        ]);
+
+        $service = app(ProductCurriculumContextService::class);
+        $service->validateRequest($request);
+        $service->sync($request, $product);
+
+        $this->assertDatabaseHas('product_curriculum_contexts', [
+            'product_id' => $product->id,
+            'curriculum_unit_id' => $assignment->curriculum_unit_id,
+            'programme_unit_assignment_id' => $assignment->id,
+            'assessment_series' => 'July',
+            'assessment_year' => 2026,
+        ]);
+        $this->assertSame('cdacc', data_get($service->metadataSnapshot($request), 'curriculum_context.profile'));
+    }
+
+    public function test_upper_education_product_without_context_is_not_approval_ready(): void
+    {
+        $product = Product::create([
+            'type' => Product::TYPE_NOTE,
+            'title' => 'Unclassified Diploma Note',
+            'slug' => 'unclassified-diploma-note',
+            'price' => 0,
+            'status' => 'active',
+            'is_approved' => 'pending',
+            'metadata' => ['education_level' => 'Diploma'],
+        ]);
+
+        $this->assertNotEmpty(app(ProductCurriculumContextService::class)->approvalIssues($product));
+    }
+
+    public function test_admin_cannot_approve_unclassified_upper_education_product(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Approval Admin',
+            'email' => 'approval-admin@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $product = Product::create([
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'Unclassified CDACC Paper',
+            'slug' => 'unclassified-cdacc-paper',
+            'price' => 0,
+            'status' => 'active',
+            'is_approved' => 'pending',
+            'metadata' => ['education_level' => 'CDACC'],
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put(route('admin.past-papers.status-update', $product), ['is_approved' => 'approved'])
+            ->assertSessionHasErrors('is_approved');
+
+        $this->assertSame('pending', $product->fresh()->is_approved);
+    }
+
+    public function test_admin_approval_records_taxonomy_verification_for_classified_product(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Taxonomy Verifier',
+            'email' => 'taxonomy-verifier@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $assignment = ProgrammeUnitAssignment::query()
+            ->whereHas('programme', fn ($query) => $query->where('taxonomy_profile', 'cdacc'))
+            ->with('unit')->firstOrFail();
+        $product = Product::create([
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'Classified CDACC Paper',
+            'slug' => 'classified-cdacc-paper',
+            'price' => 0,
+            'status' => 'active',
+            'is_approved' => 'pending',
+            'metadata' => ['education_level' => 'CDACC'],
+        ]);
+        app(CurriculumUnitService::class)->attachResource($product, $assignment->unit, [
+            'programme_unit_assignment_id' => $assignment->id,
+            'resource_type' => Product::TYPE_PAST_PAPER,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put(route('admin.past-papers.status-update', $product), ['is_approved' => 'approved'])
+            ->assertRedirect(route('admin.past-papers.index'));
+
+        $product->refresh();
+        $this->assertSame('approved', $product->is_approved);
+        $this->assertSame($admin->id, $product->taxonomy_verified_by);
+        $this->assertNotNull($product->taxonomy_verified_at);
     }
 }

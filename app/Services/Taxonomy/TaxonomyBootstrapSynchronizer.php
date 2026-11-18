@@ -70,7 +70,7 @@ class TaxonomyBootstrapSynchronizer
         $nodes = DB::table('course_categories')
             ->whereNull('deleted_at')
             ->orderBy('id')
-            ->get(['id', 'slug', 'parent_id', 'node_type'])
+            ->get(['id', 'slug', 'parent_id', 'node_type', 'taxonomy_profile'])
             ->keyBy('id');
 
         foreach ($nodes as $node) {
@@ -96,6 +96,16 @@ class TaxonomyBootstrapSynchronizer
     {
         if ($node->parent_id === null) {
             return CourseCategory::TYPE_EDUCATION_LEVEL;
+        }
+
+        if (filled($node->taxonomy_profile ?? null) && in_array($node->node_type, [
+            CourseCategory::TYPE_AWARDING_BODY,
+            CourseCategory::TYPE_DEPARTMENT,
+            CourseCategory::TYPE_PROGRAMME,
+            CourseCategory::TYPE_QUALIFICATION_LEVEL,
+            CourseCategory::TYPE_UNIT_GROUP,
+        ], true)) {
+            return $node->node_type;
         }
 
         $slug = strtolower((string) $node->slug);

@@ -10,6 +10,7 @@ use App\Services\Ai\BunnyDocumentStorageService;
 use App\Services\ProductIdentityService;
 use App\Services\ProductMetadataCatalogService;
 use App\Services\ProductNoteService;
+use App\Services\Taxonomy\ProductCurriculumContextService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +28,8 @@ class InstructorProductController extends Controller
         private readonly AiDocumentService $aiDocumentService,
         private readonly BunnyDocumentStorageService $storageService,
         private readonly ProductMetadataCatalogService $metadataCatalog,
-        private readonly ProductIdentityService $identityService
+        private readonly ProductIdentityService $identityService,
+        private readonly ProductCurriculumContextService $curriculumContexts
     )
     {
     }
@@ -117,6 +119,7 @@ class InstructorProductController extends Controller
         $productTypes = $this->getInstructorProductTypes();
         $metadataOptions = $this->metadataCatalog->paperSelectionOptions();
         $currentStep = (int) $request->input('step', 1);
+        $curriculumOptions = $this->curriculumContexts->formOptions();
 
         // Pre-select the current type from the URL or the filtered product page the instructor came from.
         $selectedType = $this->resolveSelectedType($request);
@@ -138,16 +141,16 @@ class InstructorProductController extends Controller
                 return $this->createNoteReviewView();
             }
 
-            return $this->createNoteView($categories, $educationCategories, $paperEducationCategories, $educationTree, $metadataOptions);
+            return $this->createNoteView($categories, $educationCategories, $paperEducationCategories, $educationTree, $metadataOptions, $curriculumOptions);
         }
 
         if ($selectedType === Product::TYPE_QUIZ) {
-            return $this->createQuizView();
+            return $this->createQuizView($curriculumOptions);
         }
 
         $paperForm = $this->resolvePaperFormDefaults($request, $selectedType);
 
-        return view('frontend.instructor-dashboard.product.create', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'productTypes', 'selectedType', 'paperForm', 'metadataOptions'));
+        return view('frontend.instructor-dashboard.product.create', compact('categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'productTypes', 'selectedType', 'paperForm', 'metadataOptions', 'curriculumOptions'));
     }
 
     /**
@@ -156,6 +159,7 @@ class InstructorProductController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateProduct($request);
+        $this->curriculumContexts->validateRequest($request);
         $notePayload = null;
         $resourceUpload = null;
 
@@ -184,6 +188,7 @@ class InstructorProductController extends Controller
         }
 
         $product = $this->createProductWithSlugRetry($data, $validated['title']);
+        $this->curriculumContexts->sync($request, $product);
 
         if ($request->hasFile('resource_file')) {
             $resourceUpload = $this->storeProductResourceFile(
@@ -233,8 +238,9 @@ class InstructorProductController extends Controller
         $metadataOptions = $this->metadataCatalog->paperSelectionOptions();
 
         $paperForm = $this->productToPaperForm($product);
+        $curriculumOptions = $this->curriculumContexts->formOptions($product);
 
-        return view('frontend.instructor-dashboard.product.edit', compact('product', 'categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'productTypes', 'paperForm', 'metadataOptions'));
+        return view('frontend.instructor-dashboard.product.edit', compact('product', 'categories', 'educationCategories', 'paperEducationCategories', 'educationTree', 'productTypes', 'paperForm', 'metadataOptions', 'curriculumOptions'));
     }
 
     /**
@@ -248,6 +254,7 @@ class InstructorProductController extends Controller
         $resourceUpload = null;
 
         $validated = $this->validateProduct($request);
+        $this->curriculumContexts->validateRequest($request);
 
         $data = $validated;
         $data['slug'] = generateUniqueSlug(Product::class, $validated['title'], $product->id);
@@ -258,6 +265,9 @@ class InstructorProductController extends Controller
 
         // Reset approval status to pending on meaningful changes
         $data['is_approved'] = 'pending';
+        $data['approval_note'] = null;
+        $data['taxonomy_verified_at'] = null;
+        $data['taxonomy_verified_by'] = null;
 
         if ($existingSubmission = $this->findDuplicateSubmission(userAuth()->id, $validated['type'], $data['submission_signature'], $product->id)) {
             return $this->redirectForDuplicateSubmission($existingSubmission)
@@ -265,6 +275,7 @@ class InstructorProductController extends Controller
         }
 
         $this->updateProductWithSlugRetry($product, $data, $validated['title']);
+        $this->curriculumContexts->sync($request, $product);
 
         if ($request->hasFile('resource_file')) {
             $resourceUpload = $this->storeProductResourceFile(
@@ -402,7 +413,7 @@ class InstructorProductController extends Controller
         return $payload;
     }
 
-    private function createNoteView($categories, $educationCategories, $paperEducationCategories, $educationTree, array $metadataOptions): View
+    private function createNoteView($categories, $educationCategories, $paperEducationCategories, $educationTree, array $metadataOptions, array $curriculumOptions): View
     {
         $wizardState = $this->buildNoteWizardState();
         $defaults = $wizardState['note'];
@@ -423,6 +434,7 @@ class InstructorProductController extends Controller
             'metadataOptions' => $metadataOptions,
             'wizardState' => $wizardState,
             'isEditing' => false,
+            'curriculumOptions' => $curriculumOptions,
         ]);
     }
 
@@ -606,7 +618,7 @@ class InstructorProductController extends Controller
         ];
     }
 
-    private function createQuizView(): View
+    private function createQuizView(array $curriculumOptions): View
     {
         $quizFormData = $this->metadataCatalog->quizDefaults('short');
 
@@ -622,6 +634,7 @@ class InstructorProductController extends Controller
             'quizFormData' => $quizFormData,
             'metadataOptions' => $this->metadataCatalog->quizSelectionOptions(),
             'isEditing' => false,
+            'curriculumOptions' => $curriculumOptions,
         ]);
     }
 
@@ -763,6 +776,11 @@ class InstructorProductController extends Controller
             'tags' => ['nullable', 'string', 'max:255'],
             'access_type' => ['nullable', 'in:paid,free'],
             'preview_pages' => ['nullable', 'string', 'max:255'],
+            'curriculum_profile' => ['nullable', 'string', 'max:40'],
+            'curriculum_unit_id' => ['nullable', 'integer', 'exists:curriculum_units,id'],
+            'programme_unit_assignment_id' => ['nullable', 'integer', 'exists:programme_unit_assignments,id'],
+            'assessment_series' => ['nullable', 'string', 'max:80'],
+            'paper_number' => ['nullable', 'string', 'max:40'],
         ], [
             'resource_file.mimes' => __('Unsupported file type. Please upload PDF, DOC, or DOCX.'),
             'resource_file.max' => __('The uploaded file is too large. Maximum size is 50MB.'),
@@ -1053,6 +1071,8 @@ class InstructorProductController extends Controller
             'note_visibility' => $request->input('note_visibility', $request->input('visibility', 'draft')),
             $subjectKey => $subjectValue,
         ], fn ($value) => $value !== null && $value !== '');
+
+        $metadata = array_merge($metadata, $this->curriculumContexts->metadataSnapshot($request));
 
         return $this->identityService->stampMetadata($metadata, [
             'type' => $productType,

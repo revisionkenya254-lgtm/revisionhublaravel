@@ -217,6 +217,8 @@
                 </div>
             </div>
 
+            @include('partials.product-curriculum-context-fields', ['curriculumAdmin' => false])
+
             <div class="paper-field-grid paper-field-grid--2">
                 <div class="paper-field">
                     <label for="exam_category">{{ __('Exam Category') }}</label>

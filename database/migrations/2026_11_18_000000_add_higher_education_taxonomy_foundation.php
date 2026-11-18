@@ -37,7 +37,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('programme_node_id')->constrained('course_categories')->cascadeOnDelete();
             $table->foreignId('curriculum_unit_id')->constrained('curriculum_units')->cascadeOnDelete();
-            $table->enum('group_type', ['common', 'major', 'elective'])->default('major');
+            $table->string('group_type', 40)->default('major');
             $table->string('semester', 80)->nullable();
             $table->decimal('credit_hours', 5, 2)->nullable();
             $table->boolean('is_mandatory')->default(true);

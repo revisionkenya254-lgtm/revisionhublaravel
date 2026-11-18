@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\ProductIdentityService;
 use App\Services\ProductMetadataCatalogService;
 use App\Services\ProductQuizBuilderService;
+use App\Services\Taxonomy\ProductCurriculumContextService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,7 +20,8 @@ class ProductQuizController extends Controller
     public function __construct(
         private readonly ProductQuizBuilderService $builderService,
         private readonly ProductMetadataCatalogService $metadataCatalog,
-        private readonly ProductIdentityService $identityService
+        private readonly ProductIdentityService $identityService,
+        private readonly ProductCurriculumContextService $curriculumContexts
     )
     {
     }
@@ -77,12 +79,14 @@ class ProductQuizController extends Controller
             'metadataOptions' => $this->metadataCatalog->quizSelectionOptions(),
             'isEditing' => false,
             'showReviewSnapshot' => true,
+            'curriculumOptions' => $this->curriculumContexts->formOptions(),
         ]);
     }
 
     public function store(ProductQuizUpsertRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $this->curriculumContexts->validateRequest($request, true);
 
         $data = [
             'type' => Product::TYPE_QUIZ,
@@ -94,7 +98,8 @@ class ProductQuizController extends Controller
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'is_approved' => $request->input('is_approved', 'approved'),
-            'metadata' => $this->identityService->stampMetadata([], [
+            'approval_note' => $validated['approval_note'] ?? null,
+            'metadata' => $this->identityService->stampMetadata($this->curriculumContexts->metadataSnapshot($request), [
                 'type' => Product::TYPE_QUIZ,
                 'education_level' => $validated['education_level'] ?? null,
                 'class_grade' => $validated['class_grade'] ?? null,
@@ -110,6 +115,8 @@ class ProductQuizController extends Controller
         }
 
         $product = Product::create($data);
+        $this->curriculumContexts->sync($request, $product, true);
+        $this->stampTaxonomyVerification($product, $data['is_approved']);
         $this->builderService->sync($product, $validated, $data['is_approved'] === 'approved');
 
         return redirect()->route('admin.quizzes.edit', $product->id)
@@ -131,6 +138,7 @@ class ProductQuizController extends Controller
             'metadataOptions' => $this->metadataCatalog->quizSelectionOptions(),
             'isEditing' => true,
             'showReviewSnapshot' => true,
+            'curriculumOptions' => $this->curriculumContexts->formOptions($resource),
         ]);
     }
 
@@ -138,6 +146,7 @@ class ProductQuizController extends Controller
     {
         $this->ensureQuiz($resource);
         $validated = $request->validated();
+        $this->curriculumContexts->validateRequest($request, true);
 
         $data = [
             'title' => $validated['title'],
@@ -148,7 +157,8 @@ class ProductQuizController extends Controller
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'is_approved' => $request->input('is_approved', $resource->is_approved),
-            'metadata' => $this->identityService->stampMetadata($resource->metadata ?? [], [
+            'approval_note' => $validated['approval_note'] ?? $resource->approval_note,
+            'metadata' => $this->identityService->stampMetadata(array_merge($resource->metadata ?? [], $this->curriculumContexts->metadataSnapshot($request)), [
                 'type' => Product::TYPE_QUIZ,
                 'education_level' => $validated['education_level'] ?? null,
                 'class_grade' => $validated['class_grade'] ?? null,
@@ -164,6 +174,8 @@ class ProductQuizController extends Controller
         }
 
         $resource->update($data);
+        $this->curriculumContexts->sync($request, $resource, true);
+        $this->stampTaxonomyVerification($resource, $data['is_approved']);
         $this->builderService->sync($resource, $validated, $data['is_approved'] === 'approved');
 
         return redirect()->route('admin.quizzes.edit', $resource->id)->with([
@@ -188,15 +200,24 @@ class ProductQuizController extends Controller
         $this->ensureQuiz($resource);
         $request->validate([
             'is_approved' => ['required', Rule::in(['pending', 'approved', 'rejected'])],
+            'approval_note' => ['nullable', 'required_if:is_approved,rejected', 'string', 'max:2000'],
         ]);
 
         if ($request->is_approved === 'approved') {
+            $issues = $this->curriculumContexts->approvalIssues($resource);
+            if ($issues !== []) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['is_approved' => $issues]);
+            }
             $resource->load('quiz.questions.options');
             abort_unless($resource->quiz, 422);
             $this->builderService->ensurePublishable($resource, $resource->quiz);
         }
 
-        $resource->update(['is_approved' => $request->is_approved]);
+        $resource->update([
+            'is_approved' => $request->is_approved,
+            'approval_note' => $request->input('approval_note'),
+        ]);
+        $this->stampTaxonomyVerification($resource, $request->is_approved);
 
         return redirect()->route('admin.quizzes.index')->with([
             'messege' => __('Approval status updated successfully'),
@@ -207,5 +228,13 @@ class ProductQuizController extends Controller
     private function ensureQuiz(Product $resource): void
     {
         abort_unless($resource->type === Product::TYPE_QUIZ, 404);
+    }
+
+    private function stampTaxonomyVerification(Product $product, string $status): void
+    {
+        $product->update([
+            'taxonomy_verified_at' => $status === 'approved' ? now() : null,
+            'taxonomy_verified_by' => $status === 'approved' ? auth('admin')->id() : null,
+        ]);
     }
 }

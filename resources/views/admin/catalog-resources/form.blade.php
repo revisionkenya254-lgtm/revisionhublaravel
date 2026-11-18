@@ -320,34 +320,7 @@
                                     </select>
                                 </div>
 
-                                @if (!empty($curriculumOptions['units']))
-                                    <div class="paper-field paper-field--full">
-                                        <div class="paper-confirmation-box">
-                                            <strong>{{ __('Higher Education Curriculum Context') }}</strong>
-                                            <p class="paper-confirmation-box__note">{{ __('Optional. Select a canonical unit to make this resource appear beneath every applicable programme, or select a programme assignment to limit it to one programme.') }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="paper-field">
-                                        <label for="curriculum_unit_id">{{ __('Canonical Unit') }}</label>
-                                        <select id="curriculum_unit_id" name="curriculum_unit_id">
-                                            <option value="">{{ __('Not a higher-education unit resource') }}</option>
-                                            @foreach($curriculumOptions['units'] as $unitOption)
-                                                <option value="{{ $unitOption['id'] }}" @selected((string)($curriculumOptions['selected']['unit_id'] ?? '') === (string)$unitOption['id'])>{{ $unitOption['label'] }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="paper-field">
-                                        <label for="programme_unit_assignment_id">{{ __('Programme Scope') }}</label>
-                                        <select id="programme_unit_assignment_id" name="programme_unit_assignment_id">
-                                            <option value="">{{ __('Shared across every assigned programme') }}</option>
-                                            @foreach($curriculumOptions['assignments'] as $assignmentOption)
-                                                <option value="{{ $assignmentOption['id'] }}" data-unit-id="{{ $assignmentOption['unit_id'] }}" @selected((string)($curriculumOptions['selected']['assignment_id'] ?? '') === (string)$assignmentOption['id'])>{{ $assignmentOption['label'] }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="paper-field"><label for="assessment_series">{{ __('Assessment Series') }}</label><input id="assessment_series" name="assessment_series" value="{{ $curriculumOptions['selected']['assessment_series'] ?? '' }}" placeholder="{{ __('e.g. July or November') }}"></div>
-                                    <div class="paper-field"><label for="paper_number">{{ __('Paper Number') }}</label><input id="paper_number" name="paper_number" value="{{ $curriculumOptions['selected']['paper_number'] ?? '' }}"></div>
-                                @endif
+                                @include('partials.product-curriculum-context-fields', ['curriculumAdmin' => true])
 
                                 <div class="paper-field">
                                     <label for="class_grade">
@@ -466,6 +439,15 @@
                                         <option value="approved" @selected(old('is_approved', $resource?->is_approved ?? 'pending') === 'approved')>{{ __('Approved') }}</option>
                                         <option value="rejected" @selected(old('is_approved', $resource?->is_approved ?? 'pending') === 'rejected')>{{ __('Rejected') }}</option>
                                     </select>
+                                </div>
+
+                                <div class="paper-field paper-field--full">
+                                    <label for="approval_note">{{ __('Approval / Rejection Note') }}</label>
+                                    <textarea id="approval_note" name="approval_note" rows="3" placeholder="{{ __('Required when rejecting; optional review note otherwise.') }}">{{ old('approval_note', $resource?->approval_note) }}</textarea>
+                                    @error('approval_note')<small class="paper-error">{{ $message }}</small>@enderror
+                                    @if ($resource?->taxonomy_verified_at)
+                                        <small class="text-muted">{{ __('Taxonomy verified :date', ['date' => $resource->taxonomy_verified_at->format('Y-m-d H:i')]) }}</small>
+                                    @endif
                                 </div>
 
                                 <div class="paper-field paper-field--full">

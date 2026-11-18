@@ -119,14 +119,15 @@ class ProductDocumentReaderTest extends TestCase
             && $request->hasHeader('Range', 'bytes=0-18'));
     }
 
-    public function test_legacy_download_route_redirects_to_reader(): void
+    public function test_product_download_route_returns_the_document(): void
     {
         $user = User::factory()->create();
         $product = $this->makeDocumentProduct(Product::TYPE_PAST_PAPER, 0, 'pdf');
 
         $this->actingAs($user)
-            ->get(route('product.download', $product->slug))
-            ->assertRedirect(route('product.read-document', $product->slug));
+            ->get(route('product.download', [$product->type, $product->id]))
+            ->assertOk()
+            ->assertDownload();
     }
 
     public function test_reader_rejects_unsupported_file_types(): void

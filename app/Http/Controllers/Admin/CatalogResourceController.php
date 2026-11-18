@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AiDocument;
 use App\Models\Product;
-use App\Models\CurriculumUnit;
-use App\Models\ProgrammeUnitAssignment;
 use App\Models\AiSetting;
 use App\Services\Ai\AiDocumentService;
 use App\Services\Ai\BunnyDocumentStorageService;
 use App\Services\ProductIdentityService;
 use App\Services\ProductMetadataCatalogService;
-use App\Services\Taxonomy\CurriculumUnitService;
+use App\Services\Taxonomy\ProductCurriculumContextService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +27,7 @@ class CatalogResourceController extends Controller
     public function __construct(
         private readonly ProductMetadataCatalogService $metadataCatalog,
         private readonly ProductIdentityService $identityService,
-        private readonly CurriculumUnitService $curriculumUnits
+        private readonly ProductCurriculumContextService $curriculumContexts
     )
     {
     }
@@ -122,6 +120,7 @@ class CatalogResourceController extends Controller
     {
         $meta = $this->typeMeta($type);
         $data = $this->validatedData($request, $type);
+        $this->curriculumContexts->validateRequest($request, true);
         $data['type'] = $type;
         $data['slug'] = generateUniqueSlug(Product::class, $data['title']);
         $data['discount'] = $data['discount'] ?? 0;
@@ -129,6 +128,7 @@ class CatalogResourceController extends Controller
 
         $product = Product::create($data);
         $this->syncCurriculumContext($request, $product);
+        $this->stampTaxonomyVerification($product, $data['is_approved']);
 
         return redirect()->route($meta['route'] . '.index')->with([
             'messege' => __($meta['singular'] . ' created successfully'),
@@ -162,6 +162,7 @@ class CatalogResourceController extends Controller
         $this->ensureType($type, $resource);
         $meta = $this->typeMeta($type);
         $data = $this->validatedData($request, $type);
+        $this->curriculumContexts->validateRequest($request, true);
 
         $data['discount'] = $data['discount'] ?? 0;
         $data['metadata'] = $this->buildMetadata($request, $type, $resource);
@@ -172,6 +173,7 @@ class CatalogResourceController extends Controller
 
         $resource->update($data);
         $this->syncCurriculumContext($request, $resource);
+        $this->stampTaxonomyVerification($resource, $data['is_approved']);
 
         return redirect()->route($meta['route'] . '.index', $request->query())->with([
             'messege' => __($meta['singular'] . ' updated successfully'),
@@ -199,9 +201,22 @@ class CatalogResourceController extends Controller
         $meta = $this->typeMeta($type);
         $request->validate([
             'is_approved' => ['required', Rule::in(['pending', 'approved', 'rejected'])],
+            'approval_note' => ['nullable', 'required_if:is_approved,rejected', 'string', 'max:2000'],
         ]);
 
-        $resource->update(['is_approved' => $request->is_approved]);
+        if ($request->is_approved === 'approved') {
+            $issues = $this->curriculumContexts->approvalIssues($resource);
+            if ($issues !== []) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['is_approved' => $issues]);
+            }
+        }
+
+        $resource->update([
+            'is_approved' => $request->is_approved,
+            'approval_note' => $request->input('approval_note'),
+            'taxonomy_verified_at' => $request->is_approved === 'approved' ? now() : null,
+            'taxonomy_verified_by' => $request->is_approved === 'approved' ? auth('admin')->id() : null,
+        ]);
 
         return redirect()->route($meta['route'] . '.index')->with([
             'messege' => __('Approval status updated successfully'),
@@ -339,6 +354,8 @@ class CatalogResourceController extends Controller
             'programme_unit_assignment_id' => ['nullable', 'integer', 'exists:programme_unit_assignments,id'],
             'assessment_series' => ['nullable', 'string', 'max:80'],
             'paper_number' => ['nullable', 'string', 'max:40'],
+            'curriculum_profile' => ['nullable', 'string', 'max:40'],
+            'approval_note' => ['nullable', 'required_if:is_approved,rejected', 'string', 'max:2000'],
         ];
 
         if ($type === Product::TYPE_NOTE) {
@@ -352,49 +369,19 @@ class CatalogResourceController extends Controller
 
     private function curriculumOptions(?Product $product = null): array
     {
-        $units = CurriculumUnit::query()->with('awardingBody.translation')->where('status', true)
-            ->orderBy('name')->get();
-        $assignments = ProgrammeUnitAssignment::query()
-            ->with(['unit', 'programme.translation'])->where('status', true)
-            ->orderBy('programme_node_id')->orderBy('group_type')->orderBy('display_order')->get();
-        $selected = $product?->curriculumContexts()->first();
-
-        return [
-            'units' => $units->map(fn (CurriculumUnit $unit) => [
-                'id' => $unit->id,
-                'label' => ($unit->awardingBody?->name ?? __('Higher Education')).' / '.$unit->name,
-            ])->all(),
-            'assignments' => $assignments->map(fn (ProgrammeUnitAssignment $assignment) => [
-                'id' => $assignment->id,
-                'unit_id' => $assignment->curriculum_unit_id,
-                'label' => ($assignment->programme?->name ?? __('Programme')).' / '.ucfirst($assignment->group_type).' / '.$assignment->unit->name,
-            ])->all(),
-            'selected' => [
-                'unit_id' => old('curriculum_unit_id', $selected?->curriculum_unit_id),
-                'assignment_id' => old('programme_unit_assignment_id', $selected?->programme_unit_assignment_id),
-                'assessment_series' => old('assessment_series', $selected?->assessment_series),
-                'paper_number' => old('paper_number', $selected?->paper_number),
-            ],
-        ];
+        return $this->curriculumContexts->formOptions($product);
     }
 
     private function syncCurriculumContext(Request $request, Product $product): void
     {
-        if (! $request->filled('curriculum_unit_id')) {
-            $product->curriculumContexts()->delete();
-            return;
-        }
+        $this->curriculumContexts->sync($request, $product, true);
+    }
 
-        $unit = CurriculumUnit::findOrFail($request->integer('curriculum_unit_id'));
-        $product->curriculumContexts()
-            ->where('curriculum_unit_id', '!=', $unit->id)
-            ->delete();
-        $this->curriculumUnits->attachResource($product, $unit, [
-            'programme_unit_assignment_id' => $request->integer('programme_unit_assignment_id') ?: null,
-            'resource_type' => $product->type,
-            'assessment_series' => $request->input('assessment_series'),
-            'assessment_year' => $request->filled('year') ? (int) $request->input('year') : null,
-            'paper_number' => $request->input('paper_number'),
+    private function stampTaxonomyVerification(Product $product, string $status): void
+    {
+        $product->update([
+            'taxonomy_verified_at' => $status === 'approved' ? now() : null,
+            'taxonomy_verified_by' => $status === 'approved' ? auth('admin')->id() : null,
         ]);
     }
 
@@ -427,6 +414,8 @@ class CatalogResourceController extends Controller
             'preview_pages' => $request->input('preview_pages', $existingMetadata['preview_pages'] ?? $defaults['preview_pages']),
             'extraction_confirmed' => $request->boolean('extraction_confirmed'),
         ];
+
+        $metadata = array_merge($metadata, $this->curriculumContexts->metadataSnapshot($request));
 
         if ($type === Product::TYPE_NOTE) {
             $metadata['note_visibility'] = $request->input('note_visibility', $existingMetadata['note_visibility'] ?? 'public');

@@ -64,7 +64,7 @@ class ProductQuizController extends Controller
         $attempt = ProductQuizAttempt::findOrFail($attemptId);
         abort_unless((int) $attempt->product_id === (int) $product->id && (int) $attempt->user_id === (int) userAuth()->id, 404);
 
-        $attempt->load(['answers.question.options', 'answers.selectedOption', 'quiz']);
+        $attempt->load(['answers.attempt', 'answers.question.options', 'answers.selectedOption', 'quiz']);
 
         return view('frontend.pages.product-quiz-result', compact('product', 'attempt'));
     }

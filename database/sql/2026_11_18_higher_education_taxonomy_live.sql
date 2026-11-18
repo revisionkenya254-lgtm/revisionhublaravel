@@ -45,8 +45,12 @@ CREATE TABLE `programme_unit_assignments` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `programme_node_id` BIGINT UNSIGNED NOT NULL,
     `curriculum_unit_id` BIGINT UNSIGNED NOT NULL,
-    `group_type` ENUM('common', 'major', 'elective') NOT NULL DEFAULT 'major',
+    `group_type` VARCHAR(40) NOT NULL DEFAULT 'major',
+    `study_year` VARCHAR(40) NULL,
     `semester` VARCHAR(80) NULL,
+    `module` VARCHAR(80) NULL,
+    `stage` VARCHAR(80) NULL,
+    `section` VARCHAR(80) NULL,
     `credit_hours` DECIMAL(5,2) NULL,
     `is_mandatory` TINYINT(1) NOT NULL DEFAULT 1,
     `display_order` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
@@ -58,6 +62,8 @@ CREATE TABLE `programme_unit_assignments` (
         (`programme_node_id`, `curriculum_unit_id`),
     KEY `programme_unit_assignment_tree_index`
         (`programme_node_id`, `group_type`, `status`, `display_order`),
+    KEY `programme_unit_assignment_period_index`
+        (`programme_node_id`, `study_year`, `semester`),
     CONSTRAINT `programme_unit_assignment_programme_fk`
         FOREIGN KEY (`programme_node_id`) REFERENCES `course_categories` (`id`)
         ON DELETE CASCADE,
@@ -300,6 +306,13 @@ WHERE NOT EXISTS (
     WHERE `migration` = '2026_11_18_000002_tag_existing_higher_education_profiles'
 );
 
+INSERT INTO `migrations` (`migration`, `batch`)
+SELECT '2026_11_18_000003_expand_higher_education_assignment_dimensions', @taxonomy_batch
+WHERE NOT EXISTS (
+    SELECT 1 FROM `migrations`
+    WHERE `migration` = '2026_11_18_000003_expand_higher_education_assignment_dimensions'
+);
+
 -- -------------------------------------------------------------------------
 -- 7. Verification
 -- -------------------------------------------------------------------------
@@ -321,3 +334,17 @@ SELECT `migration`, `batch`
 FROM `migrations`
 WHERE `migration` LIKE '2026_11_18_00000%'
 ORDER BY `migration`;
+-- Product approval audit fields added after the taxonomy foundation was deployed.
+ALTER TABLE `products`
+    ADD COLUMN `approval_note` TEXT NULL AFTER `is_approved`,
+    ADD COLUMN `taxonomy_verified_at` TIMESTAMP NULL AFTER `approval_note`,
+    ADD COLUMN `taxonomy_verified_by` BIGINT UNSIGNED NULL AFTER `taxonomy_verified_at`,
+    ADD INDEX `products_taxonomy_verified_by_index` (`taxonomy_verified_by`);
+
+SET @taxonomy_batch = (SELECT COALESCE(MAX(`batch`), 0) + 1 FROM `migrations`);
+INSERT INTO `migrations` (`migration`, `batch`)
+SELECT '2026_11_18_000004_add_product_approval_context_fields', @taxonomy_batch
+WHERE NOT EXISTS (
+    SELECT 1 FROM `migrations`
+    WHERE `migration` = '2026_11_18_000004_add_product_approval_context_fields'
+);

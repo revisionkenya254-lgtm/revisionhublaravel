@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
+use Illuminate\Validation\Rule;
 use Modules\Course\app\Models\CourseCategory;
 
 class TaxonomyManagementController extends Controller
@@ -33,17 +34,33 @@ class TaxonomyManagementController extends Controller
         $root = CourseCategory::findOrFail($tree['id']);
         $programmes = CourseCategory::with('translation')->where('taxonomy_profile', $profile)
             ->where('node_type', CourseCategory::TYPE_PROGRAMME)->orderBy('order')->get();
+        $awardingBodies = CourseCategory::with('translation')
+            ->where('taxonomy_profile', $profile)
+            ->where(function ($query) {
+                $query->where('node_type', CourseCategory::TYPE_AWARDING_BODY)
+                    ->orWhere(fn ($rootQuery) => $rootQuery->whereNull('parent_id')
+                        ->where('node_type', CourseCategory::TYPE_EDUCATION_LEVEL));
+            })->orderBy('order')->get();
+        $programmeOwnerIds = $programmes->mapWithKeys(fn (CourseCategory $programme) => [
+            $programme->id => $this->curriculumOwnerId($programme, $root),
+        ]);
         $units = CurriculumUnit::withCount(['assignments' => fn ($query) => $query->where('status', true)])
-            ->where('awarding_body_id', $root->id)->orderBy('name')->get();
+            ->with('awardingBody.translation')
+            ->whereIn('awarding_body_id', $awardingBodies->pluck('id'))->orderBy('name')->get();
 
         return view('course::taxonomy.profile', compact(
-            'profile', 'profileConfig', 'tree', 'root', 'programmes', 'units'
+            'profile', 'profileConfig', 'tree', 'root', 'programmes', 'programmeOwnerIds', 'awardingBodies', 'units'
         ));
     }
 
     public function storeUnit(Request $request, string $profile): RedirectResponse
     {
-        $this->curriculumUnits->create($this->profileRoot($profile), $this->validateUnit($request));
+        $data = $this->validateUnit($request);
+        $owner = filled($data['awarding_body_id'] ?? null)
+            ? CourseCategory::findOrFail($data['awarding_body_id'])
+            : $this->profileRoot($profile);
+        abort_unless($owner->taxonomy_profile === $profile, 404);
+        $this->curriculumUnits->create($owner, $data);
         return $this->profileSuccess($profile, __('Canonical unit created.'));
     }
 
@@ -66,8 +83,14 @@ class TaxonomyManagementController extends Controller
         abort_unless($programme->taxonomy_profile === $profile, 404);
         $data = $request->validate([
             'curriculum_unit_id' => ['required', 'integer', 'exists:curriculum_units,id'],
-            'group_type' => ['required', 'in:'.implode(',', ProgrammeUnitAssignment::GROUPS)],
+            'group_type' => ['required', Rule::in(array_keys(
+                config("higher_education_taxonomy.profiles.{$profile}.group_types", [])
+            ))],
+            'study_year' => ['nullable', 'string', 'max:40'],
             'semester' => ['nullable', 'string', 'max:80'],
+            'module' => ['nullable', 'string', 'max:80'],
+            'stage' => ['nullable', 'string', 'max:80'],
+            'section' => ['nullable', 'string', 'max:80'],
             'credit_hours' => ['nullable', 'numeric', 'min:0', 'max:999'],
             'is_mandatory' => ['nullable', 'boolean'],
             'display_order' => ['required', 'integer', 'min:0', 'max:65535'],
@@ -303,6 +326,7 @@ class TaxonomyManagementController extends Controller
             'code' => ['nullable', 'string', 'max:100'],
             'curriculum_version' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'awarding_body_id' => ['nullable', 'integer', 'exists:course_categories,id'],
         ]);
     }
 
@@ -310,6 +334,19 @@ class TaxonomyManagementController extends Controller
     {
         abort_unless(array_key_exists($profile, config('higher_education_taxonomy.profiles', [])), 404);
         return CourseCategory::whereNull('parent_id')->where('taxonomy_profile', $profile)->firstOrFail();
+    }
+
+    private function curriculumOwnerId(CourseCategory $programme, CourseCategory $fallback): int
+    {
+        $current = $programme;
+        while ($current->parent_id) {
+            $current = CourseCategory::findOrFail($current->parent_id);
+            if ($current->node_type === CourseCategory::TYPE_AWARDING_BODY) {
+                return (int) $current->id;
+            }
+        }
+
+        return (int) $fallback->id;
     }
 
     private function profileSuccess(string $profile, string $message): RedirectResponse

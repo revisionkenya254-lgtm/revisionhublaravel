@@ -83,7 +83,9 @@ class CurriculumUnitService
         if ($programme->node_type !== CourseCategory::TYPE_PROGRAMME) {
             throw ValidationException::withMessages(['programme' => __('Units can only be assigned to programme nodes.')]);
         }
-        if ($this->rootOf($programme)->id !== $unit->awarding_body_id) {
+        $owner = $unit->awardingBody()->firstOrFail();
+        if ($this->rootOf($programme)->id !== $this->rootOf($owner)->id
+            || ! $this->ownerContainsProgramme($owner, $programme)) {
             throw ValidationException::withMessages(['unit' => __('The unit and programme must belong to the same awarding body.')]);
         }
 
@@ -91,7 +93,11 @@ class CurriculumUnitService
             ['programme_node_id' => $programme->id, 'curriculum_unit_id' => $unit->id],
             [
                 'group_type' => $data['group_type'],
+                'study_year' => $data['study_year'] ?? null,
                 'semester' => $data['semester'] ?? null,
+                'module' => $data['module'] ?? null,
+                'stage' => $data['stage'] ?? null,
+                'section' => $data['section'] ?? null,
                 'credit_hours' => $data['credit_hours'] ?? null,
                 'is_mandatory' => (bool) ($data['is_mandatory'] ?? true),
                 'display_order' => (int) ($data['display_order'] ?? 0),
@@ -163,7 +169,13 @@ class CurriculumUnitService
 
     private function assertAwardingBody(CourseCategory $node): void
     {
-        if ($node->parent_id !== null || $node->node_type !== CourseCategory::TYPE_EDUCATION_LEVEL) {
+        $isProfileRoot = $node->parent_id === null
+            && $node->node_type === CourseCategory::TYPE_EDUCATION_LEVEL
+            && filled($node->taxonomy_profile);
+        $isAwardingBody = $node->node_type === CourseCategory::TYPE_AWARDING_BODY
+            && filled($node->taxonomy_profile);
+
+        if (! $isProfileRoot && ! $isAwardingBody) {
             throw ValidationException::withMessages(['awarding_body' => __('Select a higher-education taxonomy root.')]);
         }
     }
@@ -175,5 +187,22 @@ class CurriculumUnitService
         }
 
         return $node;
+    }
+
+    private function ownerContainsProgramme(CourseCategory $owner, CourseCategory $programme): bool
+    {
+        if ($owner->parent_id === null) {
+            return true;
+        }
+
+        $current = $programme;
+        while ($current->parent_id) {
+            if ((int) $current->parent_id === (int) $owner->id) {
+                return true;
+            }
+            $current = CourseCategory::findOrFail($current->parent_id);
+        }
+
+        return false;
     }
 }
