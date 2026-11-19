@@ -52,6 +52,8 @@ class ProductCurriculumContextService
                 'label' => $profile['label'] ?? Str::headline($key),
                 'accent' => $profile['accent'] ?? '#334155',
                 'labels' => $profile['labels'] ?? [],
+                'creation_fields' => $profile['creation_fields'] ?? ['owner', 'department', 'programme', 'assignment'],
+                'group_types' => $profile['group_types'] ?? [],
             ])->values()->all();
 
         return [
@@ -142,11 +144,15 @@ class ProductCurriculumContextService
             return [];
         }
 
+        $department = $this->ancestorOfType($assignment->programme, CourseCategory::TYPE_DEPARTMENT);
+
         return [
             'curriculum_context' => [
                 'profile' => $assignment->programme?->taxonomy_profile,
                 'awarding_body_id' => $assignment->unit?->awarding_body_id,
                 'awarding_body' => $assignment->unit?->awardingBody?->name,
+                'department_id' => $department?->id,
+                'department' => $department?->name,
                 'programme_id' => $assignment->programme_node_id,
                 'programme' => $assignment->programme?->name,
                 'assignment_id' => $assignment->id,
@@ -235,13 +241,38 @@ class ProductCurriculumContextService
             'id' => $assignment->id,
             'profile' => $programme?->taxonomy_profile,
             'unit_id' => $assignment->curriculum_unit_id,
+            'owner_id' => $owner?->id,
             'owner' => $owner?->name,
+            'department_id' => $department?->id,
             'department' => $department?->name,
+            'programme_id' => $programme?->id,
             'programme' => $programme?->name,
             'group' => $assignment->group_type,
             'period' => $period,
+            'study_year' => $assignment->study_year,
+            'semester' => $assignment->semester,
+            'module' => $assignment->module,
+            'stage' => $assignment->stage,
+            'section' => $assignment->section,
             'unit' => $assignment->unit->name,
+            'unit_code' => $assignment->unit->code,
+            'unit_label' => $assignment->unit->code
+                ? $assignment->unit->code.' - '.$assignment->unit->name
+                : $assignment->unit->name,
             'label' => $parts->implode(' / '),
         ];
+    }
+
+    private function ancestorOfType(?CourseCategory $node, string $type): ?CourseCategory
+    {
+        $current = $node;
+        while ($current?->parent_id) {
+            $current = CourseCategory::query()->with('translation')->find($current->parent_id);
+            if ($current?->node_type === $type) {
+                return $current;
+            }
+        }
+
+        return null;
     }
 }

@@ -2345,28 +2345,6 @@
 @endpush
 
 @push('js')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const unit = document.getElementById('curriculum_unit_id');
-    const assignment = document.getElementById('programme_unit_assignment_id');
-    if (!unit || !assignment) return;
-    const syncAssignments = function () {
-        const selectedUnit = unit.value;
-        Array.from(assignment.options).forEach(function (option, index) {
-            if (index === 0) return;
-            option.hidden = option.dataset.unitId !== selectedUnit;
-            option.disabled = option.hidden;
-        });
-        const selected = assignment.options[assignment.selectedIndex];
-        if (selected && selected.disabled) assignment.value = '';
-    };
-    unit.addEventListener('change', syncAssignments);
-    syncAssignments();
-});
-</script>
-@endpush
-
-@push('js')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const educationLevelSelect = document.getElementById('education_level');

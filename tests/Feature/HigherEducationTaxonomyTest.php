@@ -240,10 +240,33 @@ class HigherEducationTaxonomyTest extends TestCase
             ['cdacc', 'tvet', 'certificate', 'diploma', 'undergraduate', 'professional'],
             collect($options['profiles'])->pluck('key')->all()
         );
+        $expectedFields = [
+            'cdacc' => ['department', 'programme', 'module', 'group', 'assignment'],
+            'certificate' => ['owner', 'department', 'programme', 'module', 'semester', 'assignment'],
+            'diploma' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
+            'undergraduate' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
+            'professional' => ['owner', 'department', 'stage', 'section', 'assignment'],
+        ];
+        $profiles = collect($options['profiles'])->keyBy('key');
+        foreach ($expectedFields as $profile => $fields) {
+            $this->assertSame($fields, $profiles->get($profile)['creation_fields']);
+        }
         $this->assertTrue(collect($options['assignments'])->contains(
             fn (array $assignment) => $assignment['profile'] === 'cdacc'
                 && str_contains($assignment['label'], 'Agricultural Engineering')
+                && filled($assignment['department_id'])
+                && filled($assignment['programme_id'])
+                && array_key_exists('module', $assignment)
         ));
+
+        $html = view('partials.product-curriculum-context-fields', [
+            'curriculumOptions' => $options,
+            'curriculumAdmin' => false,
+        ])->render();
+        $this->assertStringContainsString('data-curriculum-select="department"', $html);
+        $this->assertStringContainsString('data-curriculum-select="study_year"', $html);
+        $this->assertStringContainsString('data-curriculum-select="stage"', $html);
+        $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
     }
 
     public function test_active_instructor_product_requires_a_programme_unit_for_upper_education(): void
@@ -290,7 +313,10 @@ class HigherEducationTaxonomyTest extends TestCase
             'assessment_series' => 'July',
             'assessment_year' => 2026,
         ]);
-        $this->assertSame('cdacc', data_get($service->metadataSnapshot($request), 'curriculum_context.profile'));
+        $snapshot = $service->metadataSnapshot($request);
+        $this->assertSame('cdacc', data_get($snapshot, 'curriculum_context.profile'));
+        $this->assertNotNull(data_get($snapshot, 'curriculum_context.department_id'));
+        $this->assertNotNull(data_get($snapshot, 'curriculum_context.programme_id'));
     }
 
     public function test_upper_education_product_without_context_is_not_approval_ready(): void
