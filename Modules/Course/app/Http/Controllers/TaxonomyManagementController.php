@@ -165,9 +165,14 @@ class TaxonomyManagementController extends Controller
     public function restoreAssignment(string $profile, ProgrammeUnitAssignment $assignment): RedirectResponse
     {
         abort_unless($assignment->programme?->taxonomy_profile === $profile, 404);
-        $this->curriculumUnits->restoreAssignment($assignment);
+        $canonicalUnitRestored = $this->curriculumUnits->restoreAssignment($assignment);
 
-        return $this->profileSuccess($profile, __('Programme unit assignment restored.'));
+        return $this->profileSuccess(
+            $profile,
+            $canonicalUnitRestored
+                ? __('Canonical unit and programme assignment restored.')
+                : __('Programme unit assignment restored.')
+        );
     }
 
     public function index(): View

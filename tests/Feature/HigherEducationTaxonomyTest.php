@@ -76,6 +76,29 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertSame('Workplace Communication Skills', $unit->fresh()->name);
     }
 
+    public function test_restoring_an_assignment_also_restores_its_archived_canonical_unit(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Assignment Restore Admin',
+            'email' => 'assignment-restore@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $assignment = ProgrammeUnitAssignment::query()
+            ->whereHas('programme', fn ($query) => $query->where('taxonomy_profile', 'cdacc'))
+            ->with('unit')
+            ->firstOrFail();
+        $service = app(CurriculumUnitService::class);
+        $service->unassign($assignment);
+        $service->archive($assignment->unit);
+
+        $this->actingAs($admin, 'admin')->post(
+            route('admin.taxonomy.assignments.restore', ['cdacc', $assignment])
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'cdacc'));
+
+        $this->assertTrue((bool) $assignment->fresh()->status);
+        $this->assertTrue((bool) $assignment->unit->fresh()->status);
+    }
+
     public function test_global_unit_resource_is_projected_under_assigned_programme(): void
     {
         $unit = CurriculumUnit::where('slug', 'communication-skills')->firstOrFail();

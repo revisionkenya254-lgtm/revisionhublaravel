@@ -173,19 +173,43 @@ class CurriculumUnitService
         $this->clearCaches();
     }
 
-    public function restoreAssignment(ProgrammeUnitAssignment $assignment): void
+    public function restoreAssignment(ProgrammeUnitAssignment $assignment): bool
     {
-        $assignment->loadMissing(['programme', 'unit']);
-        $this->assertAssignmentPair($assignment->programme, $assignment->unit);
-        $before = $assignment->toArray();
-        $assignment->update(['status' => true]);
-        $this->audit->record(
-            'programme_unit_assignment_restored',
-            $assignment->programme_node_id,
-            $before,
-            $assignment->fresh()->toArray()
-        );
-        $this->clearCaches();
+        return DB::transaction(function () use ($assignment) {
+            $assignment = ProgrammeUnitAssignment::lockForUpdate()->findOrFail($assignment->id);
+            $programme = CourseCategory::findOrFail($assignment->programme_node_id);
+            $unit = CurriculumUnit::lockForUpdate()->findOrFail($assignment->curriculum_unit_id);
+            $this->assertAssignmentPair($programme, $unit, true);
+
+            $unitWasRestored = ! $unit->status;
+            if ($unitWasRestored) {
+                $unitBefore = $unit->toArray();
+                $unit->update(['status' => true]);
+                $this->audit->record(
+                    'curriculum_unit_restored',
+                    $unit->awarding_body_id,
+                    $unitBefore,
+                    $unit->fresh()->toArray(),
+                    [
+                        'curriculum_unit_id' => $unit->id,
+                        'reason' => 'programme_unit_assignment_restored',
+                    ]
+                );
+            }
+
+            $before = $assignment->toArray();
+            $assignment->update(['status' => true]);
+            $this->audit->record(
+                'programme_unit_assignment_restored',
+                $assignment->programme_node_id,
+                $before,
+                $assignment->fresh()->toArray(),
+                ['curriculum_unit_id' => $unit->id]
+            );
+            $this->clearCaches();
+
+            return $unitWasRestored;
+        });
     }
 
     public function archive(CurriculumUnit $unit): void
@@ -298,12 +322,16 @@ class CurriculumUnitService
         }
     }
 
-    private function assertAssignmentPair(CourseCategory $programme, CurriculumUnit $unit): void
+    private function assertAssignmentPair(
+        CourseCategory $programme,
+        CurriculumUnit $unit,
+        bool $allowArchivedUnit = false
+    ): void
     {
         if ($programme->node_type !== CourseCategory::TYPE_PROGRAMME) {
             throw ValidationException::withMessages(['programme' => __('Units can only be assigned to programme nodes.')]);
         }
-        if (! $unit->status) {
+        if (! $allowArchivedUnit && ! $unit->status) {
             throw ValidationException::withMessages(['unit' => __('Restore the canonical unit before assigning it.')]);
         }
         $owner = $unit->awardingBody()->firstOrFail();
