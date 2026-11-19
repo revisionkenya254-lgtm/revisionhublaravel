@@ -38,7 +38,18 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertDatabaseHas('programme_unit_assignments', [
             'programme_node_id' => $programme->id,
             'group_type' => 'major',
+            'module' => 'Module 1',
         ]);
+
+        $options = collect(app(ProductCurriculumContextService::class)->formOptions()['assignments'])
+            ->where('profile', 'cdacc');
+        $this->assertCount(2, $options);
+        $this->assertSame(['common', 'major'], $options->pluck('group')->sort()->values()->all());
+        $this->assertSame(['Module 1'], $options->pluck('module')->unique()->values()->all());
+        $this->assertSame(
+            ['Agriculture and Aquaculture Department'],
+            $options->pluck('department')->unique()->values()->all()
+        );
     }
 
     public function test_one_canonical_unit_can_be_shared_and_updated_across_programmes(): void
