@@ -10,6 +10,7 @@ use App\Services\Taxonomy\CurriculumUnitService;
 use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
 use App\Services\Taxonomy\TaxonomyManagementService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -93,13 +94,19 @@ class TaxonomyManagementController extends Controller
         return $this->profileSuccess($profile, __('Canonical unit restored.'));
     }
 
-    public function storeAssignment(Request $request, string $profile, CourseCategory $programme): RedirectResponse
+    public function storeAssignment(Request $request, string $profile, CourseCategory $programme): RedirectResponse|JsonResponse
     {
         abort_unless($programme->taxonomy_profile === $profile, 404);
         $data = $this->validateAssignment($request, $profile);
-        $this->curriculumUnits->assign(
+        $assignment = $this->curriculumUnits->assign(
             $programme, CurriculumUnit::findOrFail($data['curriculum_unit_id']), $data
         );
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => __('Unit assigned to programme.'),
+                'assignment' => $assignment->fresh()->toArray(),
+            ]);
+        }
         return $this->profileSuccess($profile, __('Unit assigned to programme.'));
     }
 
@@ -107,17 +114,24 @@ class TaxonomyManagementController extends Controller
         Request $request,
         string $profile,
         ProgrammeUnitAssignment $assignment
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         abort_unless($assignment->programme?->taxonomy_profile === $profile, 404);
         $data = $this->validateAssignment($request, $profile, true);
         $programme = CourseCategory::findOrFail($data['programme_node_id']);
         abort_unless($programme->taxonomy_profile === $profile, 404);
-        $this->curriculumUnits->updateAssignment(
+        $assignment = $this->curriculumUnits->updateAssignment(
             $assignment,
             $programme,
             CurriculumUnit::findOrFail($data['curriculum_unit_id']),
             $data
         );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => __('Programme unit assignment updated.'),
+                'assignment' => $assignment->fresh()->toArray(),
+            ]);
+        }
 
         return $this->profileSuccess($profile, __('Programme unit assignment updated.'));
     }
@@ -311,6 +325,31 @@ class TaxonomyManagementController extends Controller
         $this->taxonomy->restoreNode($node);
 
         return $this->success(__('Taxonomy branch restored.'), $request->input('return_profile'));
+    }
+
+    public function permanentlyDeleteNode(Request $request, int $node): RedirectResponse
+    {
+        $deleted = $this->taxonomy->permanentlyDeleteNodes([$node]);
+
+        return $this->success(
+            trans_choice(':count archived taxonomy node permanently deleted.|:count archived taxonomy nodes permanently deleted.', $deleted, ['count' => $deleted]),
+            $request->input('return_profile')
+        );
+    }
+
+    public function permanentlyDeleteNodes(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'nodes' => ['required', 'array', 'min:1'],
+            'nodes.*' => ['required', 'integer', 'distinct'],
+            'return_profile' => ['nullable', 'string', Rule::in(array_keys(config('higher_education_taxonomy.profiles', [])))],
+        ]);
+        $deleted = $this->taxonomy->permanentlyDeleteNodes($data['nodes']);
+
+        return $this->success(
+            trans_choice(':count archived taxonomy node permanently deleted.|:count archived taxonomy nodes permanently deleted.', $deleted, ['count' => $deleted]),
+            $data['return_profile'] ?? null
+        );
     }
 
     public function createShared(CourseCategory $educationLevel): View

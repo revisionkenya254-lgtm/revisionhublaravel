@@ -111,7 +111,81 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertOk()
             ->assertSee('CDACC Curriculum')
             ->assertSee('Agricultural Engineering')
-            ->assertSee('Apply Renewable Energy Technology in Agriculture');
+            ->assertSee('Apply Renewable Energy Technology in Agriculture')
+            ->assertSee('assignment-modal')
+            ->assertSee('js-open-assignment-modal')
+            ->assertSee('Assign or edit units directly');
+    }
+
+    public function test_assignment_can_be_edited_inline_over_json(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Inline Assignment Admin',
+            'email' => 'inline-assignment@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $assignment = ProgrammeUnitAssignment::whereHas('programme', fn ($query) => $query
+            ->where('taxonomy_profile', 'cdacc'))->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->putJson(
+            route('admin.taxonomy.assignments.update', ['cdacc', $assignment]),
+            [
+                'programme_node_id' => $assignment->programme_node_id,
+                'curriculum_unit_id' => $assignment->curriculum_unit_id,
+                'group_type' => 'elective',
+                'module' => 'Module 9',
+                'display_order' => 9,
+                'credit_hours' => 3,
+                'is_mandatory' => 0,
+            ]
+        )->assertOk()
+            ->assertJsonPath('assignment.id', $assignment->id)
+            ->assertJsonPath('assignment.group_type', 'elective');
+
+        $this->assertDatabaseHas('programme_unit_assignments', [
+            'id' => $assignment->id,
+            'group_type' => 'elective',
+            'module' => 'Module 9',
+            'display_order' => 9,
+            'is_mandatory' => 0,
+        ]);
+    }
+
+    public function test_unit_can_be_assigned_inline_over_json(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Inline Assignment Creator',
+            'email' => 'inline-assignment-create@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $root = CourseCategory::where('taxonomy_profile', 'cdacc')->whereNull('parent_id')->firstOrFail();
+        $programme = CourseCategory::where('taxonomy_profile', 'cdacc')
+            ->where('node_type', CourseCategory::TYPE_PROGRAMME)->firstOrFail();
+        $unit = app(CurriculumUnitService::class)->create($root, [
+            'name' => 'Inline Assignment Test Unit',
+            'slug' => 'inline-assignment-test-unit',
+            'curriculum_version' => '2026',
+        ]);
+
+        $this->actingAs($admin, 'admin')->postJson(
+            route('admin.taxonomy.assignments.store', ['cdacc', $programme]),
+            [
+                'curriculum_unit_id' => $unit->id,
+                'group_type' => 'common',
+                'module' => 'Module 3',
+                'display_order' => 3,
+                'is_mandatory' => 1,
+            ]
+        )->assertOk()
+            ->assertJsonPath('assignment.programme_node_id', $programme->id)
+            ->assertJsonPath('assignment.curriculum_unit_id', $unit->id);
+
+        $this->assertDatabaseHas('programme_unit_assignments', [
+            'programme_node_id' => $programme->id,
+            'curriculum_unit_id' => $unit->id,
+            'group_type' => 'common',
+            'module' => 'Module 3',
+        ]);
     }
 
     public function test_assignment_with_programme_specific_resource_cannot_be_removed_accidentally(): void
@@ -464,6 +538,93 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('data-curriculum-select="study_year"', $html);
         $this->assertStringContainsString('data-curriculum-select="stage"', $html);
         $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
+    }
+
+    public function test_admin_can_permanently_delete_archived_nodes_individually_and_in_bulk(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Taxonomy Purge Admin',
+            'email' => 'taxonomy-purge@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $service = app(TaxonomyManagementService::class);
+        $root = CourseCategory::where('taxonomy_profile', 'certificate')->whereNull('parent_id')->firstOrFail();
+        $owner = $service->createNode($root->id, [
+            'name' => 'Archived Test Institution',
+            'slug' => 'archived-test-institution',
+            'node_type' => CourseCategory::TYPE_AWARDING_BODY,
+            'order' => 90,
+        ]);
+        $department = $service->createNode($owner->id, [
+            'name' => 'Archived Test School',
+            'slug' => 'archived-test-school',
+            'node_type' => CourseCategory::TYPE_DEPARTMENT,
+            'order' => 0,
+        ]);
+        $service->archiveNode($owner);
+
+        $this->actingAs($admin, 'admin')->get(route('admin.taxonomy.profiles.show', 'certificate'))
+            ->assertOk()
+            ->assertSee('Delete selected permanently')
+            ->assertSee('Delete permanently');
+        $this->actingAs($admin, 'admin')->delete(route('admin.taxonomy.nodes.destroy', $owner->id), [
+            'return_profile' => 'certificate',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertDatabaseMissing('course_categories', ['id' => $owner->id]);
+        $this->assertDatabaseMissing('course_categories', ['id' => $department->id]);
+        $this->assertDatabaseMissing('course_category_translations', ['course_category_id' => $owner->id]);
+
+        $bulkNodes = collect(['bulk-archived-institution-a', 'bulk-archived-institution-b'])
+            ->map(function (string $slug, int $order) use ($service, $root) {
+                $node = $service->createNode($root->id, [
+                    'name' => str($slug)->headline()->toString(),
+                    'slug' => $slug,
+                    'node_type' => CourseCategory::TYPE_AWARDING_BODY,
+                    'order' => 91 + $order,
+                ]);
+                $service->archiveNode($node);
+
+                return $node;
+            });
+
+        $this->actingAs($admin, 'admin')->delete(route('admin.taxonomy.nodes.bulk-destroy'), [
+            'nodes' => $bulkNodes->pluck('id')->all(),
+            'return_profile' => 'certificate',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        foreach ($bulkNodes as $node) {
+            $this->assertDatabaseMissing('course_categories', ['id' => $node->id]);
+        }
+    }
+
+    public function test_permanent_delete_rejects_archived_nodes_that_are_still_referenced(): void
+    {
+        $service = app(TaxonomyManagementService::class);
+        $root = CourseCategory::where('taxonomy_profile', 'certificate')->whereNull('parent_id')->firstOrFail();
+        $owner = $service->createNode($root->id, [
+            'name' => 'Referenced Archived Institution',
+            'slug' => 'referenced-archived-institution',
+            'node_type' => CourseCategory::TYPE_AWARDING_BODY,
+            'order' => 95,
+        ]);
+        $service->archiveNode($owner);
+        Product::create([
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'Referenced Taxonomy Product',
+            'slug' => 'referenced-taxonomy-product',
+            'price' => 0,
+            'status' => 'active',
+            'is_approved' => 'approved',
+            'category_id' => $owner->id,
+        ]);
+
+        try {
+            $service->permanentlyDeleteNodes([$owner->id]);
+            $this->fail('Expected referenced taxonomy node deletion to be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('node', $exception->errors());
+        }
+
+        $this->assertDatabaseHas('course_categories', ['id' => $owner->id]);
     }
 
     public function test_upper_education_sample_roots_have_clean_labels_and_no_cdacc_courses_duplicate(): void

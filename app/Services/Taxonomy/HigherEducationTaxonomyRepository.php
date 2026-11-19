@@ -65,7 +65,8 @@ class HigherEducationTaxonomyRepository
         array $periodFields,
         array $groupTypes,
         bool $publicOnly,
-        array $path = []
+        array $path = [],
+        array $assignmentDefaults = []
     ): array {
         if ($periodFields !== []) {
             $field = array_shift($periodFields);
@@ -76,29 +77,33 @@ class HigherEducationTaxonomyRepository
                         ? (string) $assignment->{$field}
                         : 'Unspecified')
                     ->map(function (Collection $periodAssignments, string $value) use (
-                        $programme, $periodFields, $groupTypes, $publicOnly, $path, $field
+                        $programme, $periodFields, $groupTypes, $publicOnly, $path, $field, $assignmentDefaults
                     ) {
                         $periodPath = [...$path, $field.'-'.$value];
+                        $periodDefaults = [...$assignmentDefaults, $field => $value];
                         return [
                             'id' => 'period-'.$programme->id.'-'.Str::slug(implode('-', $periodPath)),
                             'slug' => Str::slug($value),
                             'label' => $value,
                             'node_type' => 'study_period',
                             'period_type' => $field,
+                            'programme_id' => $programme->id,
+                            'assignment_defaults' => $periodDefaults,
                             'children' => $this->assignmentTree(
                                 $programme,
                                 $periodAssignments,
                                 $periodFields,
                                 $groupTypes,
                                 $publicOnly,
-                                $periodPath
+                                $periodPath,
+                                $periodDefaults
                             ),
                         ];
                     })->values()->all();
             }
 
             return $this->assignmentTree(
-                $programme, $assignments, $periodFields, $groupTypes, $publicOnly, $path
+                $programme, $assignments, $periodFields, $groupTypes, $publicOnly, $path, $assignmentDefaults
             );
         }
 
@@ -114,6 +119,8 @@ class HigherEducationTaxonomyRepository
                 'label' => $label,
                 'node_type' => 'unit_group',
                 'group_type' => $group,
+                'programme_id' => $programme->id,
+                'assignment_defaults' => [...$assignmentDefaults, 'group_type' => $group],
                 'children' => $groupAssignments->map(
                     fn (ProgrammeUnitAssignment $assignment) => $this->unitNode($assignment, $publicOnly)
                 )->all(),
@@ -128,12 +135,28 @@ class HigherEducationTaxonomyRepository
         return [
             'id' => 'unit-'.$assignment->unit->id,
             'assignment_id' => $assignment->id,
+            'programme_id' => $assignment->programme_node_id,
+            'curriculum_unit_id' => $assignment->curriculum_unit_id,
             'slug' => $assignment->unit->slug,
             'label' => $assignment->unit->name,
             'code' => $assignment->unit->code,
             'curriculum_version' => $assignment->unit->curriculum_version,
             'node_type' => 'unit',
             'active' => (bool) $assignment->status,
+            'assignment' => [
+                'id' => $assignment->id,
+                'programme_node_id' => $assignment->programme_node_id,
+                'curriculum_unit_id' => $assignment->curriculum_unit_id,
+                'group_type' => $assignment->group_type,
+                'study_year' => $assignment->study_year,
+                'semester' => $assignment->semester,
+                'module' => $assignment->module,
+                'stage' => $assignment->stage,
+                'section' => $assignment->section,
+                'credit_hours' => $assignment->credit_hours,
+                'is_mandatory' => (bool) $assignment->is_mandatory,
+                'display_order' => $assignment->display_order,
+            ],
             'shared_count' => $assignment->unit->assignments->where('status', true)->count(),
             'children' => $assignment->unit->resourceContexts
                 ->whereNull('programme_unit_assignment_id')

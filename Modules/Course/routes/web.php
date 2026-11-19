@@ -28,10 +28,12 @@ Route::group(['middleware' => ['auth:admin', 'translation'], 'prefix' => 'admin'
         Route::post('/profiles/{profile}/assignments/{assignment}/restore', 'restoreAssignment')->name('assignments.restore');
         Route::get('/nodes/create', 'createNode')->name('nodes.create');
         Route::post('/nodes', 'storeNode')->name('nodes.store');
+        Route::delete('/nodes/permanent', 'permanentlyDeleteNodes')->name('nodes.bulk-destroy');
         Route::get('/nodes/{node}/edit', 'editNode')->name('nodes.edit');
         Route::put('/nodes/{node}', 'updateNode')->name('nodes.update');
         Route::delete('/nodes/{node}', 'archiveNode')->name('nodes.archive');
         Route::post('/nodes/{node}/restore', 'restoreNode')->name('nodes.restore');
+        Route::delete('/nodes/{node}/permanent', 'permanentlyDeleteNode')->name('nodes.destroy');
         Route::get('/levels/{educationLevel}/shared/create', 'createShared')->name('shared.create');
         Route::post('/levels/{educationLevel}/shared', 'storeShared')->name('shared.store');
         Route::get('/levels/{educationLevel}/shared/{slug}/edit', 'editShared')->name('shared.edit');

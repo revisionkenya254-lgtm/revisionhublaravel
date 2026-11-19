@@ -313,6 +313,72 @@ class TaxonomyManagementService
         });
     }
 
+    public function permanentlyDeleteNodes(array $nodeIds): int
+    {
+        $nodeIds = collect($nodeIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($nodeIds === []) {
+            throw ValidationException::withMessages([
+                'nodes' => __('Select at least one archived taxonomy node.'),
+            ]);
+        }
+
+        return DB::transaction(function () use ($nodeIds) {
+            $selected = CourseCategory::withTrashed()
+                ->whereIn('id', $nodeIds)
+                ->lockForUpdate()
+                ->get();
+
+            if ($selected->count() !== count($nodeIds)) {
+                throw ValidationException::withMessages([
+                    'nodes' => __('One or more selected taxonomy nodes no longer exist.'),
+                ]);
+            }
+
+            if ($selected->contains(fn (CourseCategory $node) => ! $node->trashed())) {
+                throw ValidationException::withMessages([
+                    'nodes' => __('Only archived taxonomy nodes can be permanently deleted.'),
+                ]);
+            }
+
+            $ids = $selected->flatMap(function (CourseCategory $node) {
+                $sharedIds = $this->sharedArchivedLeafIds($node);
+
+                return $sharedIds !== [] ? $sharedIds : $this->subtreeIds($node->id, true);
+            })->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+            $rows = CourseCategory::withTrashed()
+                ->whereIn('id', $ids)
+                ->lockForUpdate()
+                ->get();
+            if ($rows->contains(fn (CourseCategory $node) => ! $node->trashed())) {
+                throw ValidationException::withMessages([
+                    'nodes' => __('This selection contains an active taxonomy descendant. Archive it before permanent deletion.'),
+                ]);
+            }
+
+            $this->assertNoExternalReferences($ids, __('permanently deleted'), true);
+            $before = $rows->map(fn (CourseCategory $node) => $this->nodeSnapshot($node))->all();
+
+            DB::table('course_category_translations')->whereIn('course_category_id', $ids)->delete();
+            $deleted = DB::table('course_categories')->whereIn('id', $ids)->delete();
+
+            $this->audit->record('branches_permanently_deleted', $nodeIds[0], $before, null, [
+                'selected_ids' => $nodeIds,
+                'deleted_ids' => $ids,
+                'nodes' => $deleted,
+            ]);
+            $this->clearCaches();
+
+            return $deleted;
+        });
+    }
+
     private function sharedArchivedLeafIds(CourseCategory $node): array
     {
         if (! in_array($node->node_type, self::LEAF_TYPES, true) || ! $node->parent_id) {
@@ -426,8 +492,13 @@ class TaxonomyManagementService
         }
     }
 
-    private function assertNoExternalReferences(array $ids): void
+    private function assertNoExternalReferences(
+        array $ids,
+        ?string $operation = null,
+        bool $includeInactiveAssignments = false
+    ): void
     {
+        $operation ??= __('archived');
         $references = [
             ['products', 'category_id'],
             ['courses', 'category_id'],
@@ -443,13 +514,16 @@ class TaxonomyManagementService
             }
 
             $referenceQuery = DB::table($table)->whereIn($column, $ids);
-            if ($table === 'programme_unit_assignments' && Schema::hasColumn($table, 'status')) {
+            if ($table === 'programme_unit_assignments'
+                && ! $includeInactiveAssignments
+                && Schema::hasColumn($table, 'status')) {
                 $referenceQuery->where('status', true);
             }
             $count = $referenceQuery->count();
             if ($count > 0) {
                 throw ValidationException::withMessages([
-                    'node' => __('This taxonomy branch cannot be archived because :count records in :table use it.', [
+                    'node' => __('This taxonomy branch cannot be :operation because :count records in :table use it.', [
+                        'operation' => $operation,
                         'count' => $count,
                         'table' => $table,
                     ]),

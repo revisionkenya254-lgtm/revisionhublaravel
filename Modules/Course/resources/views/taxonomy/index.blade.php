@@ -164,26 +164,43 @@
                 @endforeach
 
                 <div class="card">
-                    <div class="card-header"><h4>{{ __('Archived Taxonomy Nodes') }}</h4></div>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>{{ __('Archived Taxonomy Nodes') }}</h4>
+                        @if ($archivedNodes->isNotEmpty())
+                            <form id="bulk-purge-taxonomy-form" action="{{ route('admin.taxonomy.nodes.bulk-destroy') }}" method="POST" class="taxonomy-purge-form">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-sm btn-danger" type="submit">
+                                    <i class="fas fa-trash-alt"></i> {{ __('Delete selected permanently') }}
+                                </button>
+                            </form>
+                        @endif
+                    </div>
                     <div class="card-body table-responsive">
                         <table class="table table-sm">
-                            <thead><tr><th>{{ __('Name') }}</th><th>{{ __('Slug') }}</th><th>{{ __('Type') }}</th><th>{{ __('Archived') }}</th><th></th></tr></thead>
+                            <thead><tr><th style="width:36px"><input type="checkbox" class="taxonomy-select-all" aria-label="{{ __('Select all archived nodes') }}"></th><th>{{ __('Name') }}</th><th>{{ __('Slug') }}</th><th>{{ __('Type') }}</th><th>{{ __('Archived') }}</th><th></th></tr></thead>
                             <tbody>
                                 @forelse ($archivedNodes as $archived)
                                     <tr>
+                                        <td><input type="checkbox" name="nodes[]" value="{{ $archived->id }}" form="bulk-purge-taxonomy-form" class="taxonomy-node-checkbox" aria-label="{{ __('Select :name', ['name' => $archived->translation?->name ?? $archived->slug]) }}"></td>
                                         <td>{{ $archived->translation?->name ?? $archived->slug }}</td>
                                         <td>{{ $archived->slug }}</td>
                                         <td>{{ str_replace('_', ' ', $archived->node_type) }}</td>
                                         <td>{{ $archived->deleted_at?->diffForHumans() }}</td>
-                                        <td class="text-right">
-                                            <form action="{{ route('admin.taxonomy.nodes.restore', $archived->id) }}" method="POST">
+                                        <td class="text-right text-nowrap">
+                                            <form action="{{ route('admin.taxonomy.nodes.restore', $archived->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 <button class="btn btn-sm btn-success" type="submit"><i class="fas fa-undo"></i> {{ __('Restore') }}</button>
+                                            </form>
+                                            <form action="{{ route('admin.taxonomy.nodes.destroy', $archived->id) }}" method="POST" class="d-inline taxonomy-purge-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash-alt"></i> {{ __('Delete permanently') }}</button>
                                             </form>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted">{{ __('No archived taxonomy nodes.') }}</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">{{ __('No archived taxonomy nodes.') }}</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -248,6 +265,20 @@
 
         document.querySelectorAll('form').forEach(function (form) {
             form.addEventListener('submit', function (event) {
+                if (form.classList.contains('taxonomy-purge-form')) {
+                    if (form.id === 'bulk-purge-taxonomy-form'
+                        && document.querySelectorAll('.taxonomy-node-checkbox:checked').length === 0) {
+                        event.preventDefault();
+                        window.alert(@json(__('Select at least one archived taxonomy node.')));
+                        return;
+                    }
+
+                    if (!window.confirm(@json(__('Permanently delete the selected archived taxonomy data? This cannot be undone.')))) {
+                        event.preventDefault();
+                        return;
+                    }
+                }
+
                 if (form.classList.contains('taxonomy-archive-form')
                     && !window.confirm(@json(__('Archive this taxonomy branch? This is blocked when products or courses still use it.')))) {
                     event.preventDefault();
@@ -255,6 +286,14 @@
                 }
 
                 saveTaxonomyScrollPosition();
+            });
+        });
+
+        document.querySelectorAll('.taxonomy-select-all').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                document.querySelectorAll('.taxonomy-node-checkbox').forEach(function (nodeCheckbox) {
+                    nodeCheckbox.checked = checkbox.checked;
+                });
             });
         });
     </script>
