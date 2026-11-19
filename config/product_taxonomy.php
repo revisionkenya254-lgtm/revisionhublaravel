@@ -9,6 +9,7 @@ return [
         ['slug' => 'senior-school-cbc', 'label' => 'Senior School (CBC)', 'source_slugs' => ['senior-school-cbc']],
         ['slug' => 'high-school', 'label' => 'High School', 'source_slugs' => ['high-school']],
         ['slug' => 'tvet', 'label' => 'TVET', 'source_slugs' => ['tvet']],
+        ['slug' => 'cdacc', 'label' => 'CDACC', 'source_slugs' => ['cdacc', 'cdacc-courses']],
         ['slug' => 'certificate-courses', 'label' => 'Certificate Courses', 'source_slugs' => ['certificate-courses']],
         ['slug' => 'diploma-courses', 'label' => 'Diploma Courses', 'source_slugs' => ['diploma-courses']],
         ['slug' => 'undergraduate', 'label' => 'Undergraduate', 'source_slugs' => ['undergraduate']],

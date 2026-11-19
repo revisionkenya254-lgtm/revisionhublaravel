@@ -10,8 +10,10 @@ use App\Services\Taxonomy\CurriculumUnitService;
 use App\Services\Taxonomy\TaxonomyManagementService;
 use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
 use App\Services\Taxonomy\ProductCurriculumContextService;
+use App\Services\ProductMetadataCatalogService;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Modules\Course\app\Models\CourseCategory;
@@ -251,6 +253,10 @@ class HigherEducationTaxonomyTest extends TestCase
         foreach ($expectedFields as $profile => $fields) {
             $this->assertSame($fields, $profiles->get($profile)['creation_fields']);
         }
+        $assignmentProfiles = collect($options['assignments'])->groupBy('profile');
+        foreach (['cdacc', 'tvet', 'certificate', 'diploma', 'undergraduate', 'professional'] as $profile) {
+            $this->assertGreaterThanOrEqual(2, $assignmentProfiles->get($profile, collect())->count(), $profile);
+        }
         $this->assertTrue(collect($options['assignments'])->contains(
             fn (array $assignment) => $assignment['profile'] === 'cdacc'
                 && str_contains($assignment['label'], 'Agricultural Engineering')
@@ -267,6 +273,60 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('data-curriculum-select="study_year"', $html);
         $this->assertStringContainsString('data-curriculum-select="stage"', $html);
         $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
+    }
+
+    public function test_upper_education_sample_roots_have_clean_labels_and_no_cdacc_courses_duplicate(): void
+    {
+        $labels = CourseCategory::query()->with('translation')
+            ->whereNull('parent_id')->whereNotNull('taxonomy_profile')
+            ->get()->pluck('name', 'taxonomy_profile');
+
+        $this->assertSame('CDACC', $labels['cdacc']);
+        $this->assertSame('Certificate', $labels['certificate']);
+        $this->assertSame('Diploma', $labels['diploma']);
+        $this->assertSame('Undergraduate', $labels['undergraduate']);
+        $this->assertSame('Professional', $labels['professional']);
+        $this->assertSame(1, CourseCategory::query()->whereNull('parent_id')->where('taxonomy_profile', 'cdacc')->count());
+        $this->assertDatabaseMissing('course_category_translations', ['name' => 'CDACC Courses']);
+
+        $educationLabels = collect(app(ProductMetadataCatalogService::class)->educationLevelDefinitions())->pluck('label');
+        foreach (['CDACC', 'TVET', 'Certificate', 'Diploma', 'Undergraduate', 'Professional'] as $label) {
+            $this->assertTrue($educationLabels->contains($label), $label);
+        }
+        $this->assertFalse($educationLabels->contains('CDACC Courses'));
+    }
+
+    public function test_sample_seed_merges_a_legacy_cdacc_courses_root_into_cdacc(): void
+    {
+        $duplicate = CourseCategory::create([
+            'slug' => 'cdacc-courses',
+            'node_type' => CourseCategory::TYPE_EDUCATION_LEVEL,
+            'taxonomy_profile' => 'cdacc',
+            'status' => true,
+            'order' => 99,
+        ]);
+        DB::table('course_category_translations')->insert([
+            'course_category_id' => $duplicate->id,
+            'lang_code' => 'en',
+            'name' => 'CDACC Courses',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $child = CourseCategory::create([
+            'parent_id' => $duplicate->id,
+            'slug' => 'legacy-cdacc-department',
+            'node_type' => CourseCategory::TYPE_DEPARTMENT,
+            'taxonomy_profile' => 'cdacc',
+            'status' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_11_19_000005_seed_upper_education_product_taxonomy_samples.php');
+        $migration->up();
+
+        $canonical = CourseCategory::whereNull('parent_id')->where('slug', 'cdacc')->firstOrFail();
+        $this->assertSame($canonical->id, $child->fresh()->parent_id);
+        $this->assertNotNull($duplicate->fresh()->deleted_at);
+        $this->assertFalse((bool) $duplicate->fresh()->status);
     }
 
     public function test_active_instructor_product_requires_a_programme_unit_for_upper_education(): void

@@ -460,6 +460,7 @@ class CatalogResourceController extends Controller
             'senior-school-cbc',
             'high-school',
             'tvet',
+            'cdacc',
             'certificate-courses',
             'diploma-courses',
             'undergraduate',
