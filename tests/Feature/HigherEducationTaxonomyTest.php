@@ -113,6 +113,9 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertSee('Agricultural Engineering')
             ->assertSee('Apply Renewable Energy Technology in Agriculture')
             ->assertSee('assignment-modal')
+            ->assertSee('assignment-department')
+            ->assertSee('data-department-id')
+            ->assertSee('data-department-name')
             ->assertSee('assignment-context-modal')
             ->assertSee('js-open-assignment-modal')
             ->assertSee('js-manage-assignment-context')
@@ -220,6 +223,57 @@ class HigherEducationTaxonomyTest extends TestCase
             'group_type' => 'common',
             'module' => 'Module 3',
         ]);
+    }
+
+    public function test_admin_can_permanently_delete_an_unused_archived_canonical_unit(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Canonical Unit Delete Admin',
+            'email' => 'canonical-unit-delete@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $root = CourseCategory::where('taxonomy_profile', 'cdacc')->whereNull('parent_id')->firstOrFail();
+        $service = app(CurriculumUnitService::class);
+        $unit = $service->create($root, [
+            'name' => 'Disposable Canonical Unit',
+            'slug' => 'disposable-canonical-unit',
+            'curriculum_version' => '2026',
+        ]);
+        $service->archive($unit);
+
+        $this->actingAs($admin, 'admin')->get(route('admin.taxonomy.profiles.show', 'cdacc'))
+            ->assertOk()
+            ->assertSee('Delete permanently')
+            ->assertSee(route('admin.taxonomy.units.destroy', ['cdacc', $unit]), false);
+        $this->actingAs($admin, 'admin')->delete(
+            route('admin.taxonomy.units.destroy', ['cdacc', $unit])
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'cdacc'));
+
+        $this->assertNull(CurriculumUnit::withTrashed()->find($unit->id));
+    }
+
+    public function test_referenced_canonical_unit_cannot_be_permanently_deleted(): void
+    {
+        $root = CourseCategory::where('taxonomy_profile', 'cdacc')->whereNull('parent_id')->firstOrFail();
+        $programme = CourseCategory::where('taxonomy_profile', 'cdacc')
+            ->where('node_type', CourseCategory::TYPE_PROGRAMME)->firstOrFail();
+        $service = app(CurriculumUnitService::class);
+        $unit = $service->create($root, [
+            'name' => 'Referenced Canonical Unit',
+            'slug' => 'referenced-canonical-unit',
+            'curriculum_version' => '2026',
+        ]);
+        $service->assign($programme, $unit, ['group_type' => 'common']);
+        $service->archive($unit);
+
+        try {
+            $service->permanentlyDelete($unit);
+            $this->fail('Expected permanent deletion of a referenced unit to be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('unit', $exception->errors());
+        }
+
+        $this->assertNotNull(CurriculumUnit::find($unit->id));
     }
 
     public function test_assignment_with_programme_specific_resource_cannot_be_removed_accidentally(): void
@@ -559,6 +613,7 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertTrue(collect($options['assignments'])->contains(
             fn (array $assignment) => $assignment['profile'] === 'cdacc'
                 && str_contains($assignment['label'], 'Agricultural Engineering')
+                && str_contains($assignment['programme_label'], 'Agriculture and Aquaculture Department')
                 && filled($assignment['department_id'])
                 && filled($assignment['programme_id'])
                 && array_key_exists('module', $assignment)
@@ -572,6 +627,8 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('data-curriculum-select="study_year"', $html);
         $this->assertStringContainsString('data-curriculum-select="stage"', $html);
         $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
+        $this->assertStringContainsString("text:'programme_label'", $html);
+        $this->assertStringContainsString('let pathComplete = true', $html);
     }
 
     public function test_admin_can_permanently_delete_archived_nodes_individually_and_in_bulk(): void
@@ -763,6 +820,10 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertSame('cdacc', data_get($snapshot, 'curriculum_context.profile'));
         $this->assertNotNull(data_get($snapshot, 'curriculum_context.department_id'));
         $this->assertNotNull(data_get($snapshot, 'curriculum_context.programme_id'));
+        $this->assertStringContainsString(
+            (string) data_get($snapshot, 'curriculum_context.department'),
+            (string) data_get($snapshot, 'curriculum_context.programme_label')
+        );
     }
 
     public function test_upper_education_product_without_context_is_not_approval_ready(): void

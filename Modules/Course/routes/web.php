@@ -22,6 +22,7 @@ Route::group(['middleware' => ['auth:admin', 'translation'], 'prefix' => 'admin'
         Route::put('/profiles/{profile}/units/{unit}', 'updateUnit')->name('units.update');
         Route::delete('/profiles/{profile}/units/{unit}', 'archiveUnit')->name('units.archive');
         Route::post('/profiles/{profile}/units/{unit}/restore', 'restoreUnit')->name('units.restore');
+        Route::delete('/profiles/{profile}/units/{unit}/permanent', 'permanentlyDeleteUnit')->name('units.destroy');
         Route::post('/profiles/{profile}/programmes/{programme}/assignments', 'storeAssignment')->name('assignments.store');
         Route::put('/profiles/{profile}/assignments/{assignment}', 'updateAssignment')->name('assignments.update');
         Route::delete('/profiles/{profile}/assignments/{assignment}', 'destroyAssignment')->name('assignments.destroy');

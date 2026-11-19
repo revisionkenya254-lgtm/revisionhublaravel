@@ -1,5 +1,9 @@
 @extends('admin.master_layout')
 
+@php
+    $usesProgrammeDepartments = in_array('department', $profileConfig['creation_fields'] ?? [], true);
+@endphp
+
 @section('title')<title>{{ $profileConfig['label'] }} {{ __('Taxonomy') }}</title>@endsection
 
 @section('admin-content')
@@ -70,7 +74,8 @@
                         <div class="modal-body">
                             <div id="assignment-form-errors" class="alert alert-danger d-none"></div>
                             <div class="row">
-                                <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['programme'] ?? __('Programme') }} *</label><select id="assignment-programme" name="programme_node_id" class="form-control" required>@foreach($programmes as $programme)<option value="{{ $programme->id }}" data-owner-id="{{ $programmeOwnerIds[$programme->id] ?? $root->id }}">{{ $programme->name }}</option>@endforeach</select></div>
+                                @if($usesProgrammeDepartments)<div class="form-group col-md-6"><label>{{ $profileConfig['labels']['department'] ?? __('Department') }} *</label><select id="assignment-department" class="form-control" required><option value="">{{ __('Select :department', ['department' => $profileConfig['labels']['department'] ?? __('Department')]) }}</option>@foreach($departments as $department)<option value="{{ $department['id'] }}">{{ $department['name'] }}</option>@endforeach</select></div>@endif
+                                <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['programme'] ?? __('Programme') }} *</label><select id="assignment-programme" name="programme_node_id" class="form-control" required>@foreach($programmes as $programme)<option value="{{ $programme->id }}" data-owner-id="{{ $programmeOwnerIds[$programme->id] ?? $root->id }}" data-department-id="{{ $programmeDepartments[$programme->id]['id'] ?? '' }}" data-department-name="{{ $programmeDepartments[$programme->id]['name'] ?? '' }}">{{ $programme->name }}</option>@endforeach</select></div>
                                 <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['unit'] ?? __('Canonical unit') }} *</label><select id="assignment-unit" name="curriculum_unit_id" class="form-control" required>@foreach($units as $unit)<option value="{{ $unit->id }}" data-owner-id="{{ $unit->awarding_body_id }}" data-active="{{ $unit->status ? '1' : '0' }}">{{ $unit->name }} &middot; {{ $unit->awardingBody?->name }} ({{ __('used by :count', ['count' => $unit->assignments_count]) }})</option>@endforeach</select></div>
                                 <div class="form-group col-md-6"><label>{{ __('Unit group') }} *</label><select id="assignment-group" name="group_type" class="form-control" required>@foreach(($profileConfig['group_types'] ?? []) as $groupValue => $groupLabel)<option value="{{ $groupValue }}">{{ $groupLabel }}</option>@endforeach</select></div>
                                 @foreach(($profileConfig['period_fields'] ?? []) as $periodField)<div class="form-group col-md-6"><label>{{ ucwords(str_replace('_', ' ', $periodField)) }}</label><input name="{{ $periodField }}" class="form-control assignment-period-field" value="" placeholder="{{ match($periodField) { 'study_year' => __('e.g. Year 1'), 'semester' => __('e.g. Semester 1'), 'module' => __('e.g. Module 1'), 'stage' => __('e.g. Intermediate Level'), 'section' => __('e.g. Section 2'), default => '' } }}"></div>@endforeach
@@ -100,7 +105,7 @@
                 <thead><tr><th>{{ __('Name') }}</th><th>{{ __('Owner') }}</th><th>{{ __('Code') }}</th><th>{{ __('Version') }}</th><th>{{ __('Usage') }}</th><th>{{ __('Actions') }}</th></tr></thead>
                 <tbody>@forelse($units as $unit)<tr class="{{ $unit->status ? '' : 'table-secondary' }}">
                     <td><input form="unit-form-{{ $unit->id }}" class="form-control form-control-sm" name="name" value="{{ $unit->name }}" required><input form="unit-form-{{ $unit->id }}" type="hidden" name="slug" value="{{ $unit->slug }}"></td><td>{{ $unit->awardingBody?->name }}</td><td><input form="unit-form-{{ $unit->id }}" class="form-control form-control-sm" name="code" value="{{ $unit->code }}"></td><td><input form="unit-form-{{ $unit->id }}" class="form-control form-control-sm" name="curriculum_version" value="{{ $unit->curriculum_version }}" required></td><td><span class="badge badge-success"><i class="fas fa-link"></i> {{ trans_choice(':count programme|:count programmes', $unit->assignments_count, ['count' => $unit->assignments_count]) }}</span></td>
-                    <td class="text-nowrap"><form id="unit-form-{{ $unit->id }}" method="POST" action="{{ route('admin.taxonomy.units.update', [$profile, $unit]) }}" class="d-inline">@csrf @method('PUT')<button class="btn btn-sm btn-warning" @disabled(!$unit->status)><i class="fas fa-save"></i> {{ __('Update') }}</button></form> @if($unit->status)<form method="POST" action="{{ route('admin.taxonomy.units.archive', [$profile, $unit]) }}" class="taxonomy-archive-unit-form d-inline">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="fas fa-archive"></i> {{ __('Archive') }}</button></form>@else<form method="POST" action="{{ route('admin.taxonomy.units.restore', [$profile, $unit]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success"><i class="fas fa-undo"></i> {{ __('Restore') }}</button></form>@endif</td>
+                    <td class="text-nowrap"><form id="unit-form-{{ $unit->id }}" method="POST" action="{{ route('admin.taxonomy.units.update', [$profile, $unit]) }}" class="d-inline">@csrf @method('PUT')<button class="btn btn-sm btn-warning" @disabled(!$unit->status)><i class="fas fa-save"></i> {{ __('Update') }}</button></form> @if($unit->status)<form method="POST" action="{{ route('admin.taxonomy.units.archive', [$profile, $unit]) }}" class="taxonomy-archive-unit-form d-inline">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="fas fa-archive"></i> {{ __('Archive') }}</button></form>@else<form method="POST" action="{{ route('admin.taxonomy.units.restore', [$profile, $unit]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success"><i class="fas fa-undo"></i> {{ __('Restore') }}</button></form> <form method="POST" action="{{ route('admin.taxonomy.units.destroy', [$profile, $unit]) }}" class="taxonomy-purge-unit-form d-inline">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="fas fa-trash-alt"></i> {{ __('Delete permanently') }}</button></form>@endif</td>
                 </tr>@empty<tr><td colspan="6" class="text-center text-muted">{{ __('No canonical units yet.') }}</td></tr>@endforelse</tbody>
             </table></div></div>
             @if($archivedNodes->isNotEmpty())
@@ -178,6 +183,7 @@ if(storedAssignmentScroll!==null){sessionStorage.removeItem(assignmentScrollKey)
 if(assignmentForm){
     const modal=document.getElementById('assignment-modal');
     if(modal.parentElement!==document.body)document.body.appendChild(modal);
+    const department=document.getElementById('assignment-department');
     const programme=document.getElementById('assignment-programme');
     const unit=document.getElementById('assignment-unit');
     const group=document.getElementById('assignment-group');
@@ -190,6 +196,23 @@ if(assignmentForm){
     const mandatory=document.getElementById('assignment-mandatory');
     const periodFields=Array.from(assignmentForm.querySelectorAll('.assignment-period-field'));
     const parseData=value=>{try{return JSON.parse(value||'{}');}catch(error){return {};}};
+    const syncProgrammes=selectedProgramme=>{
+        const requested=Array.from(programme.options).find(option=>String(option.value)===String(selectedProgramme||''));
+        if(department&&requested?.dataset.departmentId)department.value=requested.dataset.departmentId;
+        Array.from(programme.options).forEach(option=>{
+            const visible=!department||String(option.dataset.departmentId||'')===String(department.value||'');
+            option.hidden=!visible;
+            option.disabled=!visible;
+        });
+        const selected=Array.from(programme.options).find(option=>String(option.value)===String(selectedProgramme||'')&&!option.disabled)
+            ||Array.from(programme.options).find(option=>!option.disabled);
+        programme.value=selected?.value||'';
+    };
+    const updateAssignmentContext=()=>{
+        const parts=[department?.selectedOptions[0]?.text,programme.options[programme.selectedIndex]?.text]
+            .filter(value=>value&&value.trim());
+        context.textContent=parts.join(' / ');
+    };
     const syncUnits=selectedUnit=>{
         const owner=programme.options[programme.selectedIndex]?.dataset.ownerId;
         Array.from(unit.options).forEach(option=>{
@@ -208,7 +231,7 @@ if(assignmentForm){
         errors.innerHTML='';
         const editing=mode==='edit';
         const programmeId=data.programme_node_id||data.programme_id||programme.options[0]?.value||'';
-        programme.value=String(programmeId);
+        syncProgrammes(programmeId);
         group.value=data.group_type||group.options[0]?.value||'';
         periodFields.forEach(field=>field.value=data[field.name]??'');
         assignmentForm.elements.display_order.value=data.display_order??0;
@@ -221,7 +244,7 @@ if(assignmentForm){
         syncUnits(data.curriculum_unit_id);
         title.textContent=editing?@json(__('Edit unit assignment')):@json(__('Assign unit'));
         submitLabel.textContent=editing?@json(__('Save changes')):@json(__('Assign unit'));
-        context.textContent=programme.options[programme.selectedIndex]?.text||'';
+        updateAssignmentContext();
         window.jQuery(modal).modal('show');
     };
     const contextModal=document.getElementById('assignment-context-modal');
@@ -269,9 +292,15 @@ if(assignmentForm){
         if(mode!=='edit')data.programme_id=button.dataset.programmeId||data.programme_id;
         openAssignmentModal(mode,data);
     }));
+    department?.addEventListener('change',()=>{
+        syncProgrammes();
+        if(method.disabled)assignmentForm.action=assignmentForm.dataset.createAction.replace('__PROGRAMME__',programme.value);
+        syncUnits();
+        updateAssignmentContext();
+    });
     programme.addEventListener('change',()=>{
         if(method.disabled)assignmentForm.action=assignmentForm.dataset.createAction.replace('__PROGRAMME__',programme.value);
-        context.textContent=programme.options[programme.selectedIndex]?.text||'';
+        updateAssignmentContext();
         syncUnits(unit.value);
     });
     assignmentForm.addEventListener('submit',async event=>{
@@ -299,6 +328,7 @@ if(assignmentForm){
 }
 document.querySelectorAll('.taxonomy-unassign-form').forEach(form=>form.addEventListener('submit',event=>{if(!confirm(@json(__('Deactivate this unit assignment?'))))event.preventDefault();}));
 document.querySelectorAll('.taxonomy-archive-unit-form').forEach(form=>form.addEventListener('submit',event=>{if(!confirm(@json(__('Archive this canonical unit? Existing assignments and resources will be preserved but hidden from product forms.'))))event.preventDefault();}));
+document.querySelectorAll('.taxonomy-purge-unit-form').forEach(form=>form.addEventListener('submit',event=>{if(!confirm(@json(__('Permanently delete this canonical unit? This cannot be undone and is blocked while assignments or products still use it.'))))event.preventDefault();}));
 document.querySelectorAll('.taxonomy-archive-node-form').forEach(form=>form.addEventListener('submit',event=>{if(!confirm(@json(__('Archive this taxonomy branch?'))))event.preventDefault();}));
 document.querySelectorAll('.taxonomy-purge-form').forEach(form=>form.addEventListener('submit',event=>{if(form.id==='bulk-purge-profile-form'&&document.querySelectorAll('.profile-archived-node-checkbox:checked').length===0){event.preventDefault();alert(@json(__('Select at least one archived taxonomy node.')));return;}if(!confirm(@json(__('Permanently delete the selected archived taxonomy data? This cannot be undone.'))))event.preventDefault();}));
 const archivedSelectAll=document.getElementById('profile-archived-select-all');if(archivedSelectAll){archivedSelectAll.addEventListener('change',()=>document.querySelectorAll('.profile-archived-node-checkbox').forEach(checkbox=>checkbox.checked=archivedSelectAll.checked));}

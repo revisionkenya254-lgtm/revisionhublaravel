@@ -210,6 +210,49 @@ class CurriculumUnitService
         $this->clearCaches();
     }
 
+    public function permanentlyDelete(CurriculumUnit $unit): void
+    {
+        DB::transaction(function () use ($unit) {
+            $unit = CurriculumUnit::lockForUpdate()->findOrFail($unit->id);
+            if ($unit->status) {
+                throw ValidationException::withMessages([
+                    'unit' => __('Archive the canonical unit before permanently deleting it.'),
+                ]);
+            }
+
+            $assignmentCount = $unit->assignments()->count();
+            if ($assignmentCount > 0) {
+                throw ValidationException::withMessages([
+                    'unit' => trans_choice(
+                        'This unit cannot be permanently deleted because :count programme assignment still uses it.|This unit cannot be permanently deleted because :count programme assignments still use it.',
+                        $assignmentCount,
+                        ['count' => $assignmentCount]
+                    ),
+                ]);
+            }
+
+            $resourceCount = $unit->resourceContexts()->count();
+            if ($resourceCount > 0) {
+                throw ValidationException::withMessages([
+                    'unit' => trans_choice(
+                        'This unit cannot be permanently deleted because :count product resource still uses it.|This unit cannot be permanently deleted because :count product resources still use it.',
+                        $resourceCount,
+                        ['count' => $resourceCount]
+                    ),
+                ]);
+            }
+
+            $before = $unit->toArray();
+            $ownerId = (int) $unit->awarding_body_id;
+            $unitId = (int) $unit->id;
+            $unit->forceDelete();
+            $this->audit->record('curriculum_unit_permanently_deleted', $ownerId, $before, null, [
+                'curriculum_unit_id' => $unitId,
+            ]);
+            $this->clearCaches();
+        });
+    }
+
     public function attachResource(Product $product, CurriculumUnit $unit, array $data): ProductCurriculumContext
     {
         $assignmentId = $data['programme_unit_assignment_id'] ?? null;

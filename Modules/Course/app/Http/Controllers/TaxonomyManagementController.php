@@ -33,7 +33,7 @@ class TaxonomyManagementController extends Controller
         abort_unless(is_array($profileConfig), 404);
         $tree = $this->higherEducation->profile($profile, false);
         $root = CourseCategory::findOrFail($tree['id']);
-        $programmes = CourseCategory::with('translation')->where('taxonomy_profile', $profile)
+        $programmes = CourseCategory::with(['translation', 'parentCategory.translation'])->where('taxonomy_profile', $profile)
             ->where('node_type', CourseCategory::TYPE_PROGRAMME)->orderBy('order')->get();
         $awardingBodies = CourseCategory::with('translation')
             ->where('taxonomy_profile', $profile)
@@ -45,6 +45,16 @@ class TaxonomyManagementController extends Controller
         $programmeOwnerIds = $programmes->mapWithKeys(fn (CourseCategory $programme) => [
             $programme->id => $this->curriculumOwnerId($programme, $root),
         ]);
+        $programmeDepartments = $programmes->mapWithKeys(function (CourseCategory $programme) {
+            $department = $this->taxonomyAncestorOfType($programme, CourseCategory::TYPE_DEPARTMENT);
+
+            return [$programme->id => [
+                'id' => $department?->id,
+                'name' => $department?->name,
+            ]];
+        });
+        $departments = $programmeDepartments->filter(fn (array $department) => filled($department['id']))
+            ->unique('id')->sortBy('name')->values();
         $units = CurriculumUnit::withCount(['assignments' => fn ($query) => $query->where('status', true)])
             ->with('awardingBody.translation')
             ->whereIn('awarding_body_id', $awardingBodies->pluck('id'))->orderBy('name')->get();
@@ -56,7 +66,8 @@ class TaxonomyManagementController extends Controller
             ->where('taxonomy_profile', $profile)->latest('deleted_at')->limit(50)->get();
 
         return view('course::taxonomy.profile', compact(
-            'profile', 'profileConfig', 'tree', 'root', 'programmes', 'programmeOwnerIds', 'awardingBodies', 'units',
+            'profile', 'profileConfig', 'tree', 'root', 'programmes', 'programmeOwnerIds', 'programmeDepartments',
+            'departments', 'awardingBodies', 'units',
             'editingAssignment', 'archivedNodes'
         ));
     }
@@ -92,6 +103,14 @@ class TaxonomyManagementController extends Controller
         $this->curriculumUnits->restore($unit);
 
         return $this->profileSuccess($profile, __('Canonical unit restored.'));
+    }
+
+    public function permanentlyDeleteUnit(string $profile, CurriculumUnit $unit): RedirectResponse
+    {
+        $this->ensureUnitProfile($unit, $profile);
+        $this->curriculumUnits->permanentlyDelete($unit);
+
+        return $this->profileSuccess($profile, __('Canonical unit permanently deleted.'));
     }
 
     public function storeAssignment(Request $request, string $profile, CourseCategory $programme): RedirectResponse|JsonResponse
@@ -459,6 +478,19 @@ class TaxonomyManagementController extends Controller
         }
 
         return (int) $fallback->id;
+    }
+
+    private function taxonomyAncestorOfType(CourseCategory $node, string $type): ?CourseCategory
+    {
+        $current = $node;
+        while ($current->parent_id) {
+            $current = CourseCategory::with('translation')->findOrFail($current->parent_id);
+            if ($current->node_type === $type) {
+                return $current;
+            }
+        }
+
+        return null;
     }
 
     private function ensureUnitProfile(CurriculumUnit $unit, string $profile): void

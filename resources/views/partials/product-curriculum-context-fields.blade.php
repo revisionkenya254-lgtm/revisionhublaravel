@@ -88,7 +88,7 @@
             document.addEventListener('DOMContentLoaded', () => {
                 const aliases = {cdacc:['cdacc'],tvet:['tvet'],certificate:['certificate'],diploma:['diploma'],undergraduate:['undergraduate','university'],professional:['professional']};
                 const dimensions = {
-                    owner:{value:'owner_id',text:'owner'},department:{value:'department_id',text:'department'},programme:{value:'programme_id',text:'programme'},
+                    owner:{value:'owner_id',text:'owner'},department:{value:'department_id',text:'department'},programme:{value:'programme_id',text:'programme_label'},
                     study_year:{value:'study_year',text:'study_year'},semester:{value:'semester',text:'semester'},module:{value:'module',text:'module'},
                     stage:{value:'stage',text:'stage'},section:{value:'section',text:'section'},group:{value:'group',text:'group'},assignment:{value:'id',text:'unit_label'}
                 };
@@ -157,12 +157,19 @@
                         });
                         let candidates = records.filter(record => record.profile === profile.key);
                         let clearFollowing = false;
+                        let pathComplete = true;
                         activeFields.forEach(field => {
                             const select = panel.querySelector(`[data-curriculum-select="${field}"]`);
                             const preferred = initializing && selectedRecord ? selectedRecord[dimensions[field].value] : (clearFollowing ? '' : select.value);
-                            fillSelect(select, uniqueChoices(field, candidates, profile), preferred, fieldLabel(field, profile));
+                            const choices = pathComplete ? uniqueChoices(field, candidates, profile) : [];
+                            fillSelect(select, choices, preferred, fieldLabel(field, profile));
                             if (field === changedField) clearFollowing = true;
-                            if (select.value) candidates = candidates.filter(record => String(record[dimensions[field].value]) === select.value);
+                            if (select.value) {
+                                candidates = candidates.filter(record => String(record[dimensions[field].value]) === select.value);
+                            } else {
+                                candidates = [];
+                                pathComplete = false;
+                            }
                         });
                         empty.hidden = records.some(record => record.profile === profile.key);
                         Array.from(sharedUnit?.options || []).forEach((option,index) => { if (index > 0) option.hidden = option.dataset.profile !== profile.key; });

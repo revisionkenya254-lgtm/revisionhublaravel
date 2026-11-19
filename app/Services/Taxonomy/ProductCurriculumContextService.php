@@ -148,6 +148,9 @@ class ProductCurriculumContextService
         }
 
         $department = $this->ancestorOfType($assignment->programme, CourseCategory::TYPE_DEPARTMENT);
+        $programmeLabel = collect([$department?->name, $assignment->programme?->name])
+            ->filter()
+            ->implode(' / ');
 
         return [
             'curriculum_context' => [
@@ -158,6 +161,7 @@ class ProductCurriculumContextService
                 'department' => $department?->name,
                 'programme_id' => $assignment->programme_node_id,
                 'programme' => $assignment->programme?->name,
+                'programme_label' => $programmeLabel ?: $assignment->programme?->name,
                 'assignment_id' => $assignment->id,
                 'unit_id' => $assignment->curriculum_unit_id,
                 'unit' => $assignment->unit?->name,
@@ -226,6 +230,9 @@ class ProductCurriculumContextService
             $ancestors->prepend($current);
         }
         $department = $ancestors->firstWhere('node_type', CourseCategory::TYPE_DEPARTMENT);
+        $programmeLabel = collect([$department?->name, $programme?->name])
+            ->filter()
+            ->implode(' / ');
         $owner = $assignment->unit->awardingBody;
         $period = collect(['study_year', 'semester', 'module', 'stage', 'section'])
             ->filter(fn ($field) => filled($assignment->{$field}))
@@ -250,6 +257,7 @@ class ProductCurriculumContextService
             'department' => $department?->name,
             'programme_id' => $programme?->id,
             'programme' => $programme?->name,
+            'programme_label' => $programmeLabel ?: $programme?->name,
             'group' => $assignment->group_type,
             'period' => $period,
             'study_year' => $assignment->study_year,
