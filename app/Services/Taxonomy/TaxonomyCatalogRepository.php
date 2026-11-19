@@ -10,7 +10,7 @@ use Throwable;
 
 class TaxonomyCatalogRepository
 {
-    private const CACHE_VERSION = 'v1';
+    private const CACHE_VERSION = 'v2';
 
     public function snapshot(?string $languageCode = null): array
     {
@@ -25,7 +25,10 @@ class TaxonomyCatalogRepository
 
     public function educationLevels(?string $languageCode = null): array
     {
-        return $this->snapshot($languageCode)['education_levels'];
+        return collect($this->snapshot($languageCode)['education_levels'])
+            ->unique(fn (array $level) => strtolower(trim((string) ($level['label'] ?? $level['slug'] ?? ''))))
+            ->values()
+            ->all();
     }
 
     public function taxonomy(?string $languageCode = null): array
@@ -99,7 +102,11 @@ class TaxonomyCatalogRepository
                     'category.node_type',
                     'category.order',
                     DB::raw('COALESCE(translation.name, fallback_translation.name) as translation_name'),
-                ]);
+                ])
+                // Legacy databases did not enforce one translation per language.
+                // Keep the catalogue stable while duplicate rows are being repaired.
+                ->unique('id')
+                ->values();
 
             $roots = $nodes
                 ->whereNull('parent_id')

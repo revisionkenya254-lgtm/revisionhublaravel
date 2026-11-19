@@ -11,6 +11,7 @@
     $sharedEducationLevels = collect($paperEducationCategories ?? $educationCategories ?? $categories ?? $metadataOptions['education_levels'] ?? [])
         ->map(fn ($category) => $category->translation?->name ?? $category->name ?? $category->label ?? (string) $category)
         ->filter()
+        ->unique(fn ($label) => strtolower(trim((string) $label)))
         ->values()
         ->all();
     $sharedClassGradesByLevel = $metadataOptions['class_grades_by_level'] ?? [];

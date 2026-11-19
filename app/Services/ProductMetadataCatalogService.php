@@ -29,7 +29,8 @@ class ProductMetadataCatalogService
 
         return [
             'tree' => $tree,
-            'education_levels' => collect($tree)->pluck('label')->filter()->values()->all()
+            'education_levels' => collect($tree)->pluck('label')->filter()
+                ->unique(fn ($label) => strtolower(trim((string) $label)))->values()->all()
                 ?: ($catalog['education_levels'] ?? []),
             'class_grades_by_level' => $catalog['class_grades_by_level'] ?? [],
             'subjects_by_education_level' => $catalog['subjects_by_education_level'] ?? [],
@@ -458,7 +459,10 @@ class ProductMetadataCatalogService
 
     public function educationLevelDefinitions(): array
     {
-        return $this->taxonomyCatalog()->educationLevels();
+        return collect($this->taxonomyCatalog()->educationLevels())
+            ->unique(fn (array $definition) => strtolower(trim((string) ($definition['label'] ?? $definition['slug'] ?? ''))))
+            ->values()
+            ->all();
     }
 
     public function subjectsByEducationLevel(): array

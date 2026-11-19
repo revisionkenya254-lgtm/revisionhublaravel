@@ -8,7 +8,10 @@
     $selectedClassGrade = old('class_grade', $quizFormData['class_grade'] ?? 'Grade 10');
     $selectedExamCategory = old('exam_category', $quizFormData['exam_category'] ?? 'KCSE');
     $selectedSubject = old('subject', $quizFormData['subject'] ?? 'Mathematics');
-    $quizEducationLevels = $metadataOptions['education_levels'];
+    $quizEducationLevels = collect($metadataOptions['education_levels'])
+        ->unique(fn ($label) => strtolower(trim((string) $label)))
+        ->values()
+        ->all();
     $quizClassGradesByLevel = $metadataOptions['class_grades_by_level'] ?? [];
     $quizSubjectsByLevel = $metadataOptions['subjects_by_education_level'] ?? [];
     $quizClassGrades = $quizClassGradesByLevel[$selectedEducationLevel] ?? ($quizClassGradesByLevel['default'] ?? $metadataOptions['class_grades']);

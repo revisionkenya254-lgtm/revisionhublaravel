@@ -25,6 +25,7 @@
         $noteEducationLevels = collect($paperEducationCategories ?? $educationCategories ?? $categories ?? [])
             ->map(fn ($category) => $category->translation?->name ?? $category->name ?? $category->label ?? (string) $category)
             ->filter()
+            ->unique(fn ($label) => strtolower(trim((string) $label)))
             ->values()
             ->all();
         if (! filled($noteEducationLevels)) {

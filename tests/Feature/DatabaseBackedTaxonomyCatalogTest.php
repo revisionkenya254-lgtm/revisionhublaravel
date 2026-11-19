@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Services\ProductMetadataCatalogService;
 use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Course\app\Models\CourseCategory;
 use Modules\Course\app\Models\CourseCategoryTranslation;
@@ -34,6 +35,21 @@ class DatabaseBackedTaxonomyCatalogTest extends TestCase
             ['stem', 'social-sciences', 'arts-and-sports', 'languages'],
             array_column($catalog->schoolSubjectsForLevel('senior-school-cbc'), 'slug')
         );
+    }
+
+    public function test_duplicate_cached_labels_are_collapsed_in_education_level_options(): void
+    {
+        $snapshot = app(TaxonomyCatalogRepository::class)->snapshot('en');
+        $cdacc = collect($snapshot['education_levels'])->firstWhere('slug', 'cdacc');
+        $snapshot['education_levels'] = array_merge($snapshot['education_levels'], [$cdacc, $cdacc]);
+
+        Cache::forever('product_taxonomy_catalog_v2_en', $snapshot);
+
+        $levels = app(TaxonomyCatalogRepository::class)->educationLevels('en');
+
+        $this->assertCount(1, collect($levels)->filter(
+            fn (array $level) => strtolower((string) ($level['label'] ?? '')) === 'cdacc'
+        ));
     }
 
     public function test_database_changes_reach_every_grade_and_exam_after_cache_invalidation(): void

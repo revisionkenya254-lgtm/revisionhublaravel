@@ -65,6 +65,21 @@ class ProductMetadataCatalogServiceTest extends TestCase
         }
     }
 
+    public function test_admin_and_instructor_product_forms_expose_cdacc_once(): void
+    {
+        foreach ([CatalogResourceController::class, InstructorProductController::class] as $controllerClass) {
+            $controller = $this->app->make($controllerClass);
+            $method = new ReflectionMethod($controller, 'buildPaperEducationRootCategories');
+            $levels = $method->invoke($controller, collect());
+
+            $this->assertCount(
+                1,
+                collect($levels)->filter(fn ($level) => strtolower((string) $level->name) === 'cdacc'),
+                $controllerClass
+            );
+        }
+    }
+
     public function test_all_product_selection_options_share_junior_school_subjects(): void
     {
         $catalog = new ProductMetadataCatalogService();

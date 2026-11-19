@@ -490,6 +490,7 @@ class CatalogResourceController extends Controller
         $allRoots = $this->educationRootCategories($categories)->keyBy('slug');
 
         return collect($this->paperEducationLevelDefinitions())
+            ->unique(fn (array $definition) => strtolower(trim((string) ($definition['label'] ?? $definition['slug'] ?? ''))))
             ->map(function (array $definition) use ($allRoots) {
                 $sourceCategory = $allRoots->first(fn ($category) => in_array($category->slug, $definition['source_slugs'], true));
 

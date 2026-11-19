@@ -24,6 +24,7 @@
         : __('Describe the paper clearly, including the year, paper number, and exam level.');
     $paper = $paperForm ?? [];
     $rootCategories = collect($paperEducationCategories ?? $educationCategories ?? $categories ?? [])
+        ->unique(fn ($category) => strtolower(trim((string) ($category->translation?->name ?? $category->name ?? $category->label ?? $category->slug ?? ''))))
         ->values();
     $educationLevelRawValue = old(
         'education_level',
