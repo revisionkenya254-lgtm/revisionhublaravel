@@ -45,7 +45,23 @@ SET duplicate.`status`=0,duplicate.`node_type`='legacy',duplicate.`taxonomy_prof
 WHERE duplicate.`parent_id` IS NULL AND duplicate.`id`<>@cdacc_root AND duplicate.`deleted_at` IS NULL
   AND (duplicate.`slug` IN ('cdacc-courses','cdacc-course') OR LOWER(TRIM(translation.`name`))='cdacc courses');
 
--- Normalize existing higher-education root labels.
+-- Create any missing higher-education roots, then normalize their labels.
+INSERT INTO `course_categories` (`parent_id`,`slug`,`node_type`,`taxonomy_profile`,`taxonomy_metadata`,`order`,`status`,`created_at`,`updated_at`)
+SELECT NULL,'tvet','education_level','tvet',NULL,7,1,@now,@now
+WHERE NOT EXISTS (SELECT 1 FROM `course_categories` WHERE `parent_id` IS NULL AND `slug`='tvet' AND `deleted_at` IS NULL);
+INSERT INTO `course_categories` (`parent_id`,`slug`,`node_type`,`taxonomy_profile`,`taxonomy_metadata`,`order`,`status`,`created_at`,`updated_at`)
+SELECT NULL,'certificate-courses','education_level','certificate',NULL,9,1,@now,@now
+WHERE NOT EXISTS (SELECT 1 FROM `course_categories` WHERE `parent_id` IS NULL AND `slug`='certificate-courses' AND `deleted_at` IS NULL);
+INSERT INTO `course_categories` (`parent_id`,`slug`,`node_type`,`taxonomy_profile`,`taxonomy_metadata`,`order`,`status`,`created_at`,`updated_at`)
+SELECT NULL,'diploma-courses','education_level','diploma',NULL,10,1,@now,@now
+WHERE NOT EXISTS (SELECT 1 FROM `course_categories` WHERE `parent_id` IS NULL AND `slug`='diploma-courses' AND `deleted_at` IS NULL);
+INSERT INTO `course_categories` (`parent_id`,`slug`,`node_type`,`taxonomy_profile`,`taxonomy_metadata`,`order`,`status`,`created_at`,`updated_at`)
+SELECT NULL,'undergraduate','education_level','undergraduate',NULL,11,1,@now,@now
+WHERE NOT EXISTS (SELECT 1 FROM `course_categories` WHERE `parent_id` IS NULL AND `slug`='undergraduate' AND `deleted_at` IS NULL);
+INSERT INTO `course_categories` (`parent_id`,`slug`,`node_type`,`taxonomy_profile`,`taxonomy_metadata`,`order`,`status`,`created_at`,`updated_at`)
+SELECT NULL,'professional-courses','education_level','professional',NULL,12,1,@now,@now
+WHERE NOT EXISTS (SELECT 1 FROM `course_categories` WHERE `parent_id` IS NULL AND `slug`='professional-courses' AND `deleted_at` IS NULL);
+
 UPDATE `course_categories` SET `node_type`='education_level',`taxonomy_profile`='tvet',`order`=7,`status`=1,`updated_at`=@now WHERE `parent_id` IS NULL AND `slug`='tvet' AND `deleted_at` IS NULL;
 UPDATE `course_categories` SET `node_type`='education_level',`taxonomy_profile`='certificate',`order`=9,`status`=1,`updated_at`=@now WHERE `parent_id` IS NULL AND `slug`='certificate-courses' AND `deleted_at` IS NULL;
 UPDATE `course_categories` SET `node_type`='education_level',`taxonomy_profile`='diploma',`order`=10,`status`=1,`updated_at`=@now WHERE `parent_id` IS NULL AND `slug`='diploma-courses' AND `deleted_at` IS NULL;
