@@ -129,7 +129,7 @@
 @endsection
 
 @push('css')
-<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}#assignment-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
+<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}#assignment-modal{z-index:2000!important}body>.modal-backdrop{z-index:1990!important}#assignment-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
 @endpush
 
 @push('js')
@@ -148,6 +148,7 @@ const storedAssignmentScroll=sessionStorage.getItem(assignmentScrollKey);
 if(storedAssignmentScroll!==null){sessionStorage.removeItem(assignmentScrollKey);requestAnimationFrame(()=>window.scrollTo(0,Number(storedAssignmentScroll)));}
 if(assignmentForm){
     const modal=document.getElementById('assignment-modal');
+    if(modal.parentElement!==document.body)document.body.appendChild(modal);
     const programme=document.getElementById('assignment-programme');
     const unit=document.getElementById('assignment-unit');
     const group=document.getElementById('assignment-group');

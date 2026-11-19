@@ -114,7 +114,9 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertSee('Apply Renewable Energy Technology in Agriculture')
             ->assertSee('assignment-modal')
             ->assertSee('js-open-assignment-modal')
-            ->assertSee('Assign or edit units directly');
+            ->assertSee('Assign or edit units directly')
+            ->assertSee('document.body.appendChild(modal)', false)
+            ->assertSee('body>.modal-backdrop', false);
     }
 
     public function test_assignment_can_be_edited_inline_over_json(): void
