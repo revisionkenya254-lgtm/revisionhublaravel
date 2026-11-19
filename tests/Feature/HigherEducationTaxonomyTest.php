@@ -113,10 +113,42 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertSee('Agricultural Engineering')
             ->assertSee('Apply Renewable Energy Technology in Agriculture')
             ->assertSee('assignment-modal')
+            ->assertSee('assignment-context-modal')
             ->assertSee('js-open-assignment-modal')
+            ->assertSee('js-manage-assignment-context')
+            ->assertSee('js-programme-toggle')
+            ->assertSee('data-programme-children')
+            ->assertSee('Expand all')
+            ->assertSee('Collapse all')
             ->assertSee('Assign or edit units directly')
+            ->assertSee('Only units assigned to this unit group are shown.')
             ->assertSee('document.body.appendChild(modal)', false)
+            ->assertSee('taxonomy-programme-tree-cdacc', false)
             ->assertSee('body>.modal-backdrop', false);
+    }
+
+    public function test_module_and_unit_group_contexts_only_contain_relevant_assignments(): void
+    {
+        $tree = app(HigherEducationTaxonomyRepository::class)->profile('cdacc', false);
+        $nodes = collect();
+        $walk = function (array $node) use (&$walk, $nodes): void {
+            $nodes->push($node);
+            foreach ($node['children'] ?? [] as $child) {
+                $walk($child);
+            }
+        };
+        $walk($tree);
+
+        $module = $nodes->first(fn (array $node) => ($node['node_type'] ?? null) === 'study_period'
+            && ($node['label'] ?? null) === 'Module 1');
+        $common = $nodes->first(fn (array $node) => ($node['node_type'] ?? null) === 'unit_group'
+            && ($node['group_type'] ?? null) === 'common');
+
+        $this->assertNotNull($module);
+        $this->assertNotEmpty($module['assignments']);
+        $this->assertTrue(collect($module['assignments'])->every(fn (array $assignment) => $assignment['module'] === 'Module 1'));
+        $this->assertNotNull($common);
+        $this->assertTrue(collect($common['assignments'])->every(fn (array $assignment) => $assignment['group_type'] === 'common'));
     }
 
     public function test_assignment_can_be_edited_inline_over_json(): void

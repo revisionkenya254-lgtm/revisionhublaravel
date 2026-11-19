@@ -28,7 +28,7 @@
             </div>
 
             <div class="row">
-                <div class="col-xl-9"><div class="card rh-profile-card" style="--profile-color: {{ $profileConfig['accent'] }}"><div class="card-header d-flex justify-content-between align-items-center"><div><h4 class="mb-0"><i class="fas fa-sitemap"></i> {{ __('Programme structure') }}</h4><small class="text-muted">{{ __('Assign or edit units directly beside the relevant programme, period, or unit group.') }}</small></div><button type="button" class="btn btn-success js-open-assignment-modal" data-mode="create" data-programme-id="{{ $programmes->first()?->id }}" data-defaults="{}" @disabled($programmes->isEmpty() || $units->where('status', true)->isEmpty())><i class="fas fa-link"></i> {{ __('Assign unit') }}</button></div><div class="card-body"><ul class="rh-taxonomy-tree">@include('course::taxonomy._profile-tree-node', ['node' => $tree, 'profile' => $profile])</ul></div></div></div>
+                <div class="col-xl-9"><div class="card rh-profile-card" style="--profile-color: {{ $profileConfig['accent'] }}"><div class="card-header d-flex justify-content-between align-items-center flex-wrap"><div><h4 class="mb-0"><i class="fas fa-sitemap"></i> {{ __('Programme structure') }}</h4><small class="text-muted">{{ __('Assign or edit units directly beside the relevant programme, period, or unit group.') }}</small></div><div class="d-flex flex-wrap mt-2 mt-md-0" style="gap:.4rem"><button type="button" id="expand-all-programmes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-angle-double-down"></i> {{ __('Expand all') }}</button><button type="button" id="collapse-all-programmes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-angle-double-up"></i> {{ __('Collapse all') }}</button><button type="button" class="btn btn-success js-open-assignment-modal" data-mode="create" data-programme-id="{{ $programmes->first()?->id }}" data-defaults="{}" @disabled($programmes->isEmpty() || $units->where('status', true)->isEmpty())><i class="fas fa-link"></i> {{ __('Assign unit') }}</button></div></div><div class="card-body"><ul class="rh-taxonomy-tree">@include('course::taxonomy._profile-tree-node', ['node' => $tree, 'profile' => $profile])</ul></div></div></div>
                 <div class="col-xl-3">
                     <div class="card"><div class="card-header"><h4>{{ __('Create canonical unit') }}</h4></div><div class="card-body">
                         <form method="POST" action="{{ route('admin.taxonomy.units.store', $profile) }}">@csrf
@@ -84,6 +84,18 @@
                 </div></div>
             </div>
 
+            <div class="modal fade" id="assignment-context-modal" tabindex="-1" role="dialog" aria-labelledby="assignment-context-title" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document"><div class="modal-content">
+                    <div class="modal-header"><div><h5 class="modal-title" id="assignment-context-title">{{ __('Manage assigned units') }}</h5><small id="assignment-context-description" class="text-muted"></small></div><button type="button" class="close" data-dismiss="modal" aria-label="{{ __('Close') }}"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="modal-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3"><div><span id="assignment-context-type" class="badge badge-info"></span> <span id="assignment-context-count" class="text-muted"></span></div><button type="button" id="assignment-context-add" class="btn btn-success"><i class="fas fa-plus"></i> {{ __('Add unit here') }}</button></div>
+                        <div class="table-responsive"><table class="table table-sm table-bordered mb-0"><thead><tr><th>{{ __('Unit') }}</th><th>{{ __('Code') }}</th><th>{{ __('Unit group') }}</th><th>{{ __('Study period') }}</th><th>{{ __('Status') }}</th><th class="text-right">{{ __('Action') }}</th></tr></thead><tbody id="assignment-context-rows"></tbody></table></div>
+                        <div id="assignment-context-empty" class="text-center text-muted py-4 d-none">{{ __('No units are assigned in this context yet. Use Add unit here to begin.') }}</div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">{{ __('Close') }}</button></div>
+                </div></div>
+            </div>
+
             <div class="card mt-4"><div class="card-header"><h4><i class="fas fa-book"></i> {{ __('Canonical Unit Library') }}</h4></div><div class="card-body table-responsive"><table class="table table-sm table-bordered">
                 <thead><tr><th>{{ __('Name') }}</th><th>{{ __('Owner') }}</th><th>{{ __('Code') }}</th><th>{{ __('Version') }}</th><th>{{ __('Usage') }}</th><th>{{ __('Actions') }}</th></tr></thead>
                 <tbody>@forelse($units as $unit)<tr class="{{ $unit->status ? '' : 'table-secondary' }}">
@@ -129,7 +141,7 @@
 @endsection
 
 @push('css')
-<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}#assignment-modal{z-index:2000!important}body>.modal-backdrop{z-index:1990!important}#assignment-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
+<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}.rh-programme-toggle{color:#64748b!important;width:18px}.rh-programme-toggle i{transition:transform .18s ease}.rh-programme-toggle[aria-expanded="true"] i{transform:rotate(90deg)}#assignment-modal,#assignment-context-modal{z-index:2000!important}body>.modal-backdrop{z-index:1990!important}#assignment-modal .modal-body,#assignment-context-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
 @endpush
 
 @push('js')
@@ -142,6 +154,23 @@
         : null;
 @endphp
 <script>
+const programmeTreeStateKey=@json('taxonomy-programme-tree-'.$profile);
+let programmeTreeState={};
+try{programmeTreeState=JSON.parse(localStorage.getItem(programmeTreeStateKey)||'{}');}catch(error){programmeTreeState={};}
+const programmeToggles=Array.from(document.querySelectorAll('.js-programme-toggle'));
+const setProgrammeExpanded=(toggle,expanded,persist=true)=>{
+    const children=document.getElementById(toggle.dataset.target);
+    if(!children)return;
+    toggle.setAttribute('aria-expanded',expanded?'true':'false');
+    children.hidden=!expanded;
+    if(persist){programmeTreeState[toggle.dataset.programmeId]=expanded;try{localStorage.setItem(programmeTreeStateKey,JSON.stringify(programmeTreeState));}catch(error){}}
+};
+programmeToggles.forEach(toggle=>{
+    setProgrammeExpanded(toggle,programmeTreeState[toggle.dataset.programmeId]===true,false);
+    toggle.addEventListener('click',()=>setProgrammeExpanded(toggle,toggle.getAttribute('aria-expanded')!=='true'));
+});
+document.getElementById('expand-all-programmes')?.addEventListener('click',()=>programmeToggles.forEach(toggle=>setProgrammeExpanded(toggle,true)));
+document.getElementById('collapse-all-programmes')?.addEventListener('click',()=>programmeToggles.forEach(toggle=>setProgrammeExpanded(toggle,false)));
 const assignmentForm=document.getElementById('unit-assignment-form');
 const assignmentScrollKey='taxonomy-assignment-scroll';
 const storedAssignmentScroll=sessionStorage.getItem(assignmentScrollKey);
@@ -195,6 +224,45 @@ if(assignmentForm){
         context.textContent=programme.options[programme.selectedIndex]?.text||'';
         window.jQuery(modal).modal('show');
     };
+    const contextModal=document.getElementById('assignment-context-modal');
+    if(contextModal.parentElement!==document.body)document.body.appendChild(contextModal);
+    const contextTitle=document.getElementById('assignment-context-title');
+    const contextDescription=document.getElementById('assignment-context-description');
+    const contextType=document.getElementById('assignment-context-type');
+    const contextCount=document.getElementById('assignment-context-count');
+    const contextRows=document.getElementById('assignment-context-rows');
+    const contextEmpty=document.getElementById('assignment-context-empty');
+    const contextAdd=document.getElementById('assignment-context-add');
+    const groupLabels=@json($profileConfig['group_types'] ?? []);
+    let activeContext=null;
+    const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[character]));
+    const assignmentPeriod=assignment=>['study_year','semester','module','stage','section']
+        .map(field=>assignment[field]).filter(Boolean).join(' / ')||'—';
+    const switchFromContext=(mode,data)=>{
+        window.jQuery(contextModal).one('hidden.bs.modal',()=>openAssignmentModal(mode,data)).modal('hide');
+    };
+    const openContextModal=data=>{
+        activeContext=data;
+        const assignments=Array.isArray(data.assignments)?data.assignments:[];
+        contextTitle.textContent=data.label||@json(__('Manage assigned units'));
+        contextDescription.textContent=data.node_type==='unit_group'
+            ? @json(__('Only units assigned to this unit group are shown.'))
+            : @json(__('Only units assigned within this study period are shown.'));
+        contextType.textContent=data.node_type==='unit_group'?@json(__('Unit Group')):@json(__('Study Period'));
+        contextCount.textContent=assignments.length===1
+            ? @json(__('1 assigned unit'))
+            : `${assignments.length} ${@json(__('assigned units'))}`;
+        contextRows.innerHTML=assignments.map((assignment,index)=>`<tr class="${assignment.active?'':'table-secondary'}"><td><strong>${escapeHtml(assignment.unit_name)}</strong></td><td>${escapeHtml(assignment.unit_code||'—')}</td><td>${escapeHtml(groupLabels[assignment.group_type]||assignment.group_type)}</td><td>${escapeHtml(assignmentPeriod(assignment))}</td><td><span class="badge ${assignment.active?'badge-success':'badge-secondary'}">${assignment.active?@json(__('Active')):@json(__('Inactive'))}</span></td><td class="text-right"><button type="button" class="btn btn-sm btn-outline-warning js-context-edit-assignment" data-index="${index}"><i class="fas fa-edit"></i> ${@json(__('Edit'))}</button></td></tr>`).join('');
+        contextRows.closest('.table-responsive').classList.toggle('d-none',assignments.length===0);
+        contextEmpty.classList.toggle('d-none',assignments.length!==0);
+        contextRows.querySelectorAll('.js-context-edit-assignment').forEach(button=>button.addEventListener('click',()=>switchFromContext('edit',assignments[Number(button.dataset.index)])));
+        window.jQuery(contextModal).modal('show');
+    };
+    contextAdd.addEventListener('click',()=>{
+        if(!activeContext)return;
+        switchFromContext('create',{...(activeContext.defaults||{}),programme_id:activeContext.programme_id});
+    });
+    document.querySelectorAll('.js-manage-assignment-context').forEach(button=>button.addEventListener('click',()=>openContextModal(parseData(button.dataset.context))));
     document.querySelectorAll('.js-open-assignment-modal').forEach(button=>button.addEventListener('click',()=>{
         const mode=button.dataset.mode||'create';
         const data=mode==='edit'?parseData(button.dataset.assignment):parseData(button.dataset.defaults);

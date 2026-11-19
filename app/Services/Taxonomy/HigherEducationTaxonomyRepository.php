@@ -89,6 +89,9 @@ class HigherEducationTaxonomyRepository
                             'period_type' => $field,
                             'programme_id' => $programme->id,
                             'assignment_defaults' => $periodDefaults,
+                            'assignments' => $periodAssignments
+                                ->map(fn (ProgrammeUnitAssignment $assignment) => $this->assignmentSummary($assignment))
+                                ->values()->all(),
                             'children' => $this->assignmentTree(
                                 $programme,
                                 $periodAssignments,
@@ -121,6 +124,9 @@ class HigherEducationTaxonomyRepository
                 'group_type' => $group,
                 'programme_id' => $programme->id,
                 'assignment_defaults' => [...$assignmentDefaults, 'group_type' => $group],
+                'assignments' => $groupAssignments
+                    ->map(fn (ProgrammeUnitAssignment $assignment) => $this->assignmentSummary($assignment))
+                    ->values()->all(),
                 'children' => $groupAssignments->map(
                     fn (ProgrammeUnitAssignment $assignment) => $this->unitNode($assignment, $publicOnly)
                 )->all(),
@@ -143,20 +149,7 @@ class HigherEducationTaxonomyRepository
             'curriculum_version' => $assignment->unit->curriculum_version,
             'node_type' => 'unit',
             'active' => (bool) $assignment->status,
-            'assignment' => [
-                'id' => $assignment->id,
-                'programme_node_id' => $assignment->programme_node_id,
-                'curriculum_unit_id' => $assignment->curriculum_unit_id,
-                'group_type' => $assignment->group_type,
-                'study_year' => $assignment->study_year,
-                'semester' => $assignment->semester,
-                'module' => $assignment->module,
-                'stage' => $assignment->stage,
-                'section' => $assignment->section,
-                'credit_hours' => $assignment->credit_hours,
-                'is_mandatory' => (bool) $assignment->is_mandatory,
-                'display_order' => $assignment->display_order,
-            ],
+            'assignment' => $this->assignmentPayload($assignment),
             'shared_count' => $assignment->unit->assignments->where('status', true)->count(),
             'children' => $assignment->unit->resourceContexts
                 ->whereNull('programme_unit_assignment_id')
@@ -173,6 +166,34 @@ class HigherEducationTaxonomyRepository
                     'assessment_series' => $context->assessment_series,
                     'assessment_year' => $context->assessment_year,
                 ])->filter(fn ($resource) => filled($resource['slug']))->values()->all(),
+        ];
+    }
+
+    private function assignmentSummary(ProgrammeUnitAssignment $assignment): array
+    {
+        return [
+            ...$this->assignmentPayload($assignment),
+            'unit_name' => $assignment->unit->name,
+            'unit_code' => $assignment->unit->code,
+            'active' => (bool) $assignment->status,
+        ];
+    }
+
+    private function assignmentPayload(ProgrammeUnitAssignment $assignment): array
+    {
+        return [
+            'id' => $assignment->id,
+            'programme_node_id' => $assignment->programme_node_id,
+            'curriculum_unit_id' => $assignment->curriculum_unit_id,
+            'group_type' => $assignment->group_type,
+            'study_year' => $assignment->study_year,
+            'semester' => $assignment->semester,
+            'module' => $assignment->module,
+            'stage' => $assignment->stage,
+            'section' => $assignment->section,
+            'credit_hours' => $assignment->credit_hours,
+            'is_mandatory' => (bool) $assignment->is_mandatory,
+            'display_order' => $assignment->display_order,
         ];
     }
 }

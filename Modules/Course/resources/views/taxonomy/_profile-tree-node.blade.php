@@ -15,10 +15,30 @@
     $typeLabel = $profileLabels[$type] ?? ucwords(str_replace('_', ' ', $type));
     $allowedChildren = config("higher_education_taxonomy.profiles.{$profile}.allowed_children.{$type}", []);
     $assignmentDefaults = $node['assignment_defaults'] ?? [];
+    $managementContext = [
+        'label' => $node['label'] ?? '',
+        'node_type' => $type,
+        'programme_id' => $node['programme_id'] ?? null,
+        'defaults' => $assignmentDefaults,
+        'assignments' => $node['assignments'] ?? [],
+    ];
+    $isCollapsibleProgramme = $type === 'programme' && $children !== [];
+    $childrenId = $isCollapsibleProgramme ? 'programme-children-'.$node['id'] : null;
 @endphp
 <li class="rh-taxonomy-tree__item rh-taxonomy-tree__item--{{ $type }}">
     <div class="rh-taxonomy-tree__row">
         <span class="rh-taxonomy-tree__marker"></span>
+        @if ($isCollapsibleProgramme)
+            <button type="button" class="btn btn-sm btn-link p-0 rh-programme-toggle js-programme-toggle"
+                data-programme-id="{{ $node['id'] }}"
+                data-target="{{ $childrenId }}"
+                aria-controls="{{ $childrenId }}"
+                aria-expanded="false"
+                title="{{ __('Expand or collapse :name', ['name' => $node['label']]) }}">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                <span class="sr-only">{{ __('Expand or collapse programme') }}</span>
+            </button>
+        @endif
         <span class="rh-taxonomy-tree__label">{{ $node['label'] }}</span>
         <span class="badge {{ $badgeClass }}">{{ $typeLabel }}</span>
         @if (($node['shared_count'] ?? 0) > 1)<span class="badge badge-success"><i class="fas fa-link"></i> {{ __('Shared :count', ['count' => $node['shared_count']]) }}</span>@endif
@@ -44,7 +64,10 @@
                 data-defaults="{}"
                 title="{{ __('Assign a unit to this programme') }}"><i class="fas fa-link"></i> {{ __('Assign unit') }}</button>
         @elseif (in_array($type, ['study_period', 'unit_group'], true))
-            <button type="button" class="btn btn-sm btn-outline-success ml-auto js-open-assignment-modal"
+            <button type="button" class="btn btn-sm btn-outline-warning ml-auto js-manage-assignment-context"
+                data-context="{{ json_encode($managementContext) }}"
+                title="{{ __('Manage :name', ['name' => $node['label']]) }}"><i class="fas fa-edit"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-success js-open-assignment-modal"
                 data-mode="create"
                 data-programme-id="{{ $node['programme_id'] ?? '' }}"
                 data-defaults="{{ json_encode($assignmentDefaults) }}"
@@ -57,5 +80,5 @@
             @if($type !== 'education_level')<form method="POST" action="{{ route('admin.taxonomy.nodes.archive', $node['id']) }}" class="taxonomy-archive-node-form">@csrf @method('DELETE')<input type="hidden" name="return_profile" value="{{ $profile }}"><button class="btn btn-sm btn-outline-danger" title="{{ __('Archive branch') }}"><i class="fas fa-archive"></i></button></form>@endif
         @endif
     </div>
-    @if ($children)<ul class="rh-taxonomy-tree__children">@foreach ($children as $child)@include('course::taxonomy._profile-tree-node', ['node' => $child, 'profile' => $profile])@endforeach</ul>@endif
+    @if ($children)<ul @if($childrenId) id="{{ $childrenId }}" data-programme-children="{{ $node['id'] }}" hidden @endif class="rh-taxonomy-tree__children">@foreach ($children as $child)@include('course::taxonomy._profile-tree-node', ['node' => $child, 'profile' => $profile])@endforeach</ul>@endif
 </li>
