@@ -212,8 +212,33 @@ class TaxonomyManagementController extends Controller
         $recentChanges = Schema::hasTable('taxonomy_change_logs')
             ? TaxonomyChangeLog::with('admin')->latest()->limit(20)->get()
             : collect();
+        $profileSummaries = collect(config('higher_education_taxonomy.profiles', []))
+            ->map(function (array $definition, string $profile) use ($levels) {
+                $root = $levels->firstWhere('taxonomy_profile', $profile);
+                if (! $root) {
+                    return null;
+                }
+                $nodes = CourseCategory::where('taxonomy_profile', $profile)->where('status', true)->get();
+                $ownerIds = $nodes->where('node_type', CourseCategory::TYPE_AWARDING_BODY)->pluck('id')
+                    ->push($root->id)->unique();
 
-        return view('course::taxonomy.index', compact('levels', 'sharedLeaves', 'archivedNodes', 'recentChanges'));
+                return [
+                    'profile' => $profile,
+                    'definition' => $definition,
+                    'root' => $root,
+                    'owners' => $nodes->where('node_type', CourseCategory::TYPE_AWARDING_BODY)->count(),
+                    'departments' => $nodes->where('node_type', CourseCategory::TYPE_DEPARTMENT)->count(),
+                    'programmes' => $nodes->where('node_type', CourseCategory::TYPE_PROGRAMME)->count(),
+                    'units' => CurriculumUnit::whereIn('awarding_body_id', $ownerIds)->where('status', true)->count(),
+                    'assignments' => ProgrammeUnitAssignment::where('status', true)
+                        ->whereHas('programme', fn ($query) => $query->where('taxonomy_profile', $profile))
+                        ->count(),
+                ];
+            })->filter()->values();
+
+        return view('course::taxonomy.index', compact(
+            'levels', 'sharedLeaves', 'archivedNodes', 'recentChanges', 'profileSummaries'
+        ));
     }
 
     public function createNode(Request $request): View|RedirectResponse

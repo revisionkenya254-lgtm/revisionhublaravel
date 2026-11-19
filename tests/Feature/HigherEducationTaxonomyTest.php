@@ -270,6 +270,49 @@ class HigherEducationTaxonomyTest extends TestCase
         );
     }
 
+    public function test_main_taxonomy_page_uses_higher_education_workspace_cards(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Workspace Admin',
+            'email' => 'workspace-admin@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->actingAs($admin, 'admin')->get(route('admin.taxonomy.index'))
+            ->assertOk()
+            ->assertSee('Higher Education Workspaces')
+            ->assertSee('Manage CDACC Curriculum')
+            ->assertSee('Department')
+            ->assertSee('Programme and Level');
+    }
+
+    public function test_legacy_cdacc_depth_nodes_are_normalized_without_changing_ids(): void
+    {
+        $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', 'cdacc')->firstOrFail();
+        $legacyDepartment = CourseCategory::create([
+            'parent_id' => $root->id,
+            'slug' => 'legacy-health-science-department',
+            'node_type' => CourseCategory::TYPE_GRADE,
+            'taxonomy_profile' => 'cdacc',
+            'status' => true,
+        ]);
+        $legacyProgramme = CourseCategory::create([
+            'parent_id' => $legacyDepartment->id,
+            'slug' => 'legacy-health-support-level-6',
+            'node_type' => CourseCategory::TYPE_SUBJECT,
+            'taxonomy_profile' => 'cdacc',
+            'status' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_11_19_000009_normalize_legacy_cdacc_node_types.php');
+        $migration->up();
+
+        $this->assertSame(CourseCategory::TYPE_DEPARTMENT, $legacyDepartment->fresh()->node_type);
+        $this->assertSame(CourseCategory::TYPE_PROGRAMME, $legacyProgramme->fresh()->node_type);
+        $this->assertSame($root->id, $legacyDepartment->fresh()->parent_id);
+        $this->assertSame($legacyDepartment->id, $legacyProgramme->fresh()->parent_id);
+    }
+
     public function test_admin_can_manage_an_institution_taxonomy_unit_and_assignment_end_to_end(): void
     {
         $admin = Admin::create([

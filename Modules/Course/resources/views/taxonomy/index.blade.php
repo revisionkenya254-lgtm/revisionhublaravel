@@ -15,22 +15,26 @@
             </div>
 
             <div class="section-body">
-                @php
-                    $availableProfiles = collect(config('higher_education_taxonomy.profiles', []))
-                        ->filter(function ($item, $slug) use ($levels) {
-                            return $levels->contains('taxonomy_profile', $slug);
-                        });
-                @endphp
-                @if ($availableProfiles->isNotEmpty())
-                    <div class="card mb-4"><div class="card-header"><h4>{{ __('Higher Education Workspaces') }}</h4></div><div class="card-body d-flex flex-wrap" style="gap:.5rem">
-                        @foreach($availableProfiles as $slug => $item)<a class="btn btn-outline-primary" href="{{ route('admin.taxonomy.profiles.show', $slug) }}"><i class="{{ $item['icon'] }}"></i> {{ $item['label'] }}</a>@endforeach
-                    </div></div>
+                @if ($profileSummaries->isNotEmpty())
+                    <div class="card mb-4 rh-higher-workspaces"><div class="card-header"><div><h4 class="mb-1">{{ __('Higher Education Workspaces') }}</h4><small class="text-muted">{{ __('Build institutions, departments, programmes, canonical units and assignments from the configured taxonomy architecture.') }}</small></div></div><div class="card-body"><div class="row">
+                        @foreach($profileSummaries as $summary)
+                            @php
+                                $item = $summary['definition'];
+                            @endphp
+                            <div class="col-xl-4 col-md-6 mb-3"><div class="rh-workspace-card h-100" style="--profile-color:{{ $item['accent'] }}">
+                                <div class="d-flex align-items-center mb-3"><span class="rh-workspace-card__icon"><i class="{{ $item['icon'] }}"></i></span><div><h5 class="mb-0">{{ $item['label'] }}</h5><small>{{ collect($item['hierarchy'] ?? [])->map(fn($type) => $item['labels'][$type] ?? ucwords(str_replace('_', ' ', $type)))->implode(' → ') }}</small></div></div>
+                                <div class="rh-workspace-card__stats"><span><strong>{{ $summary['owners'] }}</strong> {{ $item['labels']['awarding_body'] ?? __('Owners') }}</span><span><strong>{{ $summary['departments'] }}</strong> {{ $item['labels']['department'] ?? __('Departments') }}</span><span><strong>{{ $summary['programmes'] }}</strong> {{ $item['labels']['programme'] ?? __('Programmes') }}</span><span><strong>{{ $summary['units'] }}</strong> {{ $item['labels']['unit'] ?? __('Units') }}</span><span><strong>{{ $summary['assignments'] }}</strong> {{ __('Assignments') }}</span></div>
+                                <div class="d-flex flex-wrap mt-3" style="gap:.45rem"><a class="btn btn-sm btn-primary" href="{{ route('admin.taxonomy.profiles.show', $summary['profile']) }}"><i class="fas fa-sitemap"></i> {{ __('Manage :profile Curriculum', ['profile' => $item['label']]) }}</a><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.taxonomy.nodes.create', ['parent_id' => $summary['root']->id, 'profile' => $summary['profile']]) }}"><i class="fas fa-plus"></i> {{ __('Add :type', ['type' => $item['labels'][($item['allowed_children']['education_level'][0] ?? '')] ?? __('Structure')]) }}</a></div>
+                            </div></div>
+                        @endforeach
+                    </div></div></div>
                 @endif
                 <div class="alert alert-info">
                     {{ __('School subjects and pathways are shared across every grade, form, and national assessment in an education level. Use the Shared Subjects action so all product builders and APIs remain uniform.') }}
                 </div>
 
                 @foreach ($levels as $level)
+                    @continue(filled($level->taxonomy_profile))
                     @php
                         $classTypes = ['grade', 'form', 'national_exam'];
                         $classNodes = $level->subCategories->whereIn('node_type', $classTypes);
@@ -211,6 +215,12 @@
         </section>
     </div>
 @endsection
+
+@push('css')
+<style>
+.rh-higher-workspaces{border-top:4px solid #4f46e5}.rh-workspace-card{background:#fff;border:1px solid #e5e7eb;border-top:4px solid var(--profile-color);border-radius:12px;padding:1rem;box-shadow:0 4px 12px rgba(15,23,42,.04)}.rh-workspace-card__icon{align-items:center;background:color-mix(in srgb,var(--profile-color) 12%,white);border-radius:10px;color:var(--profile-color);display:inline-flex;font-size:1.1rem;height:42px;justify-content:center;margin-right:.75rem;width:42px}.rh-workspace-card__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.rh-workspace-card__stats span{background:#f8fafc;border-radius:7px;color:#64748b;padding:.45rem .55rem}.rh-workspace-card__stats strong{color:#0f172a}
+</style>
+@endpush
 
 @push('js')
     <script>
