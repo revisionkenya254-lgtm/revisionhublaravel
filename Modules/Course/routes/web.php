@@ -21,8 +21,11 @@ Route::group(['middleware' => ['auth:admin', 'translation'], 'prefix' => 'admin'
         Route::post('/profiles/{profile}/units', 'storeUnit')->name('units.store');
         Route::put('/profiles/{profile}/units/{unit}', 'updateUnit')->name('units.update');
         Route::delete('/profiles/{profile}/units/{unit}', 'archiveUnit')->name('units.archive');
+        Route::post('/profiles/{profile}/units/{unit}/restore', 'restoreUnit')->name('units.restore');
         Route::post('/profiles/{profile}/programmes/{programme}/assignments', 'storeAssignment')->name('assignments.store');
+        Route::put('/profiles/{profile}/assignments/{assignment}', 'updateAssignment')->name('assignments.update');
         Route::delete('/profiles/{profile}/assignments/{assignment}', 'destroyAssignment')->name('assignments.destroy');
+        Route::post('/profiles/{profile}/assignments/{assignment}/restore', 'restoreAssignment')->name('assignments.restore');
         Route::get('/nodes/create', 'createNode')->name('nodes.create');
         Route::post('/nodes', 'storeNode')->name('nodes.store');
         Route::get('/nodes/{node}/edit', 'editNode')->name('nodes.edit');

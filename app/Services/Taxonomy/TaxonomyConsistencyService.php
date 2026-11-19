@@ -86,7 +86,7 @@ class TaxonomyConsistencyService
                 continue;
             }
 
-            if (! in_array($node->node_type, $this->management->allowedChildTypes($parent), true)) {
+            if (! in_array($node->node_type, $this->management->acceptedChildTypes($parent), true)) {
                 $issues->push([
                     'type' => 'invalid_parent_child_type',
                     'message' => "Node {$node->id} ({$node->node_type}) is invalid beneath ".($parent?->node_type ?? 'root').'.',

@@ -245,6 +245,143 @@ class HigherEducationTaxonomyTest extends TestCase
         }
     }
 
+    public function test_higher_education_child_rules_are_driven_by_each_profile(): void
+    {
+        $management = app(TaxonomyManagementService::class);
+        $expectedRootChildren = [
+            'cdacc' => [CourseCategory::TYPE_DEPARTMENT],
+            'tvet' => [CourseCategory::TYPE_AWARDING_BODY],
+            'certificate' => [CourseCategory::TYPE_AWARDING_BODY],
+            'diploma' => [CourseCategory::TYPE_AWARDING_BODY],
+            'undergraduate' => [CourseCategory::TYPE_AWARDING_BODY],
+            'professional' => [CourseCategory::TYPE_AWARDING_BODY],
+        ];
+
+        foreach ($expectedRootChildren as $profile => $types) {
+            $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', $profile)->firstOrFail();
+            $this->assertSame($types, $management->allowedChildTypes($root), $profile);
+        }
+
+        $professionalOwner = CourseCategory::where('taxonomy_profile', 'professional')
+            ->where('node_type', CourseCategory::TYPE_AWARDING_BODY)->firstOrFail();
+        $this->assertContains(
+            CourseCategory::TYPE_PROGRAMME,
+            $management->allowedChildTypes($professionalOwner)
+        );
+    }
+
+    public function test_admin_can_manage_an_institution_taxonomy_unit_and_assignment_end_to_end(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Taxonomy Builder',
+            'email' => 'taxonomy-builder@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', 'certificate')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.nodes.store'), [
+            'parent_id' => $root->id,
+            'return_profile' => 'certificate',
+            'name' => 'Admin Test College',
+            'slug' => 'admin-test-college',
+            'node_type' => CourseCategory::TYPE_AWARDING_BODY,
+            'order' => 80,
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $owner = CourseCategory::where('parent_id', $root->id)->where('slug', 'admin-test-college')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.nodes.store'), [
+            'parent_id' => $owner->id,
+            'return_profile' => 'certificate',
+            'name' => 'School of Business',
+            'slug' => 'admin-test-school-business',
+            'node_type' => CourseCategory::TYPE_DEPARTMENT,
+            'order' => 0,
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $department = CourseCategory::where('parent_id', $owner->id)->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.nodes.store'), [
+            'parent_id' => $department->id,
+            'return_profile' => 'certificate',
+            'name' => 'Certificate in Business Administration',
+            'slug' => 'admin-test-certificate-business-administration',
+            'node_type' => CourseCategory::TYPE_PROGRAMME,
+            'taxonomy_metadata' => ['qualification_level' => 'Certificate'],
+            'order' => 0,
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $programme = CourseCategory::where('parent_id', $department->id)->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.units.store', 'certificate'), [
+            'awarding_body_id' => $owner->id,
+            'name' => 'Business Communication',
+            'slug' => 'admin-test-business-communication',
+            'code' => 'CBA-101',
+            'curriculum_version' => '2026',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $unit = CurriculumUnit::where('awarding_body_id', $owner->id)
+            ->where('slug', 'admin-test-business-communication')->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->post(
+            route('admin.taxonomy.assignments.store', ['certificate', $programme]),
+            [
+                'curriculum_unit_id' => $unit->id,
+                'group_type' => 'common',
+                'module' => 'Module 1',
+                'semester' => 'Semester 1',
+                'display_order' => 3,
+                'is_mandatory' => 1,
+            ]
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $assignment = ProgrammeUnitAssignment::where('programme_node_id', $programme->id)
+            ->where('curriculum_unit_id', $unit->id)->firstOrFail();
+
+        $this->actingAs($admin, 'admin')->put(
+            route('admin.taxonomy.assignments.update', ['certificate', $assignment]),
+            [
+                'programme_node_id' => $programme->id,
+                'curriculum_unit_id' => $unit->id,
+                'group_type' => 'major',
+                'module' => 'Module 2',
+                'semester' => 'Semester 2',
+                'display_order' => 4,
+                'is_mandatory' => 1,
+            ]
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertSame('Module 2', $assignment->fresh()->module);
+        $this->assertSame('major', $assignment->fresh()->group_type);
+
+        $this->actingAs($admin, 'admin')->delete(
+            route('admin.taxonomy.assignments.destroy', ['certificate', $assignment])
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertFalse((bool) $assignment->fresh()->status);
+        $this->actingAs($admin, 'admin')->delete(route('admin.taxonomy.nodes.archive', $programme), [
+            'return_profile' => 'certificate',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertNotNull(CourseCategory::withTrashed()->findOrFail($programme->id)->deleted_at);
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.nodes.restore', $programme->id), [
+            'return_profile' => 'certificate',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertNull(CourseCategory::withTrashed()->findOrFail($programme->id)->deleted_at);
+        $this->actingAs($admin, 'admin')->post(
+            route('admin.taxonomy.assignments.restore', ['certificate', $assignment])
+        )->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertTrue((bool) $assignment->fresh()->status);
+
+        $this->actingAs($admin, 'admin')->put(route('admin.taxonomy.units.update', ['certificate', $unit]), [
+            'name' => 'Advanced Business Communication',
+            'slug' => $unit->slug,
+            'code' => 'CBA-102',
+            'curriculum_version' => '2026',
+        ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertSame('Advanced Business Communication', $unit->fresh()->name);
+
+        $this->actingAs($admin, 'admin')->delete(route('admin.taxonomy.units.archive', ['certificate', $unit]))
+            ->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertFalse((bool) $unit->fresh()->status);
+        $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.units.restore', ['certificate', $unit]))
+            ->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
+        $this->assertTrue((bool) $unit->fresh()->status);
+    }
+
     public function test_product_forms_receive_every_upper_education_architecture(): void
     {
         $options = app(ProductCurriculumContextService::class)->formOptions();
@@ -258,7 +395,7 @@ class HigherEducationTaxonomyTest extends TestCase
             'certificate' => ['owner', 'department', 'programme', 'module', 'semester', 'assignment'],
             'diploma' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
             'undergraduate' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
-            'professional' => ['owner', 'department', 'stage', 'section', 'assignment'],
+            'professional' => ['owner', 'programme', 'stage', 'section', 'assignment'],
         ];
         $profiles = collect($options['profiles'])->keyBy('key');
         foreach ($expectedFields as $profile => $fields) {

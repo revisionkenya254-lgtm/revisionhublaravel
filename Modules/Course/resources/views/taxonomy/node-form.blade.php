@@ -1,6 +1,10 @@
 @extends('admin.master_layout')
 
-@php($editing = isset($node))
+@php
+    $editing = isset($node);
+    $formProfile = $parent?->taxonomy_profile ?? ($node->taxonomy_profile ?? request('profile'));
+    $profileConfig = config("higher_education_taxonomy.profiles.{$formProfile}", []);
+@endphp
 @section('title')<title>{{ $editing ? __('Edit Taxonomy Node') : __('Add Taxonomy Node') }}</title>@endsection
 
 @section('admin-content')
@@ -11,19 +15,20 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between">
                         <h4>{{ $parent ? __('Parent: :name', ['name' => $parent->name]) : __('Education Level') }}</h4>
-                        <a href="{{ route('admin.taxonomy.index') }}" class="btn btn-primary"><i class="fas fa-arrow-left"></i> {{ __('Back') }}</a>
+                        <a href="{{ request('profile') ? route('admin.taxonomy.profiles.show', request('profile')) : route('admin.taxonomy.index') }}" class="btn btn-primary"><i class="fas fa-arrow-left"></i> {{ __('Back') }}</a>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ $editing ? route('admin.taxonomy.nodes.update', $node) : route('admin.taxonomy.nodes.store') }}">
                             @csrf
                             @if ($editing) @method('PUT') @endif
                             <input type="hidden" name="parent_id" value="{{ $parent?->id }}">
+                            <input type="hidden" name="return_profile" value="{{ request('profile') }}">
                             @if ($parent)
                                 <input type="hidden" name="taxonomy_profile" value="{{ old('taxonomy_profile', $node->taxonomy_profile ?? $parent->taxonomy_profile) }}">
                             @endif
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <label>{{ __('Name') }} *</label>
+                                    <label>{{ count($allowedTypes) === 1 ? ($profileConfig['labels'][$allowedTypes[0]] ?? __('Name')) : __('Name') }} *</label>
                                     <input name="name" id="taxonomy-name" class="form-control" value="{{ old('name', $node->name ?? '') }}" required>
                                     @error('name')<span class="text-danger">{{ $message }}</span>@enderror
                                 </div>
@@ -38,7 +43,7 @@
                                         </select>
                                     </div>
                                 @endif
-                                @if (($node->node_type ?? null) === 'programme' || $parent?->node_type === 'department')
+                                @if (($node->node_type ?? null) === 'programme' || in_array('programme', $allowedTypes, true))
                                     <div class="form-group col-md-6">
                                         <label>{{ __('Qualification Level') }}</label>
                                         <input name="taxonomy_metadata[qualification_level]" class="form-control" value="{{ old('taxonomy_metadata.qualification_level', data_get($node->taxonomy_metadata ?? [], 'qualification_level')) }}" placeholder="{{ __('e.g. Level 6') }}">
@@ -53,7 +58,7 @@
                                     <label>{{ __('Node Type') }} *</label>
                                     <select name="node_type" class="form-control" required>
                                         @foreach ($allowedTypes as $type)
-                                            <option value="{{ $type }}" @selected(old('node_type', $node->node_type ?? '') === $type)>{{ ucwords(str_replace('_', ' ', $type)) }}</option>
+                                            <option value="{{ $type }}" @selected(old('node_type', $node->node_type ?? '') === $type)>{{ $profileConfig['labels'][$type] ?? ucwords(str_replace('_', ' ', $type)) }}</option>
                                         @endforeach
                                     </select>
                                     @error('node_type')<span class="text-danger">{{ $message }}</span>@enderror

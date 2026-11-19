@@ -25,13 +25,16 @@ class ProductCurriculumContextService
         $nodes = CourseCategory::query()
             ->with('translation')
             ->whereNotNull('taxonomy_profile')
+            ->where('status', true)
             ->get()
             ->keyBy('id');
 
         $assignments = ProgrammeUnitAssignment::query()
             ->with(['unit.awardingBody.translation', 'programme.translation'])
             ->where('status', true)
+            ->whereHas('programme', fn ($query) => $query->where('status', true))
             ->whereHas('unit', fn ($query) => $query->where('status', true))
+            ->whereHas('unit.awardingBody', fn ($query) => $query->where('status', true))
             ->orderBy('programme_node_id')
             ->orderBy('group_type')
             ->orderBy('display_order')

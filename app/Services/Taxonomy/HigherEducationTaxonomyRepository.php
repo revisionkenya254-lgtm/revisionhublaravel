@@ -133,6 +133,7 @@ class HigherEducationTaxonomyRepository
             'code' => $assignment->unit->code,
             'curriculum_version' => $assignment->unit->curriculum_version,
             'node_type' => 'unit',
+            'active' => (bool) $assignment->status,
             'shared_count' => $assignment->unit->assignments->where('status', true)->count(),
             'children' => $assignment->unit->resourceContexts
                 ->whereNull('programme_unit_assignment_id')

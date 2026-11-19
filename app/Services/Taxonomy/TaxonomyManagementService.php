@@ -31,14 +31,14 @@ class TaxonomyManagementService
             return [CourseCategory::TYPE_EDUCATION_LEVEL];
         }
 
-        if ($parent->node_type === CourseCategory::TYPE_EDUCATION_LEVEL && $parent->taxonomy_profile) {
-            return [
-                CourseCategory::TYPE_AWARDING_BODY,
-                CourseCategory::TYPE_DEPARTMENT,
-                CourseCategory::TYPE_SCHOOL,
-                CourseCategory::TYPE_COURSE,
-                CourseCategory::TYPE_RESOURCE,
-            ];
+        if ($parent->taxonomy_profile) {
+            $configured = config(
+                'higher_education_taxonomy.profiles.'.$parent->taxonomy_profile.'.allowed_children.'.$parent->node_type
+            );
+
+            if (is_array($configured)) {
+                return array_values(array_intersect($configured, CourseCategory::NODE_TYPES));
+            }
         }
 
         return match ($parent->node_type) {
@@ -65,6 +65,18 @@ class TaxonomyManagementService
         };
     }
 
+    public function acceptedChildTypes(?CourseCategory $parent): array
+    {
+        $allowed = $this->allowedChildTypes($parent);
+        if (! $parent?->taxonomy_profile) {
+            return $allowed;
+        }
+
+        $legacy = config('higher_education_taxonomy.legacy_compatible_children.'.$parent->node_type, []);
+
+        return array_values(array_unique(array_merge($allowed, is_array($legacy) ? $legacy : [])));
+    }
+
     public function createNode(?int $parentId, array $data): CourseCategory
     {
         return DB::transaction(function () use ($parentId, $data) {
@@ -83,7 +95,7 @@ class TaxonomyManagementService
             $this->audit->record('node_created', $node->id, null, $this->nodeSnapshot($node), [
                 'parent_id' => $parentId,
             ]);
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $node;
         });
@@ -95,7 +107,11 @@ class TaxonomyManagementService
             $node = CourseCategory::lockForUpdate()->findOrFail($node->id);
             $before = $this->nodeSnapshot($node);
             $parent = $node->parent_id ? CourseCategory::findOrFail($node->parent_id) : null;
-            $this->assertAllowedType($parent, $data['node_type']);
+            $keepsCompatibleLegacyType = $data['node_type'] === $node->node_type
+                && in_array($node->node_type, $this->acceptedChildTypes($parent), true);
+            if (! $keepsCompatibleLegacyType) {
+                $this->assertAllowedType($parent, $data['node_type']);
+            }
             $this->assertSiblingSlugAvailable($node->parent_id, $data['slug'], $node->id);
 
             $node->forceFill([
@@ -109,7 +125,7 @@ class TaxonomyManagementService
             $this->upsertTranslation($node->id, $data['name']);
             $node->setAttribute('translation_name', $data['name']);
             $this->audit->record('node_updated', $node->id, $before, $this->nodeSnapshot($node));
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $node->refresh();
         });
@@ -191,7 +207,7 @@ class TaxonomyManagementService
                 $after,
                 ['education_level_id' => $level->id, 'copies' => count($ids)]
             );
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $ids;
         });
@@ -223,7 +239,7 @@ class TaxonomyManagementService
                 'education_level_id' => $level->id,
                 'copies' => count($ids),
             ]);
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $archived;
         });
@@ -241,7 +257,7 @@ class TaxonomyManagementService
             $this->audit->record('branch_archived', $node->id, $before, null, [
                 'nodes' => count($ids),
             ]);
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $archived;
         });
@@ -291,7 +307,7 @@ class TaxonomyManagementService
                 'ids' => $ids,
                 'restored' => $restored,
             ]);
-            CourseCategoryCacheClear::clear();
+            $this->clearCaches();
 
             return $restored;
         });
@@ -417,6 +433,8 @@ class TaxonomyManagementService
             ['courses', 'category_id'],
             ['user_skill_topics', 'category_id'],
             ['course_filters', 'course_category_id'],
+            ['curriculum_units', 'awarding_body_id'],
+            ['programme_unit_assignments', 'programme_node_id'],
         ];
 
         foreach ($references as [$table, $column]) {
@@ -424,7 +442,11 @@ class TaxonomyManagementService
                 continue;
             }
 
-            $count = DB::table($table)->whereIn($column, $ids)->count();
+            $referenceQuery = DB::table($table)->whereIn($column, $ids);
+            if ($table === 'programme_unit_assignments' && Schema::hasColumn($table, 'status')) {
+                $referenceQuery->where('status', true);
+            }
+            $count = $referenceQuery->count();
             if ($count > 0) {
                 throw ValidationException::withMessages([
                     'node' => __('This taxonomy branch cannot be archived because :count records in :table use it.', [
@@ -504,5 +526,11 @@ class TaxonomyManagementService
             'order' => (int) $node->order,
             'status' => (bool) $node->status,
         ];
+    }
+
+    private function clearCaches(): void
+    {
+        CourseCategoryCacheClear::clear();
+        app(TaxonomyCatalogRepository::class)->clearCache();
     }
 }
