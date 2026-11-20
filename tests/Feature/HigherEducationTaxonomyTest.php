@@ -688,6 +688,39 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('let pathComplete = true', $html);
     }
 
+    public function test_product_selectors_include_active_taxonomy_departments_and_programmes_without_units(): void
+    {
+        $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', 'cdacc')->firstOrFail();
+        $management = app(TaxonomyManagementService::class);
+        $department = $management->createNode($root->id, [
+            'name' => 'Water Engineering Department',
+            'slug' => 'water-engineering-department',
+            'node_type' => CourseCategory::TYPE_DEPARTMENT,
+            'order' => 80,
+        ]);
+        $programme = $management->createNode($department->id, [
+            'name' => 'Water Engineering Level 6',
+            'slug' => 'water-engineering-level-6',
+            'node_type' => CourseCategory::TYPE_PROGRAMME,
+            'order' => 0,
+        ]);
+
+        $options = app(ProductCurriculumContextService::class)->formOptions();
+        $paths = collect($options['taxonomy_paths']);
+        $this->assertTrue($paths->contains(fn (array $path) => $path['department_id'] === $department->id));
+        $this->assertTrue($paths->contains(fn (array $path) => $path['programme_id'] === $programme->id));
+        $this->assertFalse(collect($options['assignments'])->contains(
+            fn (array $assignment) => $assignment['programme_id'] === $programme->id
+        ));
+
+        $html = view('partials.product-curriculum-context-fields', [
+            'curriculumOptions' => $options,
+            'curriculumAdmin' => false,
+        ])->render();
+        $this->assertStringContainsString('Water Engineering Department', $html);
+        $this->assertStringContainsString('Water Engineering Level 6', $html);
+    }
+
     public function test_instructor_product_creation_uses_and_persists_the_taxonomy_architecture(): void
     {
         $instructor = User::factory()->create(['role' => 'instructor', 'status' => 'active']);

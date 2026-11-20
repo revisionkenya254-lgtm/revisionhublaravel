@@ -1,5 +1,5 @@
 @php
-    $curriculumOptions = $curriculumOptions ?? ['profiles' => [], 'assignments' => [], 'units' => [], 'selected' => []];
+    $curriculumOptions = $curriculumOptions ?? ['profiles' => [], 'taxonomy_paths' => [], 'assignments' => [], 'units' => [], 'selected' => []];
     $curriculumAdmin = $curriculumAdmin ?? false;
     $selectedProfile = (string) ($curriculumOptions['selected']['profile'] ?? '');
     $selectedAssignment = (string) ($curriculumOptions['selected']['assignment_id'] ?? '');
@@ -14,6 +14,7 @@
             <input type="hidden" name="curriculum_unit_id" data-curriculum-unit value="{{ $selectedUnit }}">
         @endunless
         <script type="application/json" data-curriculum-profiles>@json($curriculumOptions['profiles'])</script>
+        <script type="application/json" data-curriculum-taxonomy-paths>@json($curriculumOptions['taxonomy_paths'] ?? [])</script>
         <script type="application/json" data-curriculum-assignments>@json($curriculumOptions['assignments'])</script>
 
         <div class="curriculum-path-card__header">
@@ -98,6 +99,7 @@
 
                 document.querySelectorAll('[data-curriculum-context]').forEach(panel => {
                     const profiles = JSON.parse(panel.querySelector('[data-curriculum-profiles]').textContent || '[]');
+                    const taxonomyPaths = JSON.parse(panel.querySelector('[data-curriculum-taxonomy-paths]').textContent || '[]');
                     const records = JSON.parse(panel.querySelector('[data-curriculum-assignments]').textContent || '[]');
                     const profileInput = panel.querySelector('[data-curriculum-profile]');
                     const profileLabel = panel.querySelector('[data-curriculum-profile-label]');
@@ -158,23 +160,32 @@
                             const label = wrapper.querySelector('[data-curriculum-label]');
                             if (label) label.textContent = fieldLabel(field, profile);
                         });
+                        let pathCandidates = taxonomyPaths.filter(path => path.profile === profile.key);
                         let candidates = records.filter(record => record.profile === profile.key);
                         let clearFollowing = false;
                         let pathComplete = true;
                         activeFields.forEach(field => {
                             const select = panel.querySelector(`[data-curriculum-select="${field}"]`);
                             const preferred = initializing && selectedRecord ? selectedRecord[dimensions[field].value] : (clearFollowing ? '' : select.value);
-                            const choices = pathComplete ? uniqueChoices(field, candidates, profile) : [];
+                            const isStructuralField = ['owner','department','programme'].includes(field);
+                            const choices = !pathComplete ? [] : (field === 'group'
+                                ? Object.entries(profile.group_types || {}).map(([value,label]) => ({value,label}))
+                                : uniqueChoices(field, isStructuralField ? pathCandidates : candidates, profile));
                             fillSelect(select, choices, preferred, fieldLabel(field, profile));
                             if (field === changedField) clearFollowing = true;
                             if (select.value) {
+                                if (isStructuralField) {
+                                    pathCandidates = pathCandidates.filter(path => String(path[dimensions[field].value] ?? '') === select.value);
+                                }
                                 candidates = candidates.filter(record => String(record[dimensions[field].value]) === select.value);
                             } else {
+                                pathCandidates = [];
                                 candidates = [];
                                 pathComplete = false;
                             }
                         });
-                        empty.hidden = records.some(record => record.profile === profile.key);
+                        const selectedProgramme = panel.querySelector('[data-curriculum-select="programme"]')?.value;
+                        empty.hidden = !selectedProgramme || records.some(record => record.profile === profile.key && String(record.programme_id) === selectedProgramme);
                         Array.from(sharedUnit?.options || []).forEach((option,index) => { if (index > 0) option.hidden = option.dataset.profile !== profile.key; });
                         if (sharedUnit?.selectedOptions[0]?.hidden) sharedUnit.value = '';
                         const selectedAssignment = records.find(record => String(record.id) === String(assignmentSelect.value));

@@ -43,6 +43,17 @@ class ProductCurriculumContextService
             ->values()
             ->all();
 
+        $taxonomyPaths = $nodes
+            ->filter(fn (CourseCategory $node) => in_array($node->node_type, [
+                CourseCategory::TYPE_AWARDING_BODY,
+                CourseCategory::TYPE_DEPARTMENT,
+                CourseCategory::TYPE_PROGRAMME,
+            ], true))
+            ->map(fn (CourseCategory $node) => $this->taxonomyPathOption($node, $nodes))
+            ->filter()
+            ->values()
+            ->all();
+
         $units = collect($assignments)->unique('unit_id')->map(fn (array $option) => [
             'id' => $option['unit_id'],
             'profile' => $option['profile'],
@@ -61,6 +72,7 @@ class ProductCurriculumContextService
 
         return [
             'profiles' => $profiles,
+            'taxonomy_paths' => $taxonomyPaths,
             'assignments' => $assignments,
             'units' => $units,
             'selected' => [
@@ -277,6 +289,39 @@ class ProductCurriculumContextService
                 ? $assignment->unit->code.' - '.$assignment->unit->name
                 : $assignment->unit->name,
             'label' => $parts->implode(' / '),
+        ];
+    }
+
+    private function taxonomyPathOption(CourseCategory $node, Collection $nodes): ?array
+    {
+        $lineage = collect([$node]);
+        $current = $node;
+        while ($current->parent_id) {
+            if (! $nodes->has($current->parent_id)) {
+                return null;
+            }
+            $current = $nodes->get($current->parent_id);
+            $lineage->prepend($current);
+        }
+
+        $root = $lineage->firstWhere('node_type', CourseCategory::TYPE_EDUCATION_LEVEL);
+        if (! $root || $root->taxonomy_profile !== $node->taxonomy_profile) {
+            return null;
+        }
+
+        $owner = $lineage->firstWhere('node_type', CourseCategory::TYPE_AWARDING_BODY) ?? $root;
+        $department = $lineage->firstWhere('node_type', CourseCategory::TYPE_DEPARTMENT);
+        $programme = $lineage->firstWhere('node_type', CourseCategory::TYPE_PROGRAMME);
+
+        return [
+            'profile' => $node->taxonomy_profile,
+            'owner_id' => $owner?->id,
+            'owner' => $owner?->name,
+            'department_id' => $department?->id,
+            'department' => $department?->name,
+            'programme_id' => $programme?->id,
+            'programme' => $programme?->name,
+            'programme_label' => collect([$department?->name, $programme?->name])->filter()->implode(' / '),
         ];
     }
 
