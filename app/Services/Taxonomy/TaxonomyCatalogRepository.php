@@ -10,7 +10,11 @@ use Throwable;
 
 class TaxonomyCatalogRepository
 {
-    private const CACHE_VERSION = 'v2';
+    private const CACHE_VERSION = 'v3';
+
+    public function __construct(private readonly EducationFamilyService $families)
+    {
+    }
 
     public function snapshot(?string $languageCode = null): array
     {
@@ -26,9 +30,15 @@ class TaxonomyCatalogRepository
     public function educationLevels(?string $languageCode = null): array
     {
         return collect($this->snapshot($languageCode)['education_levels'])
+            ->map(fn (array $level) => array_merge($level, $this->families->describe($level)))
             ->unique(fn (array $level) => strtolower(trim((string) ($level['label'] ?? $level['slug'] ?? ''))))
             ->values()
             ->all();
+    }
+
+    public function groupedEducationLevels(?string $languageCode = null): array
+    {
+        return $this->families->group($this->educationLevels($languageCode));
     }
 
     public function taxonomy(?string $languageCode = null): array
@@ -82,6 +92,18 @@ class TaxonomyCatalogRepository
                 return null;
             }
 
+            $columns = [
+                'category.id',
+                'category.parent_id',
+                'category.slug',
+                'category.node_type',
+                'category.order',
+                DB::raw('COALESCE(translation.name, fallback_translation.name) as translation_name'),
+            ];
+            if (Schema::hasColumn('course_categories', 'taxonomy_profile')) {
+                $columns[] = 'category.taxonomy_profile';
+            }
+
             $nodes = DB::table('course_categories as category')
                 ->leftJoin('course_category_translations as translation', function ($join) use ($languageCode) {
                     $join->on('translation.course_category_id', '=', 'category.id')
@@ -95,14 +117,7 @@ class TaxonomyCatalogRepository
                 ->where('category.status', 1)
                 ->orderBy('category.order')
                 ->orderBy('category.id')
-                ->get([
-                    'category.id',
-                    'category.parent_id',
-                    'category.slug',
-                    'category.node_type',
-                    'category.order',
-                    DB::raw('COALESCE(translation.name, fallback_translation.name) as translation_name'),
-                ])
+                ->get($columns)
                 // Legacy databases did not enforce one translation per language.
                 // Keep the catalogue stable while duplicate rows are being repaired.
                 ->unique('id')
@@ -129,6 +144,7 @@ class TaxonomyCatalogRepository
                     'slug' => (string) $node->slug,
                     'label' => $this->label($node),
                     'node_type' => (string) $node->node_type,
+                    'profile' => $node->taxonomy_profile ?? null,
                     'order' => (int) $node->order,
                     'children' => collect($childrenByParent[(string) $node->id] ?? [])
                         ->map(fn ($child) => $buildTree($child))
@@ -144,6 +160,7 @@ class TaxonomyCatalogRepository
                     'slug' => $levelSlug,
                     'label' => $this->label($root),
                     'source_slugs' => [$levelSlug],
+                    'taxonomy_profile' => $root->taxonomy_profile ?? null,
                 ];
 
                 $classNodes = collect($childrenByParent[(string) $root->id] ?? [])

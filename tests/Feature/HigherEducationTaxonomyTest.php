@@ -669,7 +669,8 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertTrue(collect($options['assignments'])->contains(
             fn (array $assignment) => $assignment['profile'] === 'cdacc'
                 && str_contains($assignment['label'], 'Agricultural Engineering')
-                && str_contains($assignment['programme_label'], 'Agriculture and Aquaculture Department')
+                && $assignment['programme_label'] === 'Agricultural Engineering Level 6'
+                && str_contains($assignment['programme_path'], 'Agriculture and Aquaculture Department')
                 && filled($assignment['department_id'])
                 && filled($assignment['programme_id'])
                 && array_key_exists('module', $assignment)
@@ -759,6 +760,29 @@ class HigherEducationTaxonomyTest extends TestCase
         ]);
         $this->assertSame('cdacc', data_get($product->metadata, 'curriculum_context.profile'));
         $this->assertSame('Level 6', data_get($product->metadata, 'curriculum_context.periods.Level'));
+    }
+
+    public function test_admin_product_management_uses_plain_programme_names_from_taxonomy(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Admin Product Taxonomy',
+            'email' => 'admin-product-taxonomy@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $urls = [
+            route('admin.past-papers.create'),
+            route('admin.predictions.create'),
+            route('admin.notes.create'),
+            route('admin.quizzes.create-tier', 'short'),
+        ];
+        foreach ($urls as $url) {
+            $this->actingAs($admin, 'admin')->get($url)
+                ->assertOk()
+                ->assertSee('data-curriculum-taxonomy-paths', false)
+                ->assertSee("programme:{value:'programme_id',text:'programme'}", false)
+                ->assertDontSee("programme:{value:'programme_id',text:'programme_label'}", false);
+        }
     }
 
     public function test_admin_can_permanently_delete_archived_nodes_individually_and_in_bulk(): void
@@ -950,9 +974,13 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertSame('cdacc', data_get($snapshot, 'curriculum_context.profile'));
         $this->assertNotNull(data_get($snapshot, 'curriculum_context.department_id'));
         $this->assertNotNull(data_get($snapshot, 'curriculum_context.programme_id'));
+        $this->assertSame(
+            data_get($snapshot, 'curriculum_context.programme'),
+            data_get($snapshot, 'curriculum_context.programme_label')
+        );
         $this->assertStringContainsString(
             (string) data_get($snapshot, 'curriculum_context.department'),
-            (string) data_get($snapshot, 'curriculum_context.programme_label')
+            (string) data_get($snapshot, 'curriculum_context.programme_path')
         );
     }
 

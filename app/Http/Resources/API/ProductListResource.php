@@ -3,6 +3,7 @@
 namespace App\Http\Resources\API;
 
 use App\Services\ProductIdentityService;
+use App\Services\Taxonomy\ProductEducationContextService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -57,6 +58,7 @@ class ProductListResource extends JsonResource
                 'subject' => $identity['subject'] ?? null,
                 'subject_label' => $identity['subject_label'] ?? null,
             ],
+            'education_context' => app(ProductEducationContextService::class)->forProduct($this->resource),
             'category' => $this->categoryPath(),
             'access_label' => (string) $this->access_label,
             'instructor' => $this->whenLoaded('instructor', fn () => [

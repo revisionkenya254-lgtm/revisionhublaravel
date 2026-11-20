@@ -177,7 +177,8 @@ class ProductCurriculumContextService
                 'department' => $department?->name,
                 'programme_id' => $assignment->programme_node_id,
                 'programme' => $assignment->programme?->name,
-                'programme_label' => $programmeLabel ?: $assignment->programme?->name,
+                'programme_label' => $assignment->programme?->name,
+                'programme_path' => $programmeLabel ?: $assignment->programme?->name,
                 'assignment_id' => $assignment->id,
                 'unit_id' => $assignment->curriculum_unit_id,
                 'unit' => $assignment->unit?->name,
@@ -275,7 +276,8 @@ class ProductCurriculumContextService
             'department' => $department?->name,
             'programme_id' => $programme?->id,
             'programme' => $programme?->name,
-            'programme_label' => $programmeLabel ?: $programme?->name,
+            'programme_label' => $programme?->name,
+            'programme_path' => $programmeLabel ?: $programme?->name,
             'group' => $assignment->group_type,
             'period' => $period,
             'study_year' => $assignment->study_year,
@@ -321,7 +323,8 @@ class ProductCurriculumContextService
             'department' => $department?->name,
             'programme_id' => $programme?->id,
             'programme' => $programme?->name,
-            'programme_label' => collect([$department?->name, $programme?->name])->filter()->implode(' / '),
+            'programme_label' => $programme?->name,
+            'programme_path' => collect([$department?->name, $programme?->name])->filter()->implode(' / '),
         ];
     }
 

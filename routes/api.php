@@ -62,6 +62,10 @@ Route::prefix('bootstrap')->controller(FrontendController::class)->group(functio
 });
 
 Route::prefix('catalog')->controller(FrontendController::class)->group(function () {
+    Route::get('taxonomy/families/{family}', 'educationFamilyTaxonomy')
+        ->where('family', '[a-z0-9-_]+');
+    Route::get('taxonomy/levels/{level}', 'educationLevelTaxonomy')
+        ->where('level', '[a-z0-9-_]+');
     Route::get('taxonomy/profiles/{profile}', 'higherEducationTaxonomy')
         ->where('profile', '[a-z0-9-]+');
     Route::get('categories/{slug}/subcategories', 'sub_categories');

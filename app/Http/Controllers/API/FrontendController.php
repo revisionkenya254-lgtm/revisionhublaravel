@@ -25,6 +25,7 @@ use App\Services\ProductIdentityService;
 use App\Services\Taxonomy\TaxonomyCatalogRepository;
 use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
 use App\Services\Taxonomy\TaxonomyRevisionService;
+use App\Services\Taxonomy\EducationFamilyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -69,21 +70,33 @@ class FrontendController extends Controller {
 
     public function education_levels(): JsonResponse
     {
+        $repository = app(TaxonomyCatalogRepository::class);
+        $revision = $this->taxonomyRevisionService->current();
+
         return response()->json([
             'status' => 'success',
-            'data' => app(TaxonomyCatalogRepository::class)->educationLevels(),
-        ]);
+            'data' => $repository->educationLevels(),
+            'groups' => $repository->groupedEducationLevels(),
+            'taxonomy_revision' => $revision,
+        ])->header('X-Taxonomy-Revision', (string) $revision)
+            ->header('ETag', '"taxonomy-'.$revision.'"');
     }
 
     public function education_taxonomy(): JsonResponse
     {
         $revision = $this->taxonomyRevisionService->current();
 
+        $repository = app(TaxonomyCatalogRepository::class);
+        $taxonomy = $repository->taxonomy();
+        $taxonomy['education_levels'] = $repository->educationLevels();
+        $taxonomy['families'] = $repository->groupedEducationLevels();
+
         return response()->json([
             'status' => 'success',
-            'data' => app(TaxonomyCatalogRepository::class)->taxonomy(),
+            'data' => $taxonomy,
             'taxonomy_revision' => $revision,
-        ])->header('X-Taxonomy-Revision', (string) $revision);
+        ])->header('X-Taxonomy-Revision', (string) $revision)
+            ->header('ETag', '"taxonomy-'.$revision.'"');
     }
 
     public function higherEducationTaxonomy(string $profile): JsonResponse
@@ -95,7 +108,70 @@ class FrontendController extends Controller {
             'status' => 'success',
             'data' => app(HigherEducationTaxonomyRepository::class)->profile($profile),
             'taxonomy_revision' => $revision,
-        ])->header('X-Taxonomy-Revision', (string) $revision);
+        ])->header('X-Taxonomy-Revision', (string) $revision)
+            ->header('ETag', '"taxonomy-'.$revision.'"');
+    }
+
+    public function educationFamilyTaxonomy(Request $request, string $family): JsonResponse
+    {
+        $families = app(EducationFamilyService::class);
+        $family = $families->normalize($family);
+        abort_unless($family !== null, 404);
+
+        $repository = app(TaxonomyCatalogRepository::class);
+        $group = $repository->groupedEducationLevels()[$family];
+        $tree = collect($repository->taxonomy()['tree'] ?? [])
+            ->whereIn('slug', collect($group['levels'])->pluck('slug'))
+            ->values()->all();
+
+        if ($family === EducationFamilyService::UPPER && $request->boolean('include_tree')) {
+            $tree = collect($group['levels'])->map(function (array $level) {
+                $profile = $level['profile'] ?? null;
+                if (! $profile) {
+                    return null;
+                }
+
+                try {
+                    return app(HigherEducationTaxonomyRepository::class)->profile($profile);
+                } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+                    return null;
+                }
+            })->filter()->values()->all();
+        }
+
+        return $this->taxonomyResponse(array_merge($group, ['tree' => $tree]));
+    }
+
+    public function educationLevelTaxonomy(string $level): JsonResponse
+    {
+        $repository = app(TaxonomyCatalogRepository::class);
+        $match = collect($repository->educationLevels())->first(fn (array $candidate) =>
+            $candidate['slug'] === $level || ($candidate['profile'] ?? null) === $level
+        );
+        abort_unless($match !== null, 404);
+
+        if (($match['family'] ?? null) === EducationFamilyService::UPPER) {
+            $tree = app(HigherEducationTaxonomyRepository::class)->profile($match['profile']);
+        } else {
+            $tree = collect($repository->taxonomy()['tree'] ?? [])->firstWhere('slug', $match['slug']);
+        }
+
+        return $this->taxonomyResponse([
+            'level' => $match,
+            'tree' => $tree,
+        ]);
+    }
+
+    private function taxonomyResponse(array $data): JsonResponse
+    {
+        $revision = $this->taxonomyRevisionService->current();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+            'taxonomy_revision' => $revision,
+        ])->header('X-Taxonomy-Revision', (string) $revision)
+            ->header('ETag', '"taxonomy-'.$revision.'"');
     }
 
     public function mainCategories(Request $request): JsonResponse
@@ -267,6 +343,8 @@ class FrontendController extends Controller {
             $this->applyProductCatalogPath($query, $catalogPath->all());
         }
 
+        $this->applyEducationContextFilters($query, $request);
+
         $products = $query
             ->latest('created_at')
             ->latest('id')
@@ -301,6 +379,89 @@ class FrontendController extends Controller {
             'data' => $data,
             'pagination' => $this->paginationData($products),
         ]);
+    }
+
+    private function applyEducationContextFilters($query, Request $request): void
+    {
+        $familyService = app(EducationFamilyService::class);
+        $repository = app(TaxonomyCatalogRepository::class);
+
+        if (filled($request->query('education_family'))) {
+            $family = $familyService->normalize((string) $request->query('education_family'));
+            abort_unless($family !== null, 422, 'Invalid education family.');
+            $levels = $repository->groupedEducationLevels()[$family]['levels'] ?? [];
+            $slugs = collect($levels)->pluck('slug')->filter()->values()->all();
+            $profiles = collect($levels)->pluck('profile')->filter()->values()->all();
+
+            $query->where(function ($familyQuery) use ($slugs, $profiles) {
+                $familyQuery->whereIn('metadata->catalog_identity->main_category', $slugs)
+                    ->when($profiles !== [], fn ($profileQuery) => $profileQuery
+                        ->orWhereIn('metadata->curriculum_context->profile', $profiles))
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->whereIn('slug', $slugs))
+                    ->orWhereHas('category.parentCategory', fn ($categoryQuery) => $categoryQuery->whereIn('slug', $slugs))
+                    ->orWhereHas('category.parentCategory.parentCategory', fn ($categoryQuery) => $categoryQuery->whereIn('slug', $slugs));
+            });
+        }
+
+        if (filled($request->query('taxonomy_profile'))) {
+            $profile = Str::slug((string) $request->query('taxonomy_profile'));
+            abort_unless(array_key_exists($profile, config('higher_education_taxonomy.profiles', [])), 422, 'Invalid taxonomy profile.');
+            $query->where(function ($profileQuery) use ($profile) {
+                $profileQuery->where('metadata->curriculum_context->profile', $profile)
+                    ->orWhereHas('curriculumContexts.assignment.programme', fn ($programmeQuery) =>
+                        $programmeQuery->where('taxonomy_profile', $profile));
+            });
+        }
+
+        foreach (['department_id', 'programme_id', 'unit_id'] as $field) {
+            if (! filled($request->query($field))) {
+                continue;
+            }
+            abort_unless(ctype_digit((string) $request->query($field)), 422, "Invalid {$field}.");
+            $id = (int) $request->query($field);
+            $query->where(function ($contextQuery) use ($field, $id) {
+                $contextQuery->where('metadata->curriculum_context->'.$field, $id);
+                if ($field === 'programme_id') {
+                    $contextQuery->orWhereHas('curriculumContexts.assignment', fn ($assignmentQuery) =>
+                        $assignmentQuery->where('programme_node_id', $id));
+                } elseif ($field === 'unit_id') {
+                    $contextQuery->orWhereHas('curriculumContexts', fn ($resourceQuery) =>
+                        $resourceQuery->where('curriculum_unit_id', $id));
+                }
+            });
+        }
+
+        if (filled($request->query('unit_group'))) {
+            $group = Str::slug((string) $request->query('unit_group'), '_');
+            $query->where(function ($groupQuery) use ($group) {
+                $groupQuery->where('metadata->curriculum_context->group_type', $group)
+                    ->orWhereHas('curriculumContexts.assignment', fn ($assignmentQuery) =>
+                        $assignmentQuery->where('group_type', $group));
+            });
+        }
+
+        foreach (['study_year', 'semester', 'module', 'stage', 'section'] as $periodField) {
+            if (filled($request->query($periodField))) {
+                $query->where('metadata->curriculum_context->'.$periodField, (string) $request->query($periodField));
+            }
+        }
+
+        if (filled($request->query('grade'))) {
+            $grade = Str::slug((string) $request->query('grade'));
+            $query->where(function ($gradeQuery) use ($grade) {
+                $gradeQuery->where('metadata->catalog_identity->category', $grade)
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->where('slug', $grade))
+                    ->orWhereHas('category.parentCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $grade));
+            });
+        }
+
+        if (filled($request->query('subject'))) {
+            $subject = Str::slug((string) $request->query('subject'));
+            $query->where(function ($subjectQuery) use ($subject) {
+                $subjectQuery->where('metadata->catalog_identity->subject', $subject)
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->where('slug', $subject));
+            });
+        }
     }
 
     /**
