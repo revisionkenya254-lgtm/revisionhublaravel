@@ -75,10 +75,10 @@ class TaxonomyManagementController extends Controller
             ? collect()
             : ProgrammeUnitAssignment::query()->whereIn('programme_node_id', $programmes->pluck('id'))
                 ->get($periodFields);
-        $periodOptions = collect($periodFields)->mapWithKeys(function (string $field) use ($periodAssignments) {
+        $periodOptions = collect($periodFields)->mapWithKeys(function (string $field) use ($periodAssignments, $profile) {
             $existing = $periodAssignments->pluck($field)->filter()->map(fn ($value) => trim((string) $value));
 
-            return [$field => collect($this->defaultPeriodOptions($field))
+            return [$field => collect($this->defaultPeriodOptions($profile, $field))
                 ->merge($existing)->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all()];
         })->all();
 
@@ -489,7 +489,7 @@ class TaxonomyManagementController extends Controller
 
     private function validateAssignment(Request $request, string $profile, bool $updating = false): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'programme_node_id' => [$updating ? 'required' : 'nullable', 'integer', 'exists:course_categories,id'],
             'curriculum_unit_id' => ['required', 'integer', 'exists:curriculum_units,id'],
             'group_type' => ['required', Rule::in(array_keys(
@@ -504,6 +504,14 @@ class TaxonomyManagementController extends Controller
             'is_mandatory' => ['nullable', 'boolean'],
             'display_order' => ['required', 'integer', 'min:0', 'max:65535'],
         ]);
+        $activePeriods = config("higher_education_taxonomy.profiles.{$profile}.period_fields", []);
+        foreach (['study_year', 'semester', 'module', 'stage', 'section'] as $field) {
+            if (! in_array($field, $activePeriods, true)) {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
     }
 
     private function validateNewUnitAssignment(Request $request, string $profile): array
@@ -558,8 +566,12 @@ class TaxonomyManagementController extends Controller
         return null;
     }
 
-    private function defaultPeriodOptions(string $field): array
+    private function defaultPeriodOptions(string $profile, string $field): array
     {
+        if ($profile === 'cdacc' && $field === 'study_year') {
+            return array_map(fn (int $number) => "Level {$number}", range(3, 6));
+        }
+
         return match ($field) {
             'module' => array_map(fn (int $number) => "Module {$number}", range(1, 12)),
             'study_year' => array_map(fn (int $number) => "Year {$number}", range(1, 8)),

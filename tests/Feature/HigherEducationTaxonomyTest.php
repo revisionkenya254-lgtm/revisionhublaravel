@@ -38,14 +38,14 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertDatabaseHas('programme_unit_assignments', [
             'programme_node_id' => $programme->id,
             'group_type' => 'major',
-            'module' => 'Module 1',
+            'study_year' => 'Level 6',
         ]);
 
         $options = collect(app(ProductCurriculumContextService::class)->formOptions()['assignments'])
             ->where('profile', 'cdacc');
         $this->assertCount(2, $options);
         $this->assertSame(['common', 'major'], $options->pluck('group')->sort()->values()->all());
-        $this->assertSame(['Module 1'], $options->pluck('module')->unique()->values()->all());
+        $this->assertSame(['Level 6'], $options->pluck('study_year')->unique()->values()->all());
         $this->assertSame(
             ['Agriculture and Aquaculture Department'],
             $options->pluck('department')->unique()->values()->all()
@@ -157,7 +157,7 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertSee('body>.modal-backdrop', false);
     }
 
-    public function test_module_and_unit_group_contexts_only_contain_relevant_assignments(): void
+    public function test_cdacc_level_and_unit_group_contexts_only_contain_relevant_assignments(): void
     {
         $tree = app(HigherEducationTaxonomyRepository::class)->profile('cdacc', false);
         $nodes = collect();
@@ -169,14 +169,14 @@ class HigherEducationTaxonomyTest extends TestCase
         };
         $walk($tree);
 
-        $module = $nodes->first(fn (array $node) => ($node['node_type'] ?? null) === 'study_period'
-            && ($node['label'] ?? null) === 'Module 1');
+        $level = $nodes->first(fn (array $node) => ($node['node_type'] ?? null) === 'study_period'
+            && ($node['label'] ?? null) === 'Level 6');
         $common = $nodes->first(fn (array $node) => ($node['node_type'] ?? null) === 'unit_group'
             && ($node['group_type'] ?? null) === 'common');
 
-        $this->assertNotNull($module);
-        $this->assertNotEmpty($module['assignments']);
-        $this->assertTrue(collect($module['assignments'])->every(fn (array $assignment) => $assignment['module'] === 'Module 1'));
+        $this->assertNotNull($level);
+        $this->assertNotEmpty($level['assignments']);
+        $this->assertTrue(collect($level['assignments'])->every(fn (array $assignment) => $assignment['study_year'] === 'Level 6'));
         $this->assertNotNull($common);
         $this->assertTrue(collect($common['assignments'])->every(fn (array $assignment) => $assignment['group_type'] === 'common'));
     }
@@ -197,7 +197,7 @@ class HigherEducationTaxonomyTest extends TestCase
                 'programme_node_id' => $assignment->programme_node_id,
                 'curriculum_unit_id' => $assignment->curriculum_unit_id,
                 'group_type' => 'elective',
-                'module' => 'Module 9',
+                'study_year' => 'Level 5',
                 'display_order' => 9,
                 'credit_hours' => 3,
                 'is_mandatory' => 0,
@@ -209,7 +209,7 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertDatabaseHas('programme_unit_assignments', [
             'id' => $assignment->id,
             'group_type' => 'elective',
-            'module' => 'Module 9',
+            'study_year' => 'Level 5',
             'display_order' => 9,
             'is_mandatory' => 0,
         ]);
@@ -236,7 +236,7 @@ class HigherEducationTaxonomyTest extends TestCase
             [
                 'curriculum_unit_id' => $unit->id,
                 'group_type' => 'common',
-                'module' => 'Module 3',
+                'study_year' => 'Level 4',
                 'display_order' => 3,
                 'is_mandatory' => 1,
             ]
@@ -248,7 +248,7 @@ class HigherEducationTaxonomyTest extends TestCase
             'programme_node_id' => $programme->id,
             'curriculum_unit_id' => $unit->id,
             'group_type' => 'common',
-            'module' => 'Module 3',
+            'study_year' => 'Level 4',
         ]);
     }
 
@@ -340,13 +340,13 @@ class HigherEducationTaxonomyTest extends TestCase
         $definitions = [
             'certificate' => [
                 'group_type' => 'common',
-                'periods' => ['module' => 'Module 1', 'semester' => 'Semester 1'],
-                'expected' => ['Module 1', 'Semester 1', 'Common Units'],
+                'periods' => ['module' => 'Module 1'],
+                'expected' => ['Module 1', 'Common Units'],
             ],
             'diploma' => [
                 'group_type' => 'major',
-                'periods' => ['study_year' => 'Year 1', 'semester' => 'Semester 1'],
-                'expected' => ['Year 1', 'Semester 1', 'Major Units'],
+                'periods' => ['module' => 'Module 1'],
+                'expected' => ['Module 1', 'Major Units'],
             ],
             'undergraduate' => [
                 'group_type' => 'university_common',
@@ -548,7 +548,6 @@ class HigherEducationTaxonomyTest extends TestCase
             'programme_node_id' => $programme->id,
             'group_type' => 'common',
             'module' => 'Module 1',
-            'semester' => 'Semester 1',
             'display_order' => 3,
             'is_mandatory' => 1,
             'name' => 'Business Communication',
@@ -570,7 +569,6 @@ class HigherEducationTaxonomyTest extends TestCase
                 'curriculum_unit_id' => $unit->id,
                 'group_type' => 'major',
                 'module' => 'Module 2',
-                'semester' => 'Semester 2',
                 'display_order' => 4,
                 'is_mandatory' => 1,
             ]
@@ -632,7 +630,7 @@ class HigherEducationTaxonomyTest extends TestCase
                 '_create_and_assign' => 1,
                 'department_id' => $wrongDepartment->id,
                 'programme_node_id' => $programme->id,
-                'module' => 'Module 1',
+                'study_year' => 'Level 6',
                 'group_type' => 'major',
                 'name' => 'Invalid Cross Department Unit',
                 'curriculum_version' => 'current',
@@ -653,9 +651,9 @@ class HigherEducationTaxonomyTest extends TestCase
             collect($options['profiles'])->pluck('key')->all()
         );
         $expectedFields = [
-            'cdacc' => ['department', 'programme', 'module', 'group', 'assignment'],
-            'certificate' => ['owner', 'department', 'programme', 'module', 'semester', 'assignment'],
-            'diploma' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
+            'cdacc' => ['department', 'programme', 'study_year', 'group', 'assignment'],
+            'certificate' => ['owner', 'department', 'programme', 'module', 'assignment'],
+            'diploma' => ['owner', 'department', 'programme', 'module', 'assignment'],
             'undergraduate' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
             'professional' => ['owner', 'programme', 'stage', 'section', 'assignment'],
         ];

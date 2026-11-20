@@ -115,7 +115,7 @@
                         const level = String(educationLevel?.value || '').toLowerCase();
                         return Object.entries(aliases).find(([,values]) => values.some(value => level.includes(value)))?.[0] || '';
                     };
-                    const fieldLabel = (field, profile) => ({owner:profile.labels?.awarding_body,department:profile.labels?.department,programme:profile.labels?.programme,assignment:profile.labels?.unit}[field] || fallbackLabels[field]);
+                    const fieldLabel = (field, profile) => (profile.labels?.[field] || {owner:profile.labels?.awarding_body,department:profile.labels?.department,programme:profile.labels?.programme,assignment:profile.labels?.unit}[field] || fallbackLabels[field]);
                     const choiceLabel = (field, record, profile) => field === 'group' ? (profile.group_types?.[record.group] || String(record.group || '').replaceAll('_',' ')) : (record[dimensions[field].text] || '');
                     const uniqueChoices = (field, candidates, profile) => {
                         const choices = new Map();

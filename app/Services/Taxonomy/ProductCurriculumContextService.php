@@ -151,6 +151,10 @@ class ProductCurriculumContextService
         $programmeLabel = collect([$department?->name, $assignment->programme?->name])
             ->filter()
             ->implode(' / ');
+        $profileConfig = config('higher_education_taxonomy.profiles.'.($assignment->programme?->taxonomy_profile ?? ''), []);
+        $periods = collect($profileConfig['period_fields'] ?? [])->mapWithKeys(fn (string $field) => [
+            $profileConfig['labels'][$field] ?? Str::headline($field) => $assignment->{$field},
+        ])->filter();
 
         return [
             'curriculum_context' => [
@@ -172,6 +176,7 @@ class ProductCurriculumContextService
                 'module' => $assignment->module,
                 'stage' => $assignment->stage,
                 'section' => $assignment->section,
+                'periods' => $periods->all(),
             ],
         ];
     }
@@ -234,9 +239,10 @@ class ProductCurriculumContextService
             ->filter()
             ->implode(' / ');
         $owner = $assignment->unit->awardingBody;
-        $period = collect(['study_year', 'semester', 'module', 'stage', 'section'])
+        $profileConfig = config('higher_education_taxonomy.profiles.'.($programme?->taxonomy_profile ?? ''), []);
+        $period = collect($profileConfig['period_fields'] ?? [])
             ->filter(fn ($field) => filled($assignment->{$field}))
-            ->map(fn ($field) => Str::headline($field).': '.$assignment->{$field})
+            ->map(fn ($field) => ($profileConfig['labels'][$field] ?? Str::headline($field)).': '.$assignment->{$field})
             ->implode(' / ');
         $parts = collect([
             $owner?->name,

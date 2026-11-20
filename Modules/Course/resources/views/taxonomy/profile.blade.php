@@ -2,6 +2,16 @@
 
 @php
     $usesProgrammeDepartments = in_array('department', $profileConfig['creation_fields'] ?? [], true);
+    $periodLabels = collect($profileConfig['period_fields'] ?? [])->mapWithKeys(fn (string $field) => [
+        $field => $profileConfig['labels'][$field] ?? ucwords(str_replace('_', ' ', $field)),
+    ])->all();
+    $periodPlaceholders = [
+        'study_year' => $profile === 'cdacc' ? __('e.g. Level 6') : __('e.g. Year 1'),
+        'semester' => __('e.g. Semester 1'),
+        'module' => __('e.g. Module 1'),
+        'stage' => __('e.g. Intermediate Level'),
+        'section' => __('e.g. Section 2'),
+    ];
 @endphp
 
 @section('title')<title>{{ $profileConfig['label'] }} {{ __('Taxonomy') }}</title>@endsection
@@ -27,7 +37,7 @@
             <div class="alert alert-light border mb-4">
                 <strong>{{ __('Profile architecture:') }}</strong> {{ $profileConfig['label'] }}
                 @foreach(($profileConfig['hierarchy'] ?? ['awarding_body', 'department', 'programme']) as $nodeType)<i class="fas fa-angle-right mx-1"></i> {{ $profileConfig['labels'][$nodeType] ?? ucwords(str_replace('_', ' ', $nodeType)) }}@endforeach
-                @foreach(($profileConfig['period_fields'] ?? []) as $periodField)<i class="fas fa-angle-right mx-1"></i> {{ ucwords(str_replace('_', ' ', $periodField)) }}@endforeach
+                @foreach(($profileConfig['period_fields'] ?? []) as $periodField)<i class="fas fa-angle-right mx-1"></i> {{ $profileConfig['labels'][$periodField] ?? ucwords(str_replace('_', ' ', $periodField)) }}@endforeach
                 <i class="fas fa-angle-right mx-1"></i> {{ __('Unit Group') }} <i class="fas fa-angle-right mx-1"></i> {{ $profileConfig['labels']['unit'] ?? __('Unit') }} <i class="fas fa-angle-right mx-1"></i> {{ __('Resources') }}
             </div>
 
@@ -74,7 +84,7 @@
                                 @endif
                                 <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['programme'] ?? __('Programme') }} *</label><select id="unit-create-programme" name="programme_node_id" class="form-control" required><option value="">{{ __('Select :programme', ['programme' => $profileConfig['labels']['programme'] ?? __('Programme')]) }}</option>@foreach($programmes as $programme)<option value="{{ $programme->id }}" data-department-id="{{ $programmeDepartments[$programme->id]['id'] ?? '' }}" data-owner-name="{{ $programmeDepartments[$programme->id]['owner_name'] ?? '' }}" @selected((string)old('programme_node_id') === (string)$programme->id)>{{ !($profileConfig['root_is_owner'] ?? false) && filled($programmeDepartments[$programme->id]['owner_name'] ?? null) ? ($programmeDepartments[$programme->id]['owner_name'].' / ') : '' }}{{ $programme->name }}</option>@endforeach</select></div>
                                 @foreach(($profileConfig['period_fields'] ?? []) as $periodField)
-                                    <div class="form-group col-md-6"><label>{{ ucwords(str_replace('_', ' ', $periodField)) }} *</label><select name="{{ $periodField }}" class="form-control" required><option value="">{{ __('Select :period', ['period' => ucwords(str_replace('_', ' ', $periodField))]) }}</option>@foreach(($periodOptions[$periodField] ?? []) as $periodOption)<option value="{{ $periodOption }}" @selected(old($periodField) === $periodOption)>{{ $periodOption }}</option>@endforeach</select></div>
+                                    <div class="form-group col-md-6"><label>{{ $periodLabels[$periodField] }} *</label><select name="{{ $periodField }}" class="form-control" required><option value="">{{ __('Select :period', ['period' => $periodLabels[$periodField]]) }}</option>@foreach(($periodOptions[$periodField] ?? []) as $periodOption)<option value="{{ $periodOption }}" @selected(old($periodField) === $periodOption)>{{ $periodOption }}</option>@endforeach</select></div>
                                 @endforeach
                                 <div class="form-group col-md-6"><label>{{ __('Unit group') }} *</label><select name="group_type" class="form-control" required><option value="">{{ __('Select unit group') }}</option>@foreach(($profileConfig['group_types'] ?? []) as $groupValue => $groupLabel)<option value="{{ $groupValue }}" @selected(old('group_type') === $groupValue)>{{ $groupLabel }}</option>@endforeach</select></div>
                             </div>
@@ -107,7 +117,7 @@
                                 <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['programme'] ?? __('Programme') }} *</label><select id="assignment-programme" name="programme_node_id" class="form-control" required>@foreach($programmes as $programme)<option value="{{ $programme->id }}" data-owner-id="{{ $programmeOwnerIds[$programme->id] ?? $root->id }}" data-department-id="{{ $programmeDepartments[$programme->id]['id'] ?? '' }}" data-department-name="{{ $programmeDepartments[$programme->id]['name'] ?? '' }}">{{ $programme->name }}</option>@endforeach</select></div>
                                 <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['unit'] ?? __('Canonical unit') }} *</label><select id="assignment-unit" name="curriculum_unit_id" class="form-control" required>@foreach($units as $unit)<option value="{{ $unit->id }}" data-owner-id="{{ $unit->awarding_body_id }}" data-active="{{ $unit->status ? '1' : '0' }}">{{ $unit->name }} &middot; {{ $unit->awardingBody?->name }} ({{ __('used by :count', ['count' => $unit->assignments_count]) }})</option>@endforeach</select></div>
                                 <div class="form-group col-md-6"><label>{{ __('Unit group') }} *</label><select id="assignment-group" name="group_type" class="form-control" required>@foreach(($profileConfig['group_types'] ?? []) as $groupValue => $groupLabel)<option value="{{ $groupValue }}">{{ $groupLabel }}</option>@endforeach</select></div>
-                                @foreach(($profileConfig['period_fields'] ?? []) as $periodField)<div class="form-group col-md-6"><label>{{ ucwords(str_replace('_', ' ', $periodField)) }}</label><input name="{{ $periodField }}" class="form-control assignment-period-field" value="" placeholder="{{ match($periodField) { 'study_year' => __('e.g. Year 1'), 'semester' => __('e.g. Semester 1'), 'module' => __('e.g. Module 1'), 'stage' => __('e.g. Intermediate Level'), 'section' => __('e.g. Section 2'), default => '' } }}"></div>@endforeach
+                                @foreach(($profileConfig['period_fields'] ?? []) as $periodField)<div class="form-group col-md-6"><label>{{ $periodLabels[$periodField] }}</label><input name="{{ $periodField }}" class="form-control assignment-period-field" value="" placeholder="{{ $periodPlaceholders[$periodField] ?? '' }}"></div>@endforeach
                                 <div class="form-group col-md-3"><label>{{ __('Display order') }}</label><input type="number" min="0" max="65535" name="display_order" class="form-control" value="0" required></div>
                                 <div class="form-group col-md-3"><label>{{ __('Credit hours') }}</label><input type="number" min="0" max="999" step="0.01" name="credit_hours" class="form-control"></div>
                             </div>
@@ -307,7 +317,7 @@ if(assignmentForm){
     const groupLabels=@json($profileConfig['group_types'] ?? []);
     let activeContext=null;
     const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[character]));
-    const assignmentPeriod=assignment=>['study_year','semester','module','stage','section']
+    const assignmentPeriod=assignment=>@json($profileConfig['period_fields'] ?? [])
         .map(field=>assignment[field]).filter(Boolean).join(' / ')||'—';
     const switchFromContext=(mode,data)=>{
         window.jQuery(contextModal).one('hidden.bs.modal',()=>openAssignmentModal(mode,data)).modal('hide');
