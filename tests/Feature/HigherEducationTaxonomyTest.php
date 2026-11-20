@@ -684,7 +684,7 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('data-curriculum-select="stage"', $html);
         $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
         $this->assertStringContainsString('data-curriculum-architecture', $html);
-        $this->assertStringContainsString("text:'programme_label'", $html);
+        $this->assertStringContainsString("programme:{value:'programme_id',text:'programme'}", $html);
         $this->assertStringContainsString('let pathComplete = true', $html);
     }
 

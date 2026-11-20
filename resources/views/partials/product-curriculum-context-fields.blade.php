@@ -90,7 +90,7 @@
             document.addEventListener('DOMContentLoaded', () => {
                 const aliases = {cdacc:['cdacc'],tvet:['tvet'],certificate:['certificate'],diploma:['diploma'],undergraduate:['undergraduate','university'],professional:['professional']};
                 const dimensions = {
-                    owner:{value:'owner_id',text:'owner'},department:{value:'department_id',text:'department'},programme:{value:'programme_id',text:'programme_label'},
+                    owner:{value:'owner_id',text:'owner'},department:{value:'department_id',text:'department'},programme:{value:'programme_id',text:'programme'},
                     study_year:{value:'study_year',text:'study_year'},semester:{value:'semester',text:'semester'},module:{value:'module',text:'module'},
                     stage:{value:'stage',text:'stage'},section:{value:'section',text:'section'},group:{value:'group',text:'group'},assignment:{value:'id',text:'unit_label'}
                 };
