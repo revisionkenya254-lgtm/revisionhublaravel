@@ -34,15 +34,10 @@
             <div class="row">
                 <div class="col-xl-9"><div class="card rh-profile-card" style="--profile-color: {{ $profileConfig['accent'] }}"><div class="card-header d-flex justify-content-between align-items-center flex-wrap"><div><h4 class="mb-0"><i class="fas fa-sitemap"></i> {{ __('Programme structure') }}</h4><small class="text-muted">{{ __('Assign or edit units directly beside the relevant programme, period, or unit group.') }}</small></div><div class="d-flex flex-wrap mt-2 mt-md-0" style="gap:.4rem"><button type="button" id="expand-all-programmes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-angle-double-down"></i> {{ __('Expand all') }}</button><button type="button" id="collapse-all-programmes" class="btn btn-sm btn-outline-secondary"><i class="fas fa-angle-double-up"></i> {{ __('Collapse all') }}</button><button type="button" class="btn btn-success js-open-assignment-modal" data-mode="create" data-programme-id="{{ $programmes->first()?->id }}" data-defaults="{}" @disabled($programmes->isEmpty() || $units->where('status', true)->isEmpty())><i class="fas fa-link"></i> {{ __('Assign unit') }}</button></div></div><div class="card-body"><ul class="rh-taxonomy-tree">@include('course::taxonomy._profile-tree-node', ['node' => $tree, 'profile' => $profile])</ul></div></div></div>
                 <div class="col-xl-3">
-                    <div class="card"><div class="card-header"><h4>{{ __('Create canonical unit') }}</h4></div><div class="card-body">
-                        <form method="POST" action="{{ route('admin.taxonomy.units.store', $profile) }}">@csrf
-                            <div class="form-group"><label>{{ $profileConfig['labels']['awarding_body'] ?? __('Curriculum Owner') }} *</label><select name="awarding_body_id" class="form-control" required>@foreach($awardingBodies as $body)<option value="{{ $body->id }}">{{ $body->id === $root->id ? __('Shared across :profile', ['profile' => $profileConfig['label']]) : $body->name }}</option>@endforeach</select></div>
-                            <div class="form-group"><label>{{ $profileConfig['labels']['unit'] ?? __('Unit') }} {{ __('name') }} *</label><input name="name" class="form-control" required value="{{ old('name') }}"></div>
-                            <div class="form-group"><label>{{ __('Official code') }}</label><input name="code" class="form-control" value="{{ old('code') }}"></div>
-                            <div class="form-group"><label>{{ __('Curriculum version') }} *</label><input name="curriculum_version" class="form-control" required value="{{ old('curriculum_version', 'current') }}"></div>
-                            <div class="form-group"><label>{{ __('Description') }}</label><textarea name="description" class="form-control">{{ old('description') }}</textarea></div>
-                            <button class="btn btn-success btn-block"><i class="fas fa-plus"></i> {{ __('Create unit') }}</button>
-                        </form>
+                    <div class="card"><div class="card-header"><h4>{{ __('Create and assign unit') }}</h4></div><div class="card-body">
+                        <p class="text-muted">{{ __('Choose the curriculum path first, then create the unit directly inside that programme and unit group.') }}</p>
+                        <button type="button" class="btn btn-success btn-block" data-toggle="modal" data-target="#unit-creation-modal" @disabled($programmes->isEmpty())><i class="fas fa-plus"></i> {{ __('Create and assign unit') }}</button>
+                        @if($programmes->isEmpty())<small class="text-danger d-block mt-2">{{ __('Create a programme before creating its units.') }}</small>@endif
                     </div></div>
                     {{-- Assignment creation and editing now live in the contextual modal below.
                     <div class="card"><div class="card-header d-flex justify-content-between"><h4>{{ $editingAssignment ? __('Edit programme unit') : __('Assign existing unit') }}</h4>@if($editingAssignment)<a href="{{ route('admin.taxonomy.profiles.show', $profile) }}" class="btn btn-sm btn-outline-secondary">{{ __('Cancel') }}</a>@endif</div><div class="card-body">
@@ -61,6 +56,40 @@
                     </div></div>
                     --}}
                 </div>
+            </div>
+
+            <div class="modal fade" id="unit-creation-modal" tabindex="-1" role="dialog" aria-labelledby="unit-creation-modal-title" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document"><div class="modal-content">
+                    <form method="POST" action="{{ route('admin.taxonomy.units.store', $profile) }}" id="unit-creation-form">@csrf
+                        <input type="hidden" name="_create_and_assign" value="1">
+                        <input type="hidden" name="display_order" value="0">
+                        <input type="hidden" name="is_mandatory" value="1">
+                        <div class="modal-header"><div><h5 class="modal-title" id="unit-creation-modal-title">{{ __('Create and assign :unit', ['unit' => $profileConfig['labels']['unit'] ?? __('Unit')]) }}</h5><small class="text-muted">{{ __('The unit will be created once and immediately assigned to the selected curriculum path.') }}</small></div><button type="button" class="close" data-dismiss="modal" aria-label="{{ __('Close') }}"><span aria-hidden="true">&times;</span></button></div>
+                        <div class="modal-body">
+                            @if(old('_create_and_assign') && $errors->any())<div class="alert alert-danger"><strong>{{ __('Please correct the following:') }}</strong><ul class="mb-0 mt-1">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>@endif
+                            <h6 class="text-primary mb-3"><i class="fas fa-sitemap"></i> {{ __('Curriculum path') }}</h6>
+                            <div class="row">
+                                @if($usesProgrammeDepartments)
+                                    <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['department'] ?? __('Department') }} *</label><select id="unit-create-department" name="department_id" class="form-control" required><option value="">{{ __('Select :department', ['department' => $profileConfig['labels']['department'] ?? __('Department')]) }}</option>@foreach($departments as $department)<option value="{{ $department['id'] }}" @selected((string)old('department_id') === (string)$department['id'])>{{ !($profileConfig['root_is_owner'] ?? false) && filled($department['owner_name']) ? $department['owner_name'].' / ' : '' }}{{ $department['name'] }}</option>@endforeach</select></div>
+                                @endif
+                                <div class="form-group col-md-6"><label>{{ $profileConfig['labels']['programme'] ?? __('Programme') }} *</label><select id="unit-create-programme" name="programme_node_id" class="form-control" required><option value="">{{ __('Select :programme', ['programme' => $profileConfig['labels']['programme'] ?? __('Programme')]) }}</option>@foreach($programmes as $programme)<option value="{{ $programme->id }}" data-department-id="{{ $programmeDepartments[$programme->id]['id'] ?? '' }}" data-owner-name="{{ $programmeDepartments[$programme->id]['owner_name'] ?? '' }}" @selected((string)old('programme_node_id') === (string)$programme->id)>{{ !($profileConfig['root_is_owner'] ?? false) && filled($programmeDepartments[$programme->id]['owner_name'] ?? null) ? ($programmeDepartments[$programme->id]['owner_name'].' / ') : '' }}{{ $programme->name }}</option>@endforeach</select></div>
+                                @foreach(($profileConfig['period_fields'] ?? []) as $periodField)
+                                    <div class="form-group col-md-6"><label>{{ ucwords(str_replace('_', ' ', $periodField)) }} *</label><select name="{{ $periodField }}" class="form-control" required><option value="">{{ __('Select :period', ['period' => ucwords(str_replace('_', ' ', $periodField))]) }}</option>@foreach(($periodOptions[$periodField] ?? []) as $periodOption)<option value="{{ $periodOption }}" @selected(old($periodField) === $periodOption)>{{ $periodOption }}</option>@endforeach</select></div>
+                                @endforeach
+                                <div class="form-group col-md-6"><label>{{ __('Unit group') }} *</label><select name="group_type" class="form-control" required><option value="">{{ __('Select unit group') }}</option>@foreach(($profileConfig['group_types'] ?? []) as $groupValue => $groupLabel)<option value="{{ $groupValue }}" @selected(old('group_type') === $groupValue)>{{ $groupLabel }}</option>@endforeach</select></div>
+                            </div>
+                            <hr>
+                            <h6 class="text-primary mb-3"><i class="fas fa-book"></i> {{ $profileConfig['labels']['unit'] ?? __('Unit') }} {{ __('details') }}</h6>
+                            <div class="row">
+                                <div class="form-group col-md-8"><label>{{ $profileConfig['labels']['unit'] ?? __('Unit') }} {{ __('name') }} *</label><input name="name" class="form-control" required value="{{ old('name') }}" placeholder="{{ __('Enter the official unit name') }}"></div>
+                                <div class="form-group col-md-4"><label>{{ __('Official code') }}</label><input name="code" class="form-control" value="{{ old('code') }}"></div>
+                                <div class="form-group col-md-4"><label>{{ __('Curriculum version') }} *</label><input name="curriculum_version" class="form-control" required value="{{ old('curriculum_version', 'current') }}"></div>
+                                <div class="form-group col-md-8"><label>{{ __('Description') }}</label><textarea name="description" class="form-control" rows="2">{{ old('description') }}</textarea></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-light" data-dismiss="modal">{{ __('Cancel') }}</button><button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> {{ __('Create and assign unit') }}</button></div>
+                    </form>
+                </div></div>
             </div>
 
             <div class="modal fade" id="assignment-modal" tabindex="-1" role="dialog" aria-labelledby="assignment-modal-title" aria-hidden="true">
@@ -146,7 +175,7 @@
 @endsection
 
 @push('css')
-<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}.rh-programme-toggle{color:#64748b!important;width:18px}.rh-programme-toggle i{transition:transform .18s ease}.rh-programme-toggle[aria-expanded="true"] i{transform:rotate(90deg)}#assignment-modal,#assignment-context-modal{z-index:2000!important}body>.modal-backdrop{z-index:1990!important}#assignment-modal .modal-body,#assignment-context-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
+<style>.rh-profile-tabs{display:flex;gap:.65rem;flex-wrap:wrap}.rh-profile-tab{background:#fff;border:1px solid #e5e7eb;border-radius:10px;color:#374151;padding:.7rem 1rem}.rh-profile-tab.is-active{border-color:var(--profile-color);box-shadow:0 0 0 2px color-mix(in srgb,var(--profile-color) 18%,transparent);color:var(--profile-color);font-weight:700}.rh-profile-card{border-top:4px solid var(--profile-color)}.rh-taxonomy-tree,.rh-taxonomy-tree__children{list-style:none;margin:0;padding-left:0}.rh-taxonomy-tree__children{border-left:2px solid #e5e7eb;margin-left:.8rem;padding-left:1.4rem}.rh-taxonomy-tree__row{align-items:center;border-radius:7px;display:flex;gap:.55rem;min-height:42px;padding:.2rem .35rem;position:relative}.rh-taxonomy-tree__row:hover{background:#f8fafc}.rh-taxonomy-tree__row .btn{flex:0 0 auto}.rh-taxonomy-tree__marker{background:#cbd5e1;border-radius:50%;height:8px;width:8px}.rh-taxonomy-tree__label{font-weight:600}.rh-taxonomy-tree__item--unit .rh-taxonomy-tree__label{font-weight:500}.rh-taxonomy-tree__item--resource .rh-taxonomy-tree__label{font-weight:400;color:#64748b}.rh-programme-toggle{color:#64748b!important;width:18px}.rh-programme-toggle i{transition:transform .18s ease}.rh-programme-toggle[aria-expanded="true"] i{transform:rotate(90deg)}#unit-creation-modal,#assignment-modal,#assignment-context-modal{z-index:2000!important}body>.modal-backdrop{z-index:1990!important}#unit-creation-modal .modal-body,#assignment-modal .modal-body,#assignment-context-modal .modal-body{max-height:68vh;overflow-y:auto}@media(max-width:767px){.rh-taxonomy-tree__row{flex-wrap:wrap}.rh-taxonomy-tree__children{margin-left:.25rem;padding-left:.75rem}}</style>
 @endpush
 
 @push('js')
@@ -159,6 +188,25 @@
         : null;
 @endphp
 <script>
+const unitCreationModal=document.getElementById('unit-creation-modal');
+if(unitCreationModal){
+    if(unitCreationModal.parentElement!==document.body)document.body.appendChild(unitCreationModal);
+    const creationDepartment=document.getElementById('unit-create-department');
+    const creationProgramme=document.getElementById('unit-create-programme');
+    const filterCreationProgrammes=()=>{
+        const departmentId=creationDepartment?.value||'';
+        Array.from(creationProgramme.options).forEach(option=>{
+            if(!option.value){option.hidden=false;option.disabled=false;return;}
+            const visible=!creationDepartment||Boolean(departmentId)&&String(option.dataset.departmentId||'')===String(departmentId);
+            option.hidden=!visible;
+            option.disabled=!visible;
+        });
+        if(creationProgramme.selectedOptions[0]?.disabled)creationProgramme.value='';
+    };
+    creationDepartment?.addEventListener('change',()=>{creationProgramme.value='';filterCreationProgrammes();});
+    filterCreationProgrammes();
+    @if(old('_create_and_assign') && $errors->any()) window.jQuery(unitCreationModal).modal('show'); @endif
+}
 const programmeTreeStateKey=@json('taxonomy-programme-tree-'.$profile);
 let programmeTreeState={};
 try{programmeTreeState=JSON.parse(localStorage.getItem(programmeTreeStateKey)||'{}');}catch(error){programmeTreeState={};}

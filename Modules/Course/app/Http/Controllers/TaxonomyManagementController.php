@@ -12,9 +12,11 @@ use App\Services\Taxonomy\TaxonomyManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Modules\Course\app\Models\CourseCategory;
 
 class TaxonomyManagementController extends Controller
@@ -45,12 +47,16 @@ class TaxonomyManagementController extends Controller
         $programmeOwnerIds = $programmes->mapWithKeys(fn (CourseCategory $programme) => [
             $programme->id => $this->curriculumOwnerId($programme, $root),
         ]);
-        $programmeDepartments = $programmes->mapWithKeys(function (CourseCategory $programme) {
+        $ownerNames = $awardingBodies->pluck('name', 'id');
+        $programmeDepartments = $programmes->mapWithKeys(function (CourseCategory $programme) use ($programmeOwnerIds, $ownerNames) {
             $department = $this->taxonomyAncestorOfType($programme, CourseCategory::TYPE_DEPARTMENT);
+            $ownerId = $programmeOwnerIds[$programme->id] ?? null;
 
             return [$programme->id => [
                 'id' => $department?->id,
                 'name' => $department?->name,
+                'owner_id' => $ownerId,
+                'owner_name' => $ownerNames[$ownerId] ?? null,
             ]];
         });
         $departments = $programmeDepartments->filter(fn (array $department) => filled($department['id']))
@@ -64,10 +70,21 @@ class TaxonomyManagementController extends Controller
         abort_unless(! $editingAssignment || $editingAssignment->programme?->taxonomy_profile === $profile, 404);
         $archivedNodes = CourseCategory::onlyTrashed()->with(['translation', 'parentCategory'])
             ->where('taxonomy_profile', $profile)->latest('deleted_at')->limit(50)->get();
+        $periodFields = $profileConfig['period_fields'] ?? [];
+        $periodAssignments = $periodFields === []
+            ? collect()
+            : ProgrammeUnitAssignment::query()->whereIn('programme_node_id', $programmes->pluck('id'))
+                ->get($periodFields);
+        $periodOptions = collect($periodFields)->mapWithKeys(function (string $field) use ($periodAssignments) {
+            $existing = $periodAssignments->pluck($field)->filter()->map(fn ($value) => trim((string) $value));
+
+            return [$field => collect($this->defaultPeriodOptions($field))
+                ->merge($existing)->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all()];
+        })->all();
 
         return view('course::taxonomy.profile', compact(
             'profile', 'profileConfig', 'tree', 'root', 'programmes', 'programmeOwnerIds', 'programmeDepartments',
-            'departments', 'awardingBodies', 'units',
+            'departments', 'awardingBodies', 'units', 'periodOptions',
             'editingAssignment', 'archivedNodes'
         ));
     }
@@ -75,6 +92,29 @@ class TaxonomyManagementController extends Controller
     public function storeUnit(Request $request, string $profile): RedirectResponse
     {
         $data = $this->validateUnit($request);
+        if ($request->boolean('_create_and_assign')) {
+            $assignmentData = $this->validateNewUnitAssignment($request, $profile);
+            $programme = CourseCategory::findOrFail($assignmentData['programme_node_id']);
+            abort_unless($programme->taxonomy_profile === $profile, 404);
+
+            if (filled($assignmentData['department_id'] ?? null)) {
+                $department = $this->taxonomyAncestorOfType($programme, CourseCategory::TYPE_DEPARTMENT);
+                if ((int) $department?->id !== (int) $assignmentData['department_id']) {
+                    throw ValidationException::withMessages([
+                        'programme_node_id' => __('Select a programme belonging to the selected department.'),
+                    ]);
+                }
+            }
+
+            $owner = CourseCategory::findOrFail($this->curriculumOwnerId($programme, $this->profileRoot($profile)));
+            DB::transaction(function () use ($owner, $programme, $data, $assignmentData) {
+                $unit = $this->curriculumUnits->create($owner, $data);
+                $this->curriculumUnits->assign($programme, $unit, $assignmentData);
+            });
+
+            return $this->profileSuccess($profile, __('Unit created and assigned to the selected programme.'));
+        }
+
         $owner = filled($data['awarding_body_id'] ?? null)
             ? CourseCategory::findOrFail($data['awarding_body_id'])
             : $this->profileRoot($profile);
@@ -466,6 +506,26 @@ class TaxonomyManagementController extends Controller
         ]);
     }
 
+    private function validateNewUnitAssignment(Request $request, string $profile): array
+    {
+        $config = config("higher_education_taxonomy.profiles.{$profile}", []);
+        $rules = [
+            'department_id' => [in_array('department', $config['creation_fields'] ?? [], true) ? 'required' : 'nullable', 'integer', 'exists:course_categories,id'],
+            'programme_node_id' => ['required', 'integer', 'exists:course_categories,id'],
+            'group_type' => ['required', Rule::in(array_keys($config['group_types'] ?? []))],
+            'display_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'is_mandatory' => ['nullable', 'boolean'],
+        ];
+        foreach ($config['period_fields'] ?? [] as $field) {
+            $rules[$field] = ['required', 'string', 'max:80'];
+        }
+
+        return $request->validate($rules) + [
+            'display_order' => 0,
+            'is_mandatory' => true,
+        ];
+    }
+
     private function profileRoot(string $profile): CourseCategory
     {
         abort_unless(array_key_exists($profile, config('higher_education_taxonomy.profiles', [])), 404);
@@ -496,6 +556,18 @@ class TaxonomyManagementController extends Controller
         }
 
         return null;
+    }
+
+    private function defaultPeriodOptions(string $field): array
+    {
+        return match ($field) {
+            'module' => array_map(fn (int $number) => "Module {$number}", range(1, 12)),
+            'study_year' => array_map(fn (int $number) => "Year {$number}", range(1, 8)),
+            'semester' => array_map(fn (int $number) => "Semester {$number}", range(1, 4)),
+            'stage' => array_map(fn (int $number) => "Stage {$number}", range(1, 6)),
+            'section' => array_map(fn (int $number) => "Section {$number}", range(1, 8)),
+            default => [],
+        };
     }
 
     private function ensureUnitProfile(CurriculumUnit $unit, string $profile): void

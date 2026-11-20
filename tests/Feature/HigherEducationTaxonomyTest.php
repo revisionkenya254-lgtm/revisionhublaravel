@@ -136,6 +136,10 @@ class HigherEducationTaxonomyTest extends TestCase
             ->assertSee('Agricultural Engineering')
             ->assertSee('Apply Renewable Energy Technology in Agriculture')
             ->assertSee('assignment-modal')
+            ->assertSee('unit-creation-modal')
+            ->assertSee('unit-create-department')
+            ->assertSee('unit-create-programme')
+            ->assertSee('Create and assign unit')
             ->assertSee('assignment-department')
             ->assertSee('data-department-id')
             ->assertSee('data-department-name')
@@ -539,7 +543,14 @@ class HigherEducationTaxonomyTest extends TestCase
         $programme = CourseCategory::where('parent_id', $department->id)->firstOrFail();
 
         $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.units.store', 'certificate'), [
-            'awarding_body_id' => $owner->id,
+            '_create_and_assign' => 1,
+            'department_id' => $department->id,
+            'programme_node_id' => $programme->id,
+            'group_type' => 'common',
+            'module' => 'Module 1',
+            'semester' => 'Semester 1',
+            'display_order' => 3,
+            'is_mandatory' => 1,
             'name' => 'Business Communication',
             'slug' => 'admin-test-business-communication',
             'code' => 'CBA-101',
@@ -547,20 +558,10 @@ class HigherEducationTaxonomyTest extends TestCase
         ])->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
         $unit = CurriculumUnit::where('awarding_body_id', $owner->id)
             ->where('slug', 'admin-test-business-communication')->firstOrFail();
-
-        $this->actingAs($admin, 'admin')->post(
-            route('admin.taxonomy.assignments.store', ['certificate', $programme]),
-            [
-                'curriculum_unit_id' => $unit->id,
-                'group_type' => 'common',
-                'module' => 'Module 1',
-                'semester' => 'Semester 1',
-                'display_order' => 3,
-                'is_mandatory' => 1,
-            ]
-        )->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
         $assignment = ProgrammeUnitAssignment::where('programme_node_id', $programme->id)
             ->where('curriculum_unit_id', $unit->id)->firstOrFail();
+        $this->assertSame('common', $assignment->group_type);
+        $this->assertSame('Module 1', $assignment->module);
 
         $this->actingAs($admin, 'admin')->put(
             route('admin.taxonomy.assignments.update', ['certificate', $assignment]),
@@ -608,6 +609,39 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->actingAs($admin, 'admin')->post(route('admin.taxonomy.units.restore', ['certificate', $unit]))
             ->assertRedirect(route('admin.taxonomy.profiles.show', 'certificate'));
         $this->assertTrue((bool) $unit->fresh()->status);
+    }
+
+    public function test_create_and_assign_unit_rejects_a_programme_from_another_department_atomically(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Unit Path Admin',
+            'email' => 'unit-path-admin@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $programme = CourseCategory::where('slug', 'agricultural-engineering-level-6')->firstOrFail();
+        $root = CourseCategory::whereNull('parent_id')->where('taxonomy_profile', 'cdacc')->firstOrFail();
+        $wrongDepartment = app(TaxonomyManagementService::class)->createNode($root->id, [
+            'name' => 'Test Health Science Department',
+            'slug' => 'test-health-science-department',
+            'node_type' => CourseCategory::TYPE_DEPARTMENT,
+            'order' => 99,
+        ]);
+
+        $this->actingAs($admin, 'admin')->from(route('admin.taxonomy.profiles.show', 'cdacc'))
+            ->post(route('admin.taxonomy.units.store', 'cdacc'), [
+                '_create_and_assign' => 1,
+                'department_id' => $wrongDepartment->id,
+                'programme_node_id' => $programme->id,
+                'module' => 'Module 1',
+                'group_type' => 'major',
+                'name' => 'Invalid Cross Department Unit',
+                'curriculum_version' => 'current',
+                'display_order' => 0,
+                'is_mandatory' => 1,
+            ])->assertRedirect(route('admin.taxonomy.profiles.show', 'cdacc'))
+            ->assertSessionHasErrors('programme_node_id');
+
+        $this->assertDatabaseMissing('curriculum_units', ['slug' => 'invalid-cross-department-unit']);
     }
 
     public function test_product_forms_receive_every_upper_education_architecture(): void
