@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\CurriculumUnit;
 use App\Models\Product;
 use App\Models\ProgrammeUnitAssignment;
+use App\Models\User;
 use App\Services\Taxonomy\CurriculumUnitService;
 use App\Services\Taxonomy\TaxonomyManagementService;
 use App\Services\Taxonomy\HigherEducationTaxonomyRepository;
@@ -652,10 +653,10 @@ class HigherEducationTaxonomyTest extends TestCase
         );
         $expectedFields = [
             'cdacc' => ['department', 'programme', 'study_year', 'group', 'assignment'],
-            'certificate' => ['owner', 'department', 'programme', 'module', 'assignment'],
-            'diploma' => ['owner', 'department', 'programme', 'module', 'assignment'],
-            'undergraduate' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
-            'professional' => ['owner', 'programme', 'stage', 'section', 'assignment'],
+            'certificate' => ['owner', 'department', 'programme', 'module', 'group', 'assignment'],
+            'diploma' => ['owner', 'department', 'programme', 'module', 'group', 'assignment'],
+            'undergraduate' => ['owner', 'department', 'programme', 'study_year', 'semester', 'group', 'assignment'],
+            'professional' => ['owner', 'programme', 'stage', 'section', 'group', 'assignment'],
         ];
         $profiles = collect($options['profiles'])->keyBy('key');
         foreach ($expectedFields as $profile => $fields) {
@@ -682,8 +683,49 @@ class HigherEducationTaxonomyTest extends TestCase
         $this->assertStringContainsString('data-curriculum-select="study_year"', $html);
         $this->assertStringContainsString('data-curriculum-select="stage"', $html);
         $this->assertStringContainsString('name="programme_unit_assignment_id"', $html);
+        $this->assertStringContainsString('data-curriculum-architecture', $html);
         $this->assertStringContainsString("text:'programme_label'", $html);
         $this->assertStringContainsString('let pathComplete = true', $html);
+    }
+
+    public function test_instructor_product_creation_uses_and_persists_the_taxonomy_architecture(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => 'active']);
+        $assignment = ProgrammeUnitAssignment::query()
+            ->whereHas('programme', fn ($query) => $query->where('taxonomy_profile', 'cdacc'))
+            ->where('status', true)
+            ->with(['programme', 'unit'])
+            ->firstOrFail();
+
+        foreach ([Product::TYPE_PAST_PAPER, Product::TYPE_PREDICTION, Product::TYPE_NOTE, Product::TYPE_QUIZ] as $type) {
+            $this->actingAs($instructor)->get(route('instructor.products.create', ['type' => $type]))
+                ->assertOk()
+                ->assertSee('data-curriculum-context', false)
+                ->assertSee('data-curriculum-architecture', false)
+                ->assertSee('programme_unit_assignment_id', false);
+        }
+
+        $this->actingAs($instructor)->post(route('instructor.products.store'), [
+            'type' => Product::TYPE_PAST_PAPER,
+            'title' => 'Taxonomy Synced CDACC Paper',
+            'description' => 'A CDACC paper classified through the taxonomy architecture.',
+            'price' => 0,
+            'status' => 'active',
+            'education_level' => 'CDACC',
+            'curriculum_profile' => 'cdacc',
+            'programme_unit_assignment_id' => $assignment->id,
+            'assessment_series' => 'July',
+            'year' => '2026',
+        ])->assertRedirect(route('instructor.products.index', ['type' => Product::TYPE_PAST_PAPER]));
+
+        $product = Product::where('title', 'Taxonomy Synced CDACC Paper')->firstOrFail();
+        $this->assertDatabaseHas('product_curriculum_contexts', [
+            'product_id' => $product->id,
+            'programme_unit_assignment_id' => $assignment->id,
+            'curriculum_unit_id' => $assignment->curriculum_unit_id,
+        ]);
+        $this->assertSame('cdacc', data_get($product->metadata, 'curriculum_context.profile'));
+        $this->assertSame('Level 6', data_get($product->metadata, 'curriculum_context.periods.Level'));
     }
 
     public function test_admin_can_permanently_delete_archived_nodes_individually_and_in_bulk(): void

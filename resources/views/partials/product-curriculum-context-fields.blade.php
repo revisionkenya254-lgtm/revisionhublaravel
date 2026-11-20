@@ -24,6 +24,7 @@
                     <span class="curriculum-path-card__badge" data-curriculum-profile-label></span>
                 </div>
                 <p>{{ __('Choose each level in order. The next field only shows options valid for the path already selected.') }}</p>
+                <div class="curriculum-path-card__architecture" data-curriculum-architecture></div>
             </div>
         </div>
 
@@ -78,7 +79,7 @@
     @once
         <style>
             .curriculum-path-card{grid-column:1/-1;border:1px solid #d9e2ec;border-radius:16px;padding:20px;background:linear-gradient(145deg,#fff 0%,#f8fafc 100%);margin:12px 0;box-shadow:0 8px 24px rgba(15,23,42,.05)}
-            .curriculum-path-card__header{display:flex;gap:13px;align-items:flex-start;margin-bottom:16px}.curriculum-path-card__icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--curriculum-accent,#334155);color:#fff;flex:0 0 auto}.curriculum-path-card__title-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.curriculum-path-card__title-row strong{font-size:16px;color:#0f172a}.curriculum-path-card__header p,.curriculum-path-card__advanced p{margin:4px 0 0;color:#64748b;font-size:13px}.curriculum-path-card__badge{padding:3px 9px;border-radius:999px;background:#eef2ff;color:var(--curriculum-accent,#334155);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+            .curriculum-path-card__header{display:flex;gap:13px;align-items:flex-start;margin-bottom:16px}.curriculum-path-card__icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--curriculum-accent,#334155);color:#fff;flex:0 0 auto}.curriculum-path-card__title-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.curriculum-path-card__title-row strong{font-size:16px;color:#0f172a}.curriculum-path-card__header p,.curriculum-path-card__advanced p{margin:4px 0 0;color:#64748b;font-size:13px}.curriculum-path-card__architecture{margin-top:7px;color:var(--curriculum-accent,#334155);font-size:12px;font-weight:700}.curriculum-path-card__badge{padding:3px 9px;border-radius:999px;background:#eef2ff;color:var(--curriculum-accent,#334155);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
             .curriculum-path-card__trail{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}.curriculum-path-card__trail:empty{display:none}.curriculum-path-card__crumb{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid #dbe4ee;border-radius:8px;background:#fff;color:#334155;font-size:12px}.curriculum-path-card__crumb:not(:last-child)::after{content:'›';margin-left:4px;color:#94a3b8;font-weight:700}
             .curriculum-path-grid,.curriculum-path-card__assessment{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.curriculum-path-field label{display:block;margin-bottom:6px;font-weight:600;color:#334155}.curriculum-path-field select:disabled{background:#f1f5f9;color:#94a3b8}.curriculum-path-card__empty{padding:12px 14px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px;margin-top:12px}.curriculum-path-card__empty i{margin-right:7px}
             .curriculum-path-card__advanced{margin-top:16px;padding:12px 14px;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}.curriculum-path-card__advanced summary{cursor:pointer;color:#475569;font-weight:600;font-size:13px}.curriculum-path-card__advanced .curriculum-path-field{margin-top:12px}.curriculum-path-card__assessment{margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0}
@@ -100,6 +101,7 @@
                     const records = JSON.parse(panel.querySelector('[data-curriculum-assignments]').textContent || '[]');
                     const profileInput = panel.querySelector('[data-curriculum-profile]');
                     const profileLabel = panel.querySelector('[data-curriculum-profile-label]');
+                    const architecture = panel.querySelector('[data-curriculum-architecture]');
                     const educationLevel = panel.closest('form')?.querySelector('#education_level');
                     const assignmentSelect = panel.querySelector('[data-curriculum-select="assignment"]');
                     const unitInput = panel.querySelector('[data-curriculum-unit]');
@@ -149,6 +151,7 @@
                         panel.style.setProperty('--curriculum-accent', profile.accent || '#334155');
                         profileLabel.textContent = profile.label;
                         const activeFields = profile.creation_fields || ['owner','department','programme','assignment'];
+                        architecture.textContent = activeFields.map(field => fieldLabel(field, profile)).join(' → ');
                         panel.querySelectorAll('[data-curriculum-field]').forEach(wrapper => {
                             const field = wrapper.dataset.curriculumField;
                             wrapper.hidden = !activeFields.includes(field);

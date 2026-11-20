@@ -53,7 +53,7 @@ return [
             'root_is_owner' => false,
             'allow_profile_shared_units' => true,
             'period_fields' => ['module'],
-            'creation_fields' => ['owner', 'department', 'programme', 'module', 'assignment'],
+            'creation_fields' => ['owner', 'department', 'programme', 'module', 'group', 'assignment'],
             'group_types' => ['common' => 'Common Units', 'major' => 'Major Units', 'elective' => 'Elective Units'],
         ],
         'diploma' => [
@@ -66,7 +66,7 @@ return [
             'root_is_owner' => false,
             'allow_profile_shared_units' => true,
             'period_fields' => ['module'],
-            'creation_fields' => ['owner', 'department', 'programme', 'module', 'assignment'],
+            'creation_fields' => ['owner', 'department', 'programme', 'module', 'group', 'assignment'],
             'group_types' => ['common' => 'Common Units', 'major' => 'Major Units', 'elective' => 'Elective Units'],
         ],
         'undergraduate' => [
@@ -79,7 +79,7 @@ return [
             'root_is_owner' => false,
             'allow_profile_shared_units' => true,
             'period_fields' => ['study_year', 'semester'],
-            'creation_fields' => ['owner', 'department', 'programme', 'study_year', 'semester', 'assignment'],
+            'creation_fields' => ['owner', 'department', 'programme', 'study_year', 'semester', 'group', 'assignment'],
             'group_types' => [
                 'university_common' => 'University Common Units',
                 'faculty_common' => 'Faculty Common Units',
@@ -105,7 +105,7 @@ return [
             'root_is_owner' => false,
             'allow_profile_shared_units' => true,
             'period_fields' => ['stage', 'section'],
-            'creation_fields' => ['owner', 'programme', 'stage', 'section', 'assignment'],
+            'creation_fields' => ['owner', 'programme', 'stage', 'section', 'group', 'assignment'],
             'group_types' => ['paper' => 'Papers'],
         ],
     ],
